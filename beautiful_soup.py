@@ -21,7 +21,7 @@ from .parquet_storage import ParquetStorage
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class WebCrawler:
+class BSWebCrawler:
     """Class for crawling web pages and extracting content."""
     
     def __init__(self, data_dir=None):
