@@ -4,6 +4,7 @@ from .ddg_search import DuckDuckGoSearcher
 from .gh_crawler import GitHubCrawler
 from .youtube_script import YouTubeDownloader
 from .parquet_storage import ParquetStorage
+from .toml_dependency_updater import PyProjectTOMLUpdater, PyPIVersionCrawler, TOMLDependencyUpdater
 
 __all__=[
     "ArxivFetcher",
@@ -11,5 +12,8 @@ __all__=[
     "DuckDuckGoSearcher",
     "GitHubCrawler",
     "YouTubeDownloader",
-    "ParquetStorage"
+    "ParquetStorage",
+    "PyProjectTOMLUpdater",
+    "PyPIVersionCrawler",
+    "TOMLDependencyUpdater"
 ]
