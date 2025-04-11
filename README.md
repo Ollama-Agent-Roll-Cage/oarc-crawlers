@@ -48,7 +48,7 @@ The ParquetStorage class provides a unified interface for saving and loading dat
 ### Basic Usage
 
 ```python
-from src.parquet_storage import ParquetStorage
+from oarc_crawlers import ParquetStorage
 import pandas as pd
 
 # Example 1: Save dictionary data to parquet
@@ -132,7 +132,7 @@ Each crawler module creates its own directory structure for storing Parquet file
 ### YouTube Downloader
 
 ```python
-from src.youtube_script import YouTubeDownloader
+from oarc_crawlers import YouTubeDownloader
 
 async def download_example():
     downloader = YouTubeDownloader(data_dir="./data")
@@ -148,7 +148,7 @@ async def download_example():
 ### GitHub Crawler
 
 ```python
-from src.gh_crawler import GitHubCrawler
+from oarc_crawlers import GitHubCrawler
 
 async def github_example():
     crawler = GitHubCrawler(data_dir="./data")
@@ -167,7 +167,7 @@ async def github_example():
 ### DuckDuckGo Searcher
 
 ```python
-from src.ddg_search import DuckDuckGoSearcher
+from oarc_crawlers import DuckDuckGoSearcher
 
 async def search_example():
     searcher = DuckDuckGoSearcher(data_dir="./data")
@@ -184,7 +184,7 @@ async def search_example():
 ### BeautifulSoup Web Crawler
 
 ```python
-from src.beautiful_soup import BSWebCrawler
+from oarc_crawlers import BSWebCrawler
 
 async def web_example():
     crawler = BSWebCrawler(data_dir="./data")
@@ -197,7 +197,7 @@ async def web_example():
 ### ArXiv Fetcher
 
 ```python
-from src.arxiv_fetcher import ArxivFetcher
+from oarc_crawlers import ArxivFetcher
 
 async def arxiv_example():
     fetcher = ArxivFetcher(data_dir="./data")
@@ -221,7 +221,7 @@ The ParquetStorage class serves as the foundation for all data persistence acros
 import pandas as pd
 import os
 from datetime import datetime
-from src.parquet_storage import ParquetStorage
+from oarc_crawlers import ParquetStorage
 
 # Access and analyze data from multiple crawlers
 async def data_analysis_example():
@@ -270,8 +270,13 @@ async def data_analysis_example():
             top_videos = videos_df.sort_values('views', ascending=False).head(5)
             for _, video in top_videos.iterrows():
                 print(f"Title: {video['title']}, Views: {video['views']}")
+```
 
 # Working with DuckDuckGo search results
+
+```python
+from oarc_crawlers import ParquetStorage
+
 def analyze_search_results():
     search_dir = "./data/searches"
     results = []
