@@ -1,4 +1,4 @@
-# OARC-Crawlers
+# ⛏️ OARC-Crawlers ⛏️
 
 OARC's dynamic webcrawler module collection. This package provides various web crawlers and data extractors for different sources:
 
