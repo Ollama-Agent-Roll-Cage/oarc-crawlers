@@ -27,7 +27,13 @@ pip install uv
 # Create & activate virtual environment with UV
 uv venv --python 3.11
 
+# Quick install
+uv pip install oarc-crawlers
+
+or
+
 # Install the package and dependencies in one step
+cd dir, -> clone repo
 uv run pip install -e .[dev]
 ```
 
