@@ -7,6 +7,9 @@ Date: 4/9/2025
 
 import os
 import logging
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 class ParquetStorage:
     """"Utility class for saving and loading data in Parquet format."""
@@ -15,10 +18,14 @@ class ParquetStorage:
     def save_to_parquet(data, file_path):
         """Save data to a Parquet file."""
         try:
-            import pandas as pd
-            import pyarrow as pa
-            import pyarrow.parquet as pq
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
+        except FileNotFoundError as e:
+            logging.error(f"Directory not found: {e}")
+            return False
+        
+        try:
             # Convert to DataFrame if it's a dictionary
             if isinstance(data, dict):
                 df = pd.DataFrame([data])

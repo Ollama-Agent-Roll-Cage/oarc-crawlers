@@ -4,12 +4,9 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import tempfile
 from pathlib import Path
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
+from oarc_crawlers import YouTubeDownloader
 
-from src.youtube_script import YouTubeDownloader
-
+@patch('oarc_crawlers.youtube_script.ParquetStorage')
 class TestYouTubeDownloader(unittest.TestCase):
     """Test the YouTube downloader module."""
     
@@ -27,7 +24,7 @@ class TestYouTubeDownloader(unittest.TestCase):
         self.temp_dir.cleanup()
         
     @patch('pytube.YouTube')
-    @patch('src.youtube_script.ParquetStorage')
+    @patch('oarc_crawlers.youtube_script.ParquetStorage')
     async def test_download_video(self, mock_storage, mock_youtube_class):
         """Test downloading a video."""
         # Setup mock objects
@@ -79,8 +76,8 @@ class TestYouTubeDownloader(unittest.TestCase):
             self.assertIn('file_path', result)
 
     @patch('pytube.Playlist')
-    @patch('src.youtube_script.YouTubeDownloader.download_video')
-    @patch('src.youtube_script.ParquetStorage')
+    @patch('oarc_crawlers.youtube_script.YouTubeDownloader.download_video')
+    @patch('oarc_crawlers.youtube_script.ParquetStorage')
     async def test_download_playlist(self, mock_storage, mock_download_video, mock_playlist_class):
         """Test downloading a playlist."""
         # Setup mock objects
@@ -117,7 +114,7 @@ class TestYouTubeDownloader(unittest.TestCase):
         self.assertEqual(result['videos_to_download'], 2)
         
     @patch('pytube.Search')
-    @patch('src.youtube_script.ParquetStorage')
+    @patch('oarc_crawlers.youtube_script.ParquetStorage')
     async def test_search_videos(self, mock_storage, mock_search_class):
         """Test searching for videos."""
         # Setup mock video objects
@@ -159,7 +156,7 @@ class TestYouTubeDownloader(unittest.TestCase):
         self.assertEqual(result['results'][0]['video_id'], "video1")
         
     @patch('pytube.YouTube')
-    @patch('src.youtube_script.ParquetStorage')
+    @patch('oarc_crawlers.youtube_script.ParquetStorage')
     async def test_extract_captions(self, mock_storage, mock_youtube_class):
         """Test extracting captions."""
         # Setup mock objects

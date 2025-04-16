@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oarc-crawlers"
-version = "0.1.2"
+version = "0.1.3"
 description = "OARC's dynamic webcrawler module collection"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,15 +39,26 @@ dev = [
     "black>=25.1.0",
     "isort>=6.0.1",
     "ruff>=0.0.240",
-    "build>=1.2.2.post1"
+    "build>=1.2.2.post1",
+    "pyinstaller>=6.0.0"  # Add PyInstaller
 ]
+
+# Define command-line scripts
+[project.scripts]
+oarc-youtube = "oarc_crawlers.cli.youtube_cli:main"
+oarc-github = "oarc_crawlers.cli.github_cli:main"
+oarc-arxiv = "oarc_crawlers.cli.arxiv_cli:main"
+oarc-bs = "oarc_crawlers.cli.beautiful_soup_cli:main"
+oarc-ddg = "oarc_crawlers.cli.ddg_cli:main"
+oarc-crawlers = "oarc_crawlers.cli.main:main"
 
 [project.urls]
 "Homepage" = "https://github.com/oarc/oarc-crawlers"
 "Bug Tracker" = "https://github.com/oarc/oarc-crawlers/issues"
 
 [tool.setuptools]
-packages = ["src"]
+package-dir = {"" = "src"}
+packages = ["oarc_crawlers", "oarc_crawlers.cli"]
 
 [tool.black]
 line-length = 100

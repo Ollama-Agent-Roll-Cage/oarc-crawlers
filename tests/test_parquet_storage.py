@@ -5,11 +5,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
-
-from src.parquet_storage import ParquetStorage
+from oarc_crawlers import ParquetStorage
 
 class TestParquetStorage(unittest.TestCase):
     """Test the ParquetStorage class functionality."""

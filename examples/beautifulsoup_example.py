@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from src.beautiful_soup import BSWebCrawler
+from oarc_crawlers import BSWebCrawler
 
 async def bs_examples():
     """Examples for using the BeautifulSoup Web Crawler module."""

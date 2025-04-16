@@ -4,10 +4,6 @@ from pathlib import Path
 
 def run_tests():
     """Run all tests in the tests directory."""
-    # Add the project root to the path
-    project_root = Path(__file__).parent
-    sys.path.append(str(project_root))
-    
     # Discover and run tests
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover('tests', pattern='test_*.py')

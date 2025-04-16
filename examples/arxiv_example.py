@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from src.arxiv_fetcher import ArxivFetcher
+from oarc_crawlers import ArxivFetcher
 
 async def arxiv_examples():
     """Examples for using the ArXiv Fetcher module."""

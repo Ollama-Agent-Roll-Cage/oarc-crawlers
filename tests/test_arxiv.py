@@ -6,11 +6,7 @@ import xml.etree.ElementTree as ET
 import io
 import tarfile
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
-
-from src.arxiv_fetcher import ArxivFetcher
+from oarc_crawlers import ArxivFetcher
 
 class TestArxivFetcher(unittest.TestCase):
     """Test the ArXiv fetcher module."""
@@ -92,7 +88,7 @@ class TestArxivFetcher(unittest.TestCase):
             ArxivFetcher.extract_arxiv_id("not_an_arxiv_id")
     
     @patch('urllib.request.urlopen')
-    @patch('src.arxiv_fetcher.ParquetStorage')
+    @patch('oarc_crawlers.arxiv_fetcher.ParquetStorage')
     async def test_fetch_paper_info(self, mock_storage, mock_urlopen):
         """Test fetching paper information."""
         # Setup mock urlopen
@@ -150,7 +146,7 @@ class TestArxivFetcher(unittest.TestCase):
         self.assertIn("**DOI:** 10.1234/test.5678", result)
     
     @patch('urllib.request.urlopen')
-    @patch('src.arxiv_fetcher.ParquetStorage')
+    @patch('oarc_crawlers.arxiv_fetcher.ParquetStorage')
     @patch('tempfile.mkdtemp')
     @patch('shutil.rmtree')
     async def test_download_source_tar(self, mock_rmtree, mock_mkdtemp, mock_storage, mock_urlopen):
@@ -185,9 +181,9 @@ class TestArxivFetcher(unittest.TestCase):
         self.assertIn('main.tex', result['source_files'])
         self.assertIn(self.sample_latex, result['latex_content'])
     
-    @patch('src.arxiv_fetcher.ArxivFetcher.fetch_paper_info')
-    @patch('src.arxiv_fetcher.ArxivFetcher.download_source')
-    @patch('src.arxiv_fetcher.ParquetStorage')
+    @patch('oarc_crawlers.arxiv_fetcher.ArxivFetcher.fetch_paper_info')
+    @patch('oarc_crawlers.arxiv_fetcher.ArxivFetcher.download_source')
+    @patch('oarc_crawlers.arxiv_fetcher.ParquetStorage')
     @patch('os.makedirs')
     async def test_fetch_paper_with_latex(self, mock_makedirs, mock_storage, mock_download, mock_fetch):
         """Test fetching both paper metadata and LaTeX source."""
