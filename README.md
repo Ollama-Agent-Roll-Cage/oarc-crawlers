@@ -53,20 +53,17 @@ uv pip install -e .[dev]
 
 ## Package Structure
 
-```
+```Bash
 oarc-crawlers/
+├── .github/                     # GitHub workflows and config
+├── docs/                        # Core documentation
+├── examples/                    # Example usage scripts
 ├── src/
-│   └── oarc_crawlers/     # Main package
-│       ├── __init__.py
-│       ├── arxiv_fetcher.py
-│       ├── beautiful_soup.py
-│       ├── ddg_search.py
-│       ├── gh_crawler.py
-│       ├── parquet_storage.py
-│       ├── youtube_script.py
-│       └── cli/           # CLI implementations
-├── tests/                 # Unit tests
-└── examples/             # Usage examples
+│   └── oarc_crawlers/           # Source code to package
+│   │   └── cli/                 # CLI tools directory
+│   └── tests/                   # Unit tests
+└── README.md                    # Project overview
+└── LICENSE                      # Apache 2.0
 ```
 
 ## CLI Usage
@@ -125,7 +122,21 @@ oarc-crawlers ddg --help
 python -m pytest
 
 # Using unittest
-python -m unittest discover tests
+python -m unittest discover src/oarc_crawlers/tests
+```
+
+## Running Tests
+
+To run all tests:
+
+```bash
+python src/oarc_crawlers/tests/run_tests.py
+```
+
+Or to run a specific test:
+
+```bash
+python -m unittest oarc_crawlers.tests.test_parquet_storage
 ```
 
 ## POSSIBLE ISSUE: Python venv Issue
@@ -544,13 +555,13 @@ python examples/run_example.py all
 To run all tests:
 
 ```bash
-python run_tests.py
+python src/oarc_crawlers/tests/run_tests.py
 ```
 
 Or to run a specific test:
 
 ```bash
-python -m unittest tests.test_parquet_storage
+python -m unittest oarc_crawlers.tests.test_parquet_storage
 ```
 
 ## MCP API Usage
