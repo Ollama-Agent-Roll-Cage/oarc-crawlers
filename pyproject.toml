@@ -29,6 +29,7 @@ dependencies = [
     "pandas>=2.2.3",
     "pyarrow>=19.0.1",
     "pytube>=15.0.0",
+    "pytchat>=0.5.0",
     "types-beautifulsoup4>=4.9.0"
 ]
 

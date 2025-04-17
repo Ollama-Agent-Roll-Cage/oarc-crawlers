@@ -21,20 +21,52 @@ OARC's dynamic webcrawler module collection. This package provides various web c
 ## Installation
 
 ```bash
-# Install UV package manager
+# Install with UV (recommended)
 pip install uv
 
-# Create & activate virtual environment with UV
+# create a new project dir or go to your existing project
+cd your_custom_project
+
+# create venv
 uv venv --python 3.11
 
-# Quick install
+#install oarc-crawlers with pip
 uv pip install oarc-crawlers
 
-or
+# or you may install oarc-crawlers with the following commands for the development package.
 
-# Install the package and dependencies in one step
-cd dir, -> clone repo
-uv run pip install -e .[dev]
+# For development installation:
+git clone https://github.com/oarc/oarc-crawlers
+
+# Open cloned repo
+cd oarc-crawlers
+
+# create uv venv
+uv venv --python 3.11
+
+# activate
+.venv\Scripts\activate
+
+# setup developer environment
+uv pip install -e .[dev]
+```
+
+## Package Structure
+
+```
+oarc-crawlers/
+├── src/
+│   └── oarc_crawlers/     # Main package
+│       ├── __init__.py
+│       ├── arxiv_fetcher.py
+│       ├── beautiful_soup.py
+│       ├── ddg_search.py
+│       ├── gh_crawler.py
+│       ├── parquet_storage.py
+│       ├── youtube_script.py
+│       └── cli/           # CLI implementations
+├── tests/                 # Unit tests
+└── examples/             # Usage examples
 ```
 
 ## CLI Usage
@@ -86,7 +118,17 @@ oarc-crawlers bs --help
 oarc-crawlers ddg --help
 ```
 
-# POSSIBLE ISSUE: Python venv Issue
+## Running Tests
+
+```bash
+# Using pytest (recommended)
+python -m pytest
+
+# Using unittest
+python -m unittest discover tests
+```
+
+## POSSIBLE ISSUE: Python venv Issue
 Make sure to clean your python uv venv, as well as your base python environment.
 
 Your environment should be clean and should be similar to the following example:
