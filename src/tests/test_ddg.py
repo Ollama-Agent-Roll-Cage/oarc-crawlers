@@ -4,11 +4,7 @@ import tempfile
 from pathlib import Path
 import json
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
-
-from src.ddg_search import DuckDuckGoSearcher
+from oarc_crawlers import DuckDuckGoSearcher
 
 class MockResponse:
     def __init__(self, status, text):
@@ -55,7 +51,7 @@ class TestDuckDuckGoSearcher(unittest.TestCase):
         self.temp_dir.cleanup()
     
     @patch('aiohttp.ClientSession.get')
-    @patch('src.ddg_search.ParquetStorage')
+    @patch('oarc_crawlers.ddg_search.ParquetStorage')
     async def test_text_search(self, mock_storage, mock_get):
         """Test text search functionality."""
         # Setup mock
@@ -81,7 +77,7 @@ class TestDuckDuckGoSearcher(unittest.TestCase):
         self.assertNotIn('Test Topic 3', result)
     
     @patch('aiohttp.ClientSession.get')
-    @patch('src.ddg_search.ParquetStorage')
+    @patch('oarc_crawlers.ddg_search.ParquetStorage')
     async def test_image_search(self, mock_storage, mock_get):
         """Test image search functionality."""
         # Setup mock
@@ -106,7 +102,7 @@ class TestDuckDuckGoSearcher(unittest.TestCase):
         self.assertNotIn('![Image 2]', result)
     
     @patch('aiohttp.ClientSession.get')
-    @patch('src.ddg_search.ParquetStorage')
+    @patch('oarc_crawlers.ddg_search.ParquetStorage')
     async def test_news_search(self, mock_storage, mock_get):
         """Test news search functionality."""
         # Setup mock

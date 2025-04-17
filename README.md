@@ -21,21 +21,202 @@ OARC's dynamic webcrawler module collection. This package provides various web c
 ## Installation
 
 ```bash
-# Install UV package manager
+# Install with UV (recommended)
 pip install uv
 
-# Create & activate virtual environment with UV
+# create a new project dir or go to your existing project
+cd your_custom_project
+
+# create venv
 uv venv --python 3.11
 
-# Quick install
+#install oarc-crawlers with pip
 uv pip install oarc-crawlers
 
-or
+# or you may install oarc-crawlers with the following commands for the development package.
 
-# Install the package and dependencies in one step
-cd dir, -> clone repo
-uv run pip install -e .[dev]
+# For development installation:
+git clone https://github.com/oarc/oarc-crawlers
+
+# Open cloned repo
+cd oarc-crawlers
+
+# create uv venv
+uv venv --python 3.11
+
+# activate
+.venv\Scripts\activate
+
+# setup developer environment
+uv pip install -e .[dev]
 ```
+
+## Package Structure
+
+```
+oarc-crawlers/
+├── src/
+│   └── oarc_crawlers/     # Main package
+│       ├── __init__.py
+│       ├── arxiv_fetcher.py
+│       ├── beautiful_soup.py
+│       ├── ddg_search.py
+│       ├── gh_crawler.py
+│       ├── parquet_storage.py
+│       ├── youtube_script.py
+│       └── cli/           # CLI implementations
+├── tests/                 # Unit tests
+└── examples/             # Usage examples
+```
+
+## CLI Usage
+
+The package provides a unified command-line interface:
+
+```bash
+# Environment and package management
+oarc-crawlers setup          # Setup development environment
+oarc-crawlers build         # Build the package
+oarc-crawlers publish       # Publish to PyPI
+oarc-crawlers publish --test # Publish to TestPyPI
+
+# YouTube operations
+oarc-crawlers youtube download --url "https://youtube.com/watch?v=..."
+oarc-crawlers youtube playlist --url "https://youtube.com/playlist?list=..."
+oarc-crawlers youtube captions --url "https://youtube.com/watch?v=..."
+oarc-crawlers youtube search --query "machine learning"
+
+# GitHub operations
+oarc-crawlers github clone --url "https://github.com/user/repo"
+oarc-crawlers github analyze --url "https://github.com/user/repo"
+oarc-crawlers github search --query "python crawler"
+
+# ArXiv operations
+oarc-crawlers arxiv download --id "2103.00020"
+oarc-crawlers arxiv search --query "quantum computing"
+oarc-crawlers arxiv latex --id "2103.00020"
+
+# Web crawling (BeautifulSoup)
+oarc-crawlers bs crawl --url "https://example.com"
+oarc-crawlers bs docs --url "https://docs.python.org"
+oarc-crawlers bs pypi --package "requests"
+
+# DuckDuckGo search
+oarc-crawlers ddg text --query "python programming" --max-results 5
+oarc-crawlers ddg images --query "cute cats" --max-results 10
+oarc-crawlers ddg news --query "technology" --max-results 3
+```
+
+Each command has additional options that can be viewed using the --help flag:
+
+```bash
+oarc-crawlers --help
+oarc-crawlers youtube --help
+oarc-crawlers github --help
+oarc-crawlers arxiv --help
+oarc-crawlers bs --help
+oarc-crawlers ddg --help
+```
+
+## Running Tests
+
+```bash
+# Using pytest (recommended)
+python -m pytest
+
+# Using unittest
+python -m unittest discover tests
+```
+
+## POSSIBLE ISSUE: Python venv Issue
+Make sure to clean your python uv venv, as well as your base python environment.
+
+Your environment should be clean and should be similar to the following example:
+
+```bash
+# try pip list
+pip list
+
+# Heres an example
+PS M:\oarc_repos_git\oarc-crawlers> pip list
+Package       Version Editable project location
+------------- ------- -------------------------------
+oarc-crawlers 0.1.2   M:\oarc_repos_git\oarc-crawlers
+pip           25.0.1
+setuptools    78.1.0
+wheel         0.45.1
+PS M:\oarc_repos_git\oarc-crawlers> pip install uv
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Collecting uv
+  Downloading uv-0.6.14-py3-none-win_amd64.whl.metadata (11 kB)
+Downloading uv-0.6.14-py3-none-win_amd64.whl (17.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.6/17.6 MB 52.9 MB/s eta 0:00:00
+Installing collected packages: uv
+Successfully installed uv-0.6.14
+PS M:\oarc_repos_git\oarc-crawlers>
+
+# Clear the virtual environment and the base environment
+
+# Make sure to do:
+conda deactivate
+
+# Then if you made a venv with "uv venv --python 3.11" you can deactivate it now:
+
+# Now deactivate
+.venv\Scripts\deactivate
+
+PS M:\oarc_repos_git\oarc-crawlers> .venv\Scripts\activate
+(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> .venv\Scripts\deactivate
+
+# If you cannot deactivate with the deactivate command try killing the terminal, also make sure you are careful when working with multiple uv virtual environments at the same time, they get confused.
+
+# Clear the uv venv made with "uv venv --python 3.11"
+
+# activate
+.venv\Scripts\activate
+
+# Run pip list
+
+(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip list      
+Package       Version Editable project location
+------------- ------- -------------------------------
+oarc-crawlers 0.1.2   M:\oarc_repos_git\oarc-crawlers # WE WANT TO REMOVE THIS
+pip           25.0.1
+setuptools    78.1.0
+uv            0.6.14
+wheel         0.45.1
+(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip uninstall oarc-crawlers
+
+# Now we remove the old oarc crawlers
+pip uninstall oarc-crawlers
+
+# Now run pip list again
+
+(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip list
+Package    Version
+---------- -------
+pip        25.0.1
+setuptools 78.1.0
+wheel      0.45.1
+(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> 
+
+# install uv
+pip install uv
+
+# now continue with either
+
+uv pip install oarc-crawlers
+
+# or
+
+# activate uv venv
+.venv\Scripts\activate
+
+# install developer package
+uv pip install -e .[dev]
+
+# Continue with your specific usage after cleaning your uv environment :)
+# hope this helps!
 
 ## Usage Examples
 

@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from src.gh_crawler import GitHubCrawler
+from oarc_crawlers import GitHubCrawler
 
 async def github_examples():
     """Examples for using the GitHub Crawler module."""

@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from src.ddg_search import DuckDuckGoSearcher
+from oarc_crawlers import DuckDuckGoSearcher
 
 async def ddg_examples():
     """Examples for using the DuckDuckGo Search module."""

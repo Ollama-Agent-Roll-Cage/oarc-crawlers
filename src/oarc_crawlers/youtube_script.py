@@ -16,19 +16,21 @@ from pathlib import Path
 
 from pytube import YouTube, Playlist, Search, Caption
 import pytube.exceptions
+# Add pytchat import
+import pytchat
 
 from .parquet_storage import ParquetStorage
 
 class YouTubeDownloader:
     """Class for downloading and processing YouTube videos."""
     
-    def __init__(self, data_dir=None):
+    def __init__(self, config):
         """Initialize the YouTube Downloader.
         
         Args:
             data_dir (str, optional): Directory to store data. Defaults to DATA_DIR.
         """
-        self.data_dir = data_dir
+        self.data_path = config["data_path"]
         self.youtube_data_dir = Path(f"{self.data_dir}/youtube_data")
         self.youtube_data_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(__name__)
@@ -363,3 +365,119 @@ class YouTubeDownloader:
         downloader = YouTubeDownloader()
         result = await downloader.download_video(url, format=format, output_path=save_dir, filename=filename)
         return result.get('file_path')
+
+    async def fetch_stream_chat(self, video_id: str, max_messages: int = 1000, 
+                              save_to_file: bool = True, duration: int = None) -> Dict:
+        """Fetch chat messages from a YouTube live stream.
+        
+        Args:
+            video_id (str): YouTube video ID or URL
+            max_messages (int): Maximum number of messages to collect
+            save_to_file (bool): Whether to save messages to a file
+            duration (int): How long to collect messages in seconds (None for unlimited)
+            
+        Returns:
+            dict: Information about collected chat messages
+        """
+        try:
+            # Handle full URLs vs video IDs
+            if "youtube.com" in video_id or "youtu.be" in video_id:
+                if "youtube.com/watch" in video_id:
+                    video_id = re.search(r'v=([^&]+)', video_id).group(1)
+                elif "youtu.be/" in video_id:
+                    video_id = video_id.split("youtu.be/")[1]
+            
+            # Initialize pytchat
+            self.logger.info(f"Starting to fetch chat for video ID: {video_id}")
+            chat = pytchat.create(video_id=video_id)
+            
+            if not chat.is_alive():
+                return {"error": "Chat is not active for this video", "video_id": video_id}
+            
+            # Initialize result data
+            chat_data = {
+                "video_id": video_id,
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "messages": [],
+                "message_count": 0
+            }
+            
+            # Set up timer if duration is specified
+            start_time = datetime.now()
+            timeout = False
+            
+            # Collect messages
+            try:
+                while chat.is_alive() and len(chat_data["messages"]) < max_messages and not timeout:
+                    for c in chat.get().sync_items():
+                        message = {
+                            "datetime": c.datetime,
+                            "timestamp": c.timestamp,
+                            "author_name": c.author.name,
+                            "author_id": c.author.channelId,
+                            "message": c.message,
+                            "type": c.type,
+                            "is_verified": c.author.isVerified,
+                            "is_chat_owner": c.author.isChatOwner,
+                            "is_chat_sponsor": c.author.isChatSponsor,
+                            "is_chat_moderator": c.author.isChatModerator
+                        }
+                        
+                        # Add badges and other metadata if present
+                        if hasattr(c.author, 'badges') and c.author.badges:
+                            message["badges"] = c.author.badges
+                            
+                        chat_data["messages"].append(message)
+                        
+                        # Check if we've reached the limit
+                        if len(chat_data["messages"]) >= max_messages:
+                            self.logger.info(f"Reached maximum message count: {max_messages}")
+                            break
+                            
+                    # Check duration timeout
+                    if duration and (datetime.now() - start_time).total_seconds() >= duration:
+                        self.logger.info(f"Reached duration limit: {duration} seconds")
+                        timeout = True
+                        break
+            except Exception as e:
+                self.logger.error(f"Error while collecting chat messages: {e}")
+                # We'll still return any messages collected before the error
+            
+            # Update message count
+            chat_data["message_count"] = len(chat_data["messages"])
+            
+            # Save to Parquet
+            if chat_data["message_count"] > 0:
+                chat_dir = self.youtube_data_dir / "chats"
+                chat_dir.mkdir(exist_ok=True)
+                
+                parquet_path = str(chat_dir / f"{video_id}_{int(datetime.now().timestamp())}.parquet")
+                ParquetStorage.save_to_parquet(chat_data, parquet_path)
+                chat_data["parquet_path"] = parquet_path
+                
+                # Save to text file if requested
+                if save_to_file:
+                    txt_path = str(chat_dir / f"{video_id}_{int(datetime.now().timestamp())}.txt")
+                    with open(txt_path, 'w', encoding='utf-8') as f:
+                        f.write(f"Chat messages for {video_id}\n")
+                        f.write(f"Collected at: {chat_data['timestamp']}\n")
+                        f.write(f"Total messages: {chat_data['message_count']}\n\n")
+                        for msg in chat_data["messages"]:
+                            author_tags = []
+                            if msg["is_verified"]: author_tags.append("✓")
+                            if msg["is_chat_owner"]: author_tags.append("👑")
+                            if msg["is_chat_sponsor"]: author_tags.append("💰")
+                            if msg["is_chat_moderator"]: author_tags.append("🛡️")
+                            
+                            author_suffix = f" ({', '.join(author_tags)})" if author_tags else ""
+                            f.write(f"[{msg['datetime']}] {msg['author_name']}{author_suffix}: {msg['message']}\n")
+                    
+                    chat_data["text_path"] = txt_path
+            
+            return chat_data
+            
+        except Exception as e:
+            error_msg = f"Error fetching stream chat: {str(e)}"
+            self.logger.error(error_msg)
+            return {"error": error_msg, "video_id": video_id}

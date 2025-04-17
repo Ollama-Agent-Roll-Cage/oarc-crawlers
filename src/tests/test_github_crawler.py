@@ -5,11 +5,7 @@ import tempfile
 import pandas as pd
 from pathlib import Path
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
-
-from src.gh_crawler import GitHubCrawler
+from oarc_crawlers import GitHubCrawler
 
 class TestGitHubCrawler(unittest.TestCase):
     """Test the GitHub crawler module."""
@@ -148,9 +144,9 @@ class TestGitHubCrawler(unittest.TestCase):
         self.assertIn("def hello():", python_row['content'].iloc[0])
         self.assertIn("function hello()", js_row['content'].iloc[0])
 
-    @patch('src.gh_crawler.GitHubCrawler.clone_repo')
-    @patch('src.gh_crawler.GitHubCrawler.process_repo_to_dataframe')
-    @patch('src.gh_crawler.ParquetStorage')
+    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_repo')
+    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.process_repo_to_dataframe')
+    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
     @patch('tempfile.mkdtemp')
     @patch('shutil.rmtree')
     async def test_clone_and_store_repo(self, mock_rmtree, mock_mkdtemp, mock_storage, 
@@ -182,8 +178,8 @@ class TestGitHubCrawler(unittest.TestCase):
         expected_path = f"{self.temp_dir.name}/github_repos/username_repo.parquet"
         self.assertEqual(result, expected_path)
 
-    @patch('src.gh_crawler.GitHubCrawler.clone_and_store_repo')
-    @patch('src.gh_crawler.ParquetStorage')
+    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_and_store_repo')
+    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
     @patch('os.path.exists')
     async def test_get_repo_summary(self, mock_exists, mock_storage, mock_clone_store):
         """Test getting a repository summary."""
@@ -221,8 +217,8 @@ class TestGitHubCrawler(unittest.TestCase):
         result = await self.crawler.get_repo_summary(self.repo_url)
         mock_clone_store.assert_called_once_with(self.repo_url)
     
-    @patch('src.gh_crawler.GitHubCrawler.clone_and_store_repo')
-    @patch('src.gh_crawler.ParquetStorage')
+    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_and_store_repo')
+    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
     @patch('os.path.exists')
     async def test_find_similar_code(self, mock_exists, mock_storage, mock_clone_store):
         """Test finding similar code in a repository."""

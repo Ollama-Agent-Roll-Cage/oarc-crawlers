@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from src.youtube_script import YouTubeDownloader
+from oarc_crawlers import YouTubeDownloader
 
 async def youtube_examples():
     """Examples for using the YouTube Downloader module."""

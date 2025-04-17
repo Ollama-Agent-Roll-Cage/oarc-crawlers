@@ -18,7 +18,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 import aiohttp
 
-from parquet_storage import ParquetStorage
+from .parquet_storage import ParquetStorage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

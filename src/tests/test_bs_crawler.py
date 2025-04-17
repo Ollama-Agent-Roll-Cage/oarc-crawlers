@@ -5,11 +5,7 @@ from pathlib import Path
 import json
 import bs4
 
-# Add parent directory to path to import modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent))
-
-from src.beautiful_soup import BSWebCrawler
+from oarc_crawlers import BSWebCrawler
 
 class MockResponse:
     def __init__(self, status, text):
@@ -134,7 +130,7 @@ class TestBSWebCrawler(unittest.TestCase):
         self.temp_dir.cleanup()
     
     @patch('aiohttp.ClientSession.get')
-    @patch('src.beautiful_soup.ParquetStorage')
+    @patch('oarc_crawlers.beautiful_soup.ParquetStorage')
     async def test_fetch_url_content(self, mock_storage, mock_get):
         """Test fetching URL content."""
         # Set self.fetch_url_content to BSWebCrawler.fetch_url_content
@@ -222,10 +218,10 @@ class TestBSWebCrawler(unittest.TestCase):
         self.assertEqual(result['code_snippets'][0]['language'], "python")
         self.assertIn("import library", result['code_snippets'][0]['code'])
     
-    @patch('src.beautiful_soup.BSWebCrawler.fetch_url_content')
-    @patch('src.beautiful_soup.BSWebCrawler.extract_documentation_content')
-    @patch('src.beautiful_soup.BSWebCrawler.format_documentation')
-    @patch('src.beautiful_soup.ParquetStorage')
+    @patch('oarc_crawlers.beautiful_soup.BSWebCrawler.fetch_url_content')
+    @patch('oarc_crawlers.beautiful_soup.BSWebCrawler.extract_documentation_content')
+    @patch('oarc_crawlers.beautiful_soup.BSWebCrawler.format_documentation')
+    @patch('oarc_crawlers.beautiful_soup.ParquetStorage')
     async def test_crawl_documentation_site(self, mock_storage, mock_format, mock_extract, mock_fetch):
         """Test crawling a documentation site."""
         # Setup mocks
