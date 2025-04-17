@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=42", "wheel", "build"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,7 +32,9 @@ dependencies = [
     "pytchat>=0.5.0",
     "types-beautifulsoup4>=4.9.0",
     "fastmcp>=0.2.0",  # MCP server implementation
-    "websockets>=12.0"  # For WebSocket transport
+    "websockets>=12.0",  # For WebSocket transport
+    "build>=1.2.2.post1",  # For build command
+    "twine>=5.0.0"  # For publish command
 ]
 
 [project.optional-dependencies]
