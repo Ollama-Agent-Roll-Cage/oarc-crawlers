@@ -5,7 +5,8 @@ Provides a Model Context Protocol (MCP) interface for the OARC-Crawlers package.
 from typing import Dict, List, Optional
 import asyncio
 import logging
-from fastmcp import FastMCP, TransportError, ClientError
+from fastmcp import FastMCP
+from aiohttp.client_exceptions import ClientError
 
 from .youtube_script import YouTubeDownloader
 from .gh_crawler import GitHubCrawler
@@ -16,6 +17,14 @@ from .parquet_storage import ParquetStorage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class MCPError(Exception):
+    """Base error for MCP operations."""
+    pass
+
+class TransportError(MCPError):
+    """Error for transport-related issues."""
+    pass
 
 class OARCCrawlersMCP:
     """MCP wrapper for OARC-Crawlers providing a unified API."""
@@ -151,15 +160,12 @@ class OARCCrawlersMCP:
             while True:
                 await asyncio.sleep(1)
                 
-        except TransportError as e:
-            logger.error(f"Transport error: {e}")
-            raise
         except ClientError as e:
             logger.error(f"Client error: {e}")
-            raise
+            raise TransportError(f"Connection error: {e}")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise
+            raise MCPError(f"MCP server error: {e}")
 
     def run(self, transport: str = "ws", **kwargs):
         """Run the MCP server."""

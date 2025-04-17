@@ -2,14 +2,145 @@
 import argparse
 import asyncio
 import sys
+import subprocess
 from pathlib import Path
 
-def main():
-    """Main entry point for the OARC Crawlers CLI."""
-    parser = argparse.ArgumentParser(description="OARC Crawlers - Web crawling and data extraction tools")
+def setup_environment():
+    """Setup the development environment."""
+    try:
+        subprocess.run(["uv", "venv", "--python", "3.11"], check=True)
+        subprocess.run([".venv/Scripts/activate"], check=True)
+        subprocess.run(["uv", "pip", "install", "-e", ".[dev]"], check=True)
+        print("Environment setup complete!")
+    except Exception as e:
+        print(f"Error setting up environment: {e}")
+        sys.exit(1)
+
+def build_package():
+    """Build the package."""
+    try:
+        subprocess.run([sys.executable, "-m", "build"], check=True)
+        print("Package built successfully!")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error building package: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error building package: {e}")
+        sys.exit(1)
+
+async def publish_package(test=False):
+    """Publish the package to PyPI."""
+    try:
+        cmd = ["twine", "upload"]
+        if test:
+            cmd.extend(["--repository", "testpypi"])
+        cmd.extend(["dist/*"])
+        
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        
+        if proc.returncode == 0:
+            print("Package published successfully!")
+        else:
+            print(f"Error publishing package: {stderr.decode()}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error publishing package: {e}")
+        sys.exit(1)
+
+async def _handle_command(args):
+    """Handle the different crawler commands."""
+    try:
+        if args.command == 'setup':
+            setup_environment()
+        elif args.command == 'build':
+            build_package()
+        elif args.command == 'publish':
+            await publish_package(test=args.test)
+        else:
+            from .. import (YouTubeDownloader, GitHubCrawler, ArxivFetcher,
+                        BSWebCrawler, DuckDuckGoSearcher)
+            
+            if args.command == 'youtube':
+                downloader = YouTubeDownloader()
+                if args.action == 'download' and args.url:
+                    result = await downloader.download_video(args.url)
+                elif args.action == 'playlist' and args.url:
+                    result = await downloader.download_playlist(args.url)
+                elif args.action == 'captions' and args.url:
+                    result = await downloader.extract_captions(args.url)
+                elif args.action == 'search' and args.query:
+                    result = await downloader.search_videos(args.query)
+                else:
+                    print("Error: Missing required arguments")
+                    sys.exit(1)
+                print(result)
+                
+            elif args.command == 'github':
+                crawler = GitHubCrawler()
+                if args.action == 'clone' and args.url:
+                    result = await crawler.clone_and_store_repo(args.url)
+                elif args.action == 'analyze' and args.url:
+                    result = await crawler.get_repo_summary(args.url)
+                else:
+                    print("Error: Missing required arguments")
+                    sys.exit(1)
+                print(result)
+                
+            elif args.command == 'arxiv':
+                fetcher = ArxivFetcher()
+                if args.action == 'download' and args.id:
+                    result = await fetcher.download_source(args.id)
+                elif args.action == 'search' and args.query:
+                    # TODO: Implement arxiv search
+                    pass
+                elif args.action == 'latex' and args.id:
+                    result = await fetcher.fetch_paper_with_latex(args.id)
+                else:
+                    print("Error: Missing required arguments")
+                    sys.exit(1)
+                print(result)
+                
+            elif args.command == 'bs':
+                crawler = BSWebCrawler()
+                if args.action == 'crawl' and args.url:
+                    result = await crawler.crawl_documentation_site(args.url)
+                elif args.action == 'pypi' and args.package:
+                    html = await BSWebCrawler.fetch_url_content(f"https://pypi.org/project/{args.package}/")
+                    result = await BSWebCrawler.extract_pypi_content(html, args.package)
+                else:
+                    print("Error: Missing required arguments")
+                    sys.exit(1)
+                print(result)
+                
+            elif args.command == 'ddg':
+                searcher = DuckDuckGoSearcher()
+                if args.action == 'text' and args.query:
+                    result = await searcher.text_search(args.query, max_results=args.max_results)
+                elif args.action == 'images' and args.query:
+                    result = await searcher.image_search(args.query, max_results=args.max_results)
+                elif args.action == 'news' and args.query:
+                    result = await searcher.news_search(args.query, max_results=args.max_results)
+                else:
+                    print("Error: Missing required arguments")
+                    sys.exit(1)
+                print(result)
+                
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        sys.exit(1)
+
+async def async_main():
+    """Async main entry point for the CLI."""
+    parser = argparse.ArgumentParser(description='OARC Crawlers CLI')
     
-    # Create subparsers for different commands
-    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    # Add subparsers for each command
+    subparsers = parser.add_subparsers(dest='command', required=True)
     
     # Setup command
     setup_parser = subparsers.add_parser('setup', help='Setup the environment')
@@ -22,149 +153,51 @@ def main():
     publish_parser.add_argument('--test', action='store_true', help='Publish to TestPyPI')
     
     # YouTube command
-    youtube_parser = subparsers.add_parser('youtube', help='YouTube operations')
-    youtube_parser.add_argument('action', choices=['download', 'playlist', 'captions', 'search'])
-    youtube_parser.add_argument('--url', help='YouTube URL')
-    youtube_parser.add_argument('--query', help='Search query')
+    youtube = subparsers.add_parser('youtube')
+    youtube.add_argument('action', choices=['download', 'playlist', 'captions', 'search'])
+    youtube.add_argument('--url', help='Video or playlist URL')
+    youtube.add_argument('--query', help='Search query')
     
     # GitHub command
-    github_parser = subparsers.add_parser('github', help='GitHub operations')
-    github_parser.add_argument('action', choices=['clone', 'analyze', 'search'])
-    github_parser.add_argument('--url', help='Repository URL')
+    github = subparsers.add_parser('github')
+    github.add_argument('action', choices=['clone', 'analyze'])
+    github.add_argument('--url', help='Repository URL')
     
     # ArXiv command
-    arxiv_parser = subparsers.add_parser('arxiv', help='ArXiv operations')
-    arxiv_parser.add_argument('action', choices=['download', 'search', 'latex'])
-    arxiv_parser.add_argument('--id', help='ArXiv paper ID')
-    arxiv_parser.add_argument('--query', help='Search query')
+    arxiv = subparsers.add_parser('arxiv')
+    arxiv.add_argument('action', choices=['download', 'search', 'latex'])
+    arxiv.add_argument('--id', help='ArXiv paper ID')
+    arxiv.add_argument('--query', help='Search query')
     
     # BeautifulSoup command
-    bs_parser = subparsers.add_parser('bs', help='Web crawling operations')
-    bs_parser.add_argument('action', choices=['crawl', 'docs', 'pypi'])
-    bs_parser.add_argument('--url', help='URL to crawl')
-    bs_parser.add_argument('--package', help='PyPI package name')
+    bs = subparsers.add_parser('bs')
+    bs.add_argument('action', choices=['crawl', 'docs', 'pypi'])
+    bs.add_argument('--url', help='URL to crawl')
+    bs.add_argument('--package', help='PyPI package name')
     
     # DuckDuckGo command
-    ddg_parser = subparsers.add_parser('ddg', help='DuckDuckGo search operations')
-    ddg_parser.add_argument('action', choices=['text', 'images', 'news'])
-    ddg_parser.add_argument('--query', required=True, help='Search query')
-    ddg_parser.add_argument('--max-results', type=int, default=10, help='Maximum number of results')
+    ddg = subparsers.add_parser('ddg')
+    ddg.add_argument('action', choices=['text', 'images', 'news'])
+    ddg.add_argument('--query', help='Search query')
+    ddg.add_argument('--max-results', type=int, default=5, help='Maximum number of results')
     
     args = parser.parse_args()
-    
-    if args.command == 'setup':
-        setup_environment()
-    elif args.command == 'build':
-        build_package()
-    elif args.command == 'publish':
-        publish_package(test=args.test)
-    elif args.command == 'youtube':
-        asyncio.run(_handle_youtube(args))
-    elif args.command == 'github':
-        asyncio.run(_handle_github(args))
-    elif args.command == 'arxiv':
-        asyncio.run(_handle_arxiv(args))
-    elif args.command == 'bs':
-        asyncio.run(_handle_bs(args))
-    elif args.command == 'ddg':
-        asyncio.run(_handle_ddg(args))
-    else:
+    if not args.command:
         parser.print_help()
         sys.exit(1)
+        
+    await _handle_command(args)
 
-def setup_environment():
-    """Setup the development environment."""
+def main():
+    """Synchronous entry point for the CLI."""
     try:
-        import subprocess
-        subprocess.run(["uv", "venv", "--python", "3.11"], check=True)
-        subprocess.run([".venv/Scripts/activate"], check=True)
-        subprocess.run(["uv", "pip", "install", "-e", ".[dev]"], check=True)
-        print("Environment setup complete!")
-    except Exception as e:
-        print(f"Error setting up environment: {e}")
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user")
         sys.exit(1)
-
-def build_package():
-    """Build the package."""
-    try:
-        import subprocess
-        subprocess.run(["python", "-m", "build"], check=True)
-        print("Package built successfully!")
     except Exception as e:
-        print(f"Error building package: {e}")
+        print(f"Error: {str(e)}")
         sys.exit(1)
-
-def publish_package(test=False):
-    """Publish the package to PyPI."""
-    try:
-        import subprocess
-        cmd = ["twine", "upload"]
-        if test:
-            cmd.extend(["--repository", "testpypi"])
-        cmd.extend(["dist/*"])
-        subprocess.run(cmd, check=True)
-        print("Package published successfully!")
-    except Exception as e:
-        print(f"Error publishing package: {e}")
-        sys.exit(1)
-
-async def _handle_youtube(args):
-    """Handle YouTube commands."""
-    from .youtube_cli import (download_video, download_playlist, 
-                            extract_captions, search_videos)
-    
-    if args.action == 'download':
-        await download_video(args.url)
-    elif args.action == 'playlist':
-        await download_playlist(args.url)
-    elif args.action == 'captions':
-        await extract_captions(args.url)
-    elif args.action == 'search':
-        await search_videos(args.query)
-
-async def _handle_github(args):
-    """Handle GitHub commands."""
-    from .github_cli import clone_repo, analyze_repo, search_repos
-    
-    if args.action == 'clone':
-        await clone_repo(args.url)
-    elif args.action == 'analyze':
-        await analyze_repo(args.url)
-    elif args.action == 'search':
-        await search_repos(args.query)
-
-async def _handle_arxiv(args):
-    """Handle ArXiv commands."""
-    from .arxiv_cli import download_paper, search_papers, get_latex
-    
-    if args.action == 'download':
-        await download_paper(args.id)
-    elif args.action == 'search':
-        await search_papers(args.query)
-    elif args.action == 'latex':
-        await get_latex(args.id)
-
-async def _handle_bs(args):
-    """Handle BeautifulSoup commands."""
-    from .beautiful_soup_cli import crawl_url, crawl_docs, crawl_pypi
-    
-    if args.action == 'crawl':
-        await crawl_url(args.url)
-    elif args.action == 'docs':
-        await crawl_docs(args.url)
-    elif args.action == 'pypi':
-        await crawl_pypi(args.package)
-
-async def _handle_ddg(args):
-    """Handle DuckDuckGo commands."""
-    from .ddg_cli import text_search, image_search, news_search
-    
-    if args.action == 'text':
-        await text_search(args.query, args.max_results)
-    elif args.action == 'images':
-        await image_search(args.query, args.max_results)
-    elif args.action == 'news':
-        await news_search(args.query, args.max_results)
 
 if __name__ == "__main__":
     main()

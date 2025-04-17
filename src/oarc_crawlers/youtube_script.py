@@ -24,14 +24,14 @@ from .parquet_storage import ParquetStorage
 class YouTubeDownloader:
     """Class for downloading and processing YouTube videos."""
     
-    def __init__(self, config):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the YouTube Downloader.
         
         Args:
-            data_dir (str, optional): Directory to store data. Defaults to DATA_DIR.
+            data_dir (str, optional): Directory to store data
         """
-        self.data_path = config["data_path"]
-        self.youtube_data_dir = Path(f"{self.data_dir}/youtube_data")
+        self.data_dir = data_dir or str(Path.home() / ".oarc" / "data")
+        self.youtube_data_dir = Path(self.data_dir) / "youtube_data"
         self.youtube_data_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(__name__)
 
