@@ -1,4 +1,6 @@
-# OARC-Crawlers Specification
+# OARC-Crawlers: Technical Specification
+
+This document provides the technical specification for the OARC-Crawlers framework. It details the system architecture, individual components, data handling strategies, API usage, and common workflows, serving as a comprehensive guide for understanding and utilizing the framework.
 
 ## Table of Contents
 - [1. Introduction](#1-introduction)
@@ -7,12 +9,6 @@
   - [2.2 Architecture](#22-architecture)
   - [2.3 Data Storage](#23-data-storage)
 - [3. Components](#3-components)
-  - [3.1 Parquet Storage](#31-parquet-storage)
-  - [3.2 YouTube Downloader](#32-youtube-downloader)
-  - [3.3 GitHub Crawler](#33-github-crawler)
-  - [3.4 DuckDuckGo Searcher](#34-duckduckgo-searcher)
-  - [3.5 BeautifulSoup Web Crawler](#35-beautifulsoup-web-crawler)
-  - [3.6 ArXiv Fetcher](#36-arxiv-fetcher)
 - [4. API Reference](#4-api-reference)
 - [5. Common Workflows](#5-common-workflows)
   - [5.1 Research Workflow](#51-research-workflow)
@@ -27,69 +23,88 @@
 
 ## 1. Introduction
 
-OARC-Crawlers is a comprehensive collection of web crawlers and data extractors designed to gather information from various online sources, process it, and store it in a standardized format. The system enables researchers, data scientists, and developers to efficiently collect and analyze data from YouTube videos, GitHub repositories, web pages, search engines, and academic papers.
-
-The core design principle of OARC-Crawlers is to provide a unified interface for diverse data sources, with consistent storage mechanisms and easy-to-use APIs. Each crawler module is designed to handle the specific intricacies of its target platform while maintaining a common usage pattern for the end-user.
-
-This specification document outlines the architecture, components, APIs, and usage patterns of the OARC-Crawlers system. It serves as a comprehensive reference for developers working with the codebase, as well as users looking to leverage the system's capabilities for data collection and analysis.
+OARC-Crawlers offers a framework for acquiring, processing, and storing data from diverse online sources. It is built on core principles like modularity and asynchronous operation, utilizing unified Apache Parquet storage for data persistence, as detailed throughout this specification. The system provides specialized crawlers and workflows designed to streamline data collection for researchers, data scientists, and developers.
 
 ## 2. System Overview
 
 ### 2.1 Core Concepts
 
-OARC-Crawlers is built around several key concepts:
+The OARC-Crawlers framework operates on the following core principles:
 
-1. **Modular Crawlers**: Each data source has a dedicated crawler class specialized for that domain.
-2. **Asynchronous Operation**: All data retrieval operations are implemented as asynchronous functions, allowing for efficient concurrent processing.
-3. **Unified Storage**: All data is stored in Apache Parquet format, providing efficient compression and query capabilities.
-4. **Structured Output**: All crawlers provide structured outputs in both programmatic formats (DataFrames, dictionaries) and human-readable formats (Markdown).
-5. **Error Resilience**: Built-in error handling ensures that failures in data retrieval don't cause system failures.
+1.  **Modularity**: Each data source is managed by a dedicated, specialized component (detailed in [Components](#3-components)).
+2.  **Asynchronous Design**: Utilizes asynchronous programming for high-performance, non-blocking I/O operations (see [Performance Considerations](#7-performance-considerations)).
+3.  **Unified Data Storage**: Employs Apache Parquet for consistent, efficient, and analysis-ready data persistence across all modules (see [Data Storage](#23-data-storage)).
+4.  **Structured Outputs**: Delivers data in well-defined formats suitable for both machine processing (e.g., DataFrames, dictionaries) and human review (e.g., Markdown).
+5.  **Resilience**: Integrates robust error handling and logging mechanisms to ensure operational stability (see [Error Handling and Logging](#6-error-handling-and-logging)).
 
 ### 2.2 Architecture
 
-OARC-Crawlers follows a modular architecture where each crawler is implemented as a separate class with a consistent interface pattern:
+The OARC-Crawlers framework employs a modular architecture, aligning with the [Core Concepts](#21-core-concepts). Each data source (e.g., YouTube, GitHub, ArXiv) is managed by a dedicated, asynchronous crawler module, detailed in the [Components](#3-components) section.
 
-1. **Initialization**: Each crawler accepts a `data_dir` parameter for specifying where data should be stored.
-2. **Retrieval Methods**: Methods for retrieving different types of data from the source.
-3. **Processing Methods**: Functions for transforming and processing the retrieved data.
-4. **Format Methods**: Functions for converting the processed data into human-readable formats.
-5. **Storage Integration**: All crawlers use the ParquetStorage class for data persistence.
+Key architectural features include:
+1.  **Independent Modules**: Each crawler operates independently, focusing on a specific data source.
+2.  **Asynchronous Operations**: Leverages `async`/`await` for efficient, non-blocking I/O, crucial for network-bound tasks (see [Performance Considerations](#7-performance-considerations)).
+3.  **Centralized Storage**: All modules utilize the `ParquetStorage` component for consistent data persistence in the Apache Parquet format ([Section 2.3](#23-data-storage)).
+4.  **Consistent Initialization**: Crawlers are typically initialized with a `data_dir` parameter specifying the output location.
 
-The system is designed for both standalone use of individual crawlers and combined use of multiple crawlers for more complex data collection tasks.
+This design facilitates both the isolated use of individual crawlers and their combination within larger data acquisition workflows ([Section 5](#5-common-workflows)).
+
+The overall interaction flow is depicted below:
 
 ```mermaid
 graph TD
-    User[User/Application] --> YT[YouTubeDownloader]
-    User --> GH[GitHubCrawler]
-    User --> DDG[DuckDuckGoSearcher]
-    User --> BS[BSWebCrawler]
-    User --> AX[ArxivFetcher]
-    
-    YT --> PS[ParquetStorage]
+    User[User/Application] --> Crawlers{Crawler Modules}
+    Crawlers --> PS[ParquetStorage]
+    Crawlers <--> EXT[External Services & APIs]
+    PS --> DF[(Parquet Data Files)]
+
+    subgraph Crawler Modules
+        YT[YouTubeDownloader]
+        GH[GitHubCrawler]
+        DDG[DuckDuckGoSearcher]
+        BS[BSWebCrawler]
+        AX[ArxivFetcher]
+    end
+
+    subgraph External Services & APIs
+        API_YT[YouTube API]
+        API_GH[GitHub]
+        API_DDG[DuckDuckGo]
+        API_WEB[Web Pages]
+        API_AX[ArXiv API]
+    end
+
+    User --> YT
+    User --> GH
+    User --> DDG
+    User --> BS
+    User --> AX
+
+    YT --> PS
     GH --> PS
     DDG --> PS
     BS --> PS
     AX --> PS
-    
-    PS --> DF[(Data Files)]
-    
-    YT <--> EXT1[External: YouTube API]
-    GH <--> EXT2[External: GitHub]
-    DDG <--> EXT3[External: DuckDuckGo]
-    BS <--> EXT4[External: Web Pages]
-    AX <--> EXT5[External: ArXiv]
+
+    YT <--> API_YT
+    GH <--> API_GH
+    DDG <--> API_DDG
+    BS <--> API_WEB
+    AX <--> API_AX
 ```
 
 ### 2.3 Data Storage
 
-All data retrieved by OARC-Crawlers is stored using the Apache Parquet format, which offers several advantages:
+Consistent with the core concept of [Unified Data Storage](#21-core-concepts), the OARC-Crawlers framework utilizes the Apache Parquet format for persistent data storage across all modules. This choice offers significant advantages aligned with the system's goals:
 
-1. **Columnar Storage**: Efficient for analytical queries that operate on specific columns.
-2. **Compression**: Built-in compression reduces storage requirements.
-3. **Schema Enforcement**: Ensures data consistency across operations.
-4. **Interoperability**: Compatible with big data tools like Spark, Pandas, and Arrow.
+1.  **Columnar Storage**: Enables efficient data retrieval and analysis, particularly for queries targeting specific data columns.
+2.  **Efficient Compression**: Reduces disk space usage and potentially speeds up I/O operations.
+3.  **Schema Enforcement**: Helps maintain data consistency and integrity across diverse data sources and collection times.
+4.  **Broad Interoperability**: Ensures compatibility with a wide range of data analysis tools and platforms, including Pandas, Apache Spark, and Apache Arrow.
 
-The ParquetStorage class provides a unified interface for saving, loading, and appending data across all crawler modules.
+All interactions with Parquet files (saving, loading, appending) are managed through the dedicated `ParquetStorage` component. This centralized approach guarantees a standardized mechanism for data persistence, ensuring consistency regardless of the specific crawler module generating the data.
+
+The general flow for handling data destined for storage is illustrated below:
 
 ```mermaid
 graph LR
@@ -100,349 +115,50 @@ graph LR
         PFILE --> PSTORE
         PSTORE --> DF[DataFrame/Dict]
     end
-    
+
     subgraph "Input Data Types"
         Dict[Dictionary]
         List[List]
         DataFrame[DataFrame]
     end
-    
+
     Dict --> IN
     List --> IN
     DataFrame --> IN
 ```
 
+This unified storage strategy ensures that data from various sources is stored efficiently and is readily available for subsequent analysis workflows ([Section 5.2](#52-data-analysis-workflow)).
+
 ## 3. Components
 
-### 3.1 Parquet Storage
+The OARC-Crawlers framework includes several specialized components, each designed to interact with a specific data source:
 
-The foundation of the OARC-Crawlers system is the ParquetStorage utility, which provides a standardized mechanism for data persistence across all crawler modules.
+1. **Parquet Storage**: The foundation for all data persistence operations, providing consistent saving, loading, and appending of data in the Parquet format.
 
-**Key Features:**
-- Saving dictionaries, lists, and DataFrames to Parquet files
-- Loading Parquet files into Pandas DataFrames
-- Appending new data to existing Parquet files
-- Automatic conversion between data types
-- Error handling for file operations
+2. **YouTube Downloader**: Facilitates downloading videos, playlists, and metadata from YouTube, as well as extracting captions and performing searches.
 
-ParquetStorage serves as the bridge between the various crawler modules and the persistent data store, ensuring that all data is stored in a consistent and efficient format.
+3. **GitHub Crawler**: Enables cloning, processing, and analyzing GitHub repositories, with a focus on code extraction and analysis.
 
-**Implementation Pattern:**
-```python
-# Typical usage pattern for ParquetStorage
-from parquet_storage import ParquetStorage
+4. **DuckDuckGo Searcher**: Performs web searches using the DuckDuckGo search engine API, supporting text, image, and news searches.
 
-# Saving data
-data = {'key': 'value', 'metrics': [1, 2, 3], 'timestamp': '2023-01-01'}
-ParquetStorage.save_to_parquet(data, 'path/to/file.parquet')
+5. **BeautifulSoup Web Crawler**: Extracts content from web pages using BeautifulSoup, with specialized extractors for documentation sites and PyPI package pages.
 
-# Loading data
-df = ParquetStorage.load_from_parquet('path/to/file.parquet')
+6. **ArXiv Fetcher**: Downloads papers and extracts content from the ArXiv academic repository, including paper metadata and LaTeX source files.
 
-# Appending data
-new_data = {'key': 'new_value', 'metrics': [4, 5, 6], 'timestamp': '2023-01-02'}
-ParquetStorage.append_to_parquet(new_data, 'path/to/file.parquet')
-```
-
-**Data Handling Flow:**
-```mermaid
-flowchart TD
-    A[Start] --> B{Data Type?}
-    B -->|Dictionary| C[Convert to DataFrame]
-    B -->|List| D[Convert to DataFrame]
-    B -->|DataFrame| E[Use Directly]
-    C --> F[Save as Parquet]
-    D --> F
-    E --> F
-    F --> G[End]
-```
-
-### 3.2 YouTube Downloader
-
-The YouTubeDownloader module facilitates downloading videos, playlists, and metadata from YouTube, as well as extracting captions and performing searches.
-
-**Key Features:**
-- Download individual videos with customizable format and resolution
-- Download entire playlists with configurable limits
-- Extract captions/subtitles in multiple languages
-- Search for videos and retrieve metadata
-- Save all data and metadata in Parquet format
-- Extract audio from videos
-
-The module leverages the pytube library for interacting with YouTube and provides additional functionality for organizing and storing the retrieved data.
-
-**Typical Usage Pattern:**
-```python
-# Example of downloading a YouTube video
-from youtube_script import YouTubeDownloader
-
-async def download_example():
-    downloader = YouTubeDownloader(data_dir="./data")
-    
-    # Download a single video
-    video_info = await downloader.download_video(
-        url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        format="mp4",
-        resolution="720p"
-    )
-    
-    # Extract captions
-    captions = await downloader.extract_captions(
-        url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        languages=["en", "es"]
-    )
-    
-    # Search for videos
-    search_results = await downloader.search_videos(
-        query="machine learning tutorial",
-        limit=5
-    )
-    
-    return video_info, captions, search_results
-```
-
-**Processing Architecture:**
-```mermaid
-flowchart TD
-    A[YouTube URL] --> B[YouTubeDownloader]
-    B --> C{Operation Type}
-    C -->|Download Video| D[Process Video Stream]
-    C -->|Download Playlist| E[Process Multiple Videos]
-    C -->|Extract Captions| F[Process Caption Track]
-    C -->|Search Videos| G[Process Search Results]
-    
-    D --> H[Save Video File]
-    D --> I[Extract Metadata]
-    E --> J[Process Each Video]
-    F --> K[Save Caption Files]
-    G --> L[Format Search Results]
-    
-    I --> M[ParquetStorage]
-    J --> M
-    K --> M
-    L --> M
-```
-
-### 3.3 GitHub Crawler
-
-The GitHubCrawler module enables cloning, processing, and analyzing GitHub repositories, with a focus on code extraction and analysis.
-
-**Key Features:**
-- Clone repositories using Git
-- Process repository files into a structured DataFrame
-- Extract file metadata (language, size, author, etc.)
-- Generate repository summaries
-- Find similar code across repositories
-- Query repository content using natural language
-
-This module combines Git operations with file processing capabilities to provide a comprehensive view of repository contents and structure.
-
-**Example Usage:**
-```python
-# Example of analyzing a GitHub repository
-from gh_crawler import GitHubCrawler
-
-async def analyze_repo():
-    crawler = GitHubCrawler(data_dir="./data")
-    
-    # Clone and analyze a repository
-    repo_path = await crawler.clone_and_store_repo(
-        "https://github.com/username/repository"
-    )
-    
-    # Generate a summary
-    summary = await crawler.get_repo_summary(
-        "https://github.com/username/repository"
-    )
-    
-    # Find similar code
-    similar_code = await crawler.find_similar_code(
-        "https://github.com/username/repository",
-        "def calculate_mean(values):\n    return sum(values) / len(values)"
-    )
-    
-    return summary, similar_code
-```
-
-**Repository Processing Workflow:**
-```mermaid
-flowchart TD
-    A[GitHub URL] --> B[GitHubCrawler]
-    B --> C[Clone Repository]
-    C --> D[Process Files]
-    D --> E{File Type Check}
-    E -->|Text File| F[Extract Content]
-    E -->|Binary File| G[Skip]
-    F --> H[Extract Metadata]
-    H --> I[Create DataFrame]
-    I --> J[Save to Parquet]
-```
-
-### 3.4 DuckDuckGo Searcher
-
-The DuckDuckGoSearcher module performs web searches using the DuckDuckGo search engine API, supporting text, image, and news searches.
-
-**Key Features:**
-- Text search with formatted results
-- Image search with embedded images
-- News search with source attribution
-- Save search results in Parquet format
-- Format results as Markdown for easy viewing
-
-The module provides a privacy-respecting alternative to other search engines and formats results for easy consumption by other parts of the system.
-
-**Usage Example:**
-```python
-# Example of performing searches with DuckDuckGo
-from ddg_search import DuckDuckGoSearcher
-
-async def search_example():
-    searcher = DuckDuckGoSearcher(data_dir="./data")
-    
-    # Perform a text search
-    text_results = await searcher.text_search(
-        "python web crawlers",
-        max_results=5
-    )
-    
-    # Perform an image search
-    image_results = await searcher.image_search(
-        "data visualization",
-        max_results=10
-    )
-    
-    # Perform a news search
-    news_results = await searcher.news_search(
-        "machine learning advances",
-        max_results=8
-    )
-    
-    return text_results, image_results, news_results
-```
-
-**Search Process Flow:**
-```mermaid
-flowchart TD
-    A[Search Query] --> B[DuckDuckGoSearcher]
-    B --> C{Search Type}
-    C -->|Text| D[Text API]
-    C -->|Image| E[Image API]
-    C -->|News| F[News API]
-    D --> G[Parse JSON Results]
-    E --> G
-    F --> G
-    G --> H[Format as Markdown]
-    G --> I[Save to Parquet]
-```
-
-### 3.5 BeautifulSoup Web Crawler
-
-The BSWebCrawler module extracts content from web pages using BeautifulSoup, with specialized extractors for documentation sites and PyPI package pages.
-
-**Key Features:**
-- Fetch HTML content from URLs
-- Extract text content from HTML pages
-- Extract structured documentation content
-- Extract PyPI package information
-- Format extracted content as Markdown
-- Save crawled content in Parquet format
-
-This module is particularly useful for extracting documentation and technical information from websites, with special support for common documentation formats.
-
-**Example Usage:**
-```python
-# Example of crawling web content
-from beautiful_soup import BSWebCrawler
-
-async def crawl_example():
-    crawler = BSWebCrawler(data_dir="./data")
-    
-    # Crawl a documentation site
-    docs_content = await crawler.crawl_documentation_site(
-        "https://docs.python.org/3/library/asyncio.html"
-    )
-    
-    # Fetch a URL and extract text
-    html_content = await BSWebCrawler.fetch_url_content(
-        "https://www.python.org/about/"
-    )
-    text_content = await BSWebCrawler.extract_text_from_html(html_content)
-    
-    return docs_content, text_content
-```
-
-**Content Extraction Flow:**
-```mermaid
-flowchart TD
-    A[URL] --> B[Fetch HTML]
-    B --> C{Content Type}
-    C -->|Documentation| D[Extract Doc Structure]
-    C -->|PyPI Package| E[Extract Package Info]
-    C -->|Generic| F[Extract Text]
-    D --> G[Format as Markdown]
-    E --> G
-    F --> G
-    G --> H[Save to Parquet]
-```
-
-### 3.6 ArXiv Fetcher
-
-The ArxivFetcher module downloads papers and extracts content from the ArXiv academic repository, including paper metadata and LaTeX source files.
-
-**Key Features:**
-- Fetch paper metadata from ArXiv API
-- Download LaTeX source files
-- Format paper information for learning
-- Extract ArXiv IDs from URLs
-- Save paper data in Parquet format
-
-This module is specifically designed for academic research and facilitates the collection and analysis of scientific papers.
-
-**Example Usage:**
-```python
-# Example of fetching academic papers
-from arxiv_fetcher import ArxivFetcher
-
-async def arxiv_example():
-    fetcher = ArxivFetcher(data_dir="./data")
-    
-    # Fetch paper metadata
-    paper_info = await fetcher.fetch_paper_info("2103.13630")
-    
-    # Download source files
-    source_info = await fetcher.download_source("2103.13630")
-    
-    # Get paper with LaTeX content
-    complete_info = await fetcher.fetch_paper_with_latex("2103.13630")
-    
-    # Format for learning
-    formatted = await ArxivFetcher.format_paper_for_learning(paper_info)
-    
-    return paper_info, formatted
-```
-
-**Paper Processing Flow:**
-```mermaid
-flowchart TD
-    A[ArXiv ID/URL] --> B[Extract ID]
-    B --> C{Operation}
-    C -->|Fetch Metadata| D[Query ArXiv API]
-    C -->|Download Source| E[Fetch Source Files]
-    C -->|Combined| F[Fetch Both]
-    D --> G[Parse XML Response]
-    E --> H[Extract LaTeX Content]
-    F --> D
-    F --> E
-    G --> I[Save to Parquet]
-    H --> I
-```
+For detailed information about each component, including architecture, data flow diagrams, implementation details, and advanced usage patterns, please refer to the dedicated [Crawlers documentation](./Crawlers.md).
 
 ## 4. API Reference
 
 For detailed API reference documentation, please see the dedicated [API Reference document](./API.md).
 
-The API document provides comprehensive information about all public methods, parameters, return values, and examples for each module:
+The API document provides comprehensive information about all public methods, including:
+- Method signatures with type annotations
+- Parameters and return values
+- Error handling behavior
+- Detailed examples with realistic use cases
+- Implementation notes for methods with specific behaviors or limitations
 
+Each module's API is documented in detail:
 - [Parquet Storage API](./API.md#1-parquet-storage-api)
 - [YouTube Downloader API](./API.md#2-youtube-downloader-api)
 - [GitHub Crawler API](./API.md#3-github-crawler-api)
@@ -450,7 +166,7 @@ The API document provides comprehensive information about all public methods, pa
 - [BeautifulSoup Web Crawler API](./API.md#5-beautifulsoup-web-crawler-api)
 - [ArXiv Fetcher API](./API.md#6-arxiv-fetcher-api)
 
-Each method is documented with its signature, parameters, return values, and example usage code to help you understand how to use the API effectively.
+Asynchronous methods are clearly marked with the `async` keyword, and static methods are identified with the `@staticmethod` notation to help you understand how to use the API effectively.
 
 ## 5. Common Workflows
 
@@ -458,73 +174,111 @@ Each method is documented with its signature, parameters, return values, and exa
 
 One of the primary use cases for OARC-Crawlers is conducting research on specific topics by collecting information from multiple sources:
 
-1. Begin with a search query using the DuckDuckGoSearcher to get general information
-2. Find relevant academic papers using the ArxivFetcher
-3. Collect documentation from related websites using the BSWebCrawler
-4. Find relevant GitHub repositories using the GitHubCrawler
-5. Download educational videos using the YouTubeDownloader
-6. Analyze and correlate the collected data
+1.  Begin with a search query using the DuckDuckGoSearcher to get general information.
+2.  Find relevant academic papers using the ArxivFetcher.
+3.  Collect documentation from related websites using the BSWebCrawler.
+4.  Find relevant GitHub repositories using the GitHubCrawler.
+5.  Download educational videos using the YouTubeDownloader.
+6.  Analyze and correlate the collected data.
 
-This workflow is demonstrated in the combined_example.py file, which shows how multiple crawler modules can be used together to gather comprehensive information on a topic.
+This workflow is demonstrated in the `combined_example.py` file, which shows how multiple crawler modules can be used together to gather comprehensive information on a topic.
+
+```mermaid
+graph TD
+    A[Start Research] --> B(DuckDuckGo Search);
+    B --> C(ArXiv Fetch);
+    C --> D(BS Web Crawl);
+    D --> E(GitHub Crawl);
+    E --> F(YouTube Download);
+    F --> G[Analyze Data];
+    G --> H[End Research];
+```
 
 ### 5.2 Data Analysis Workflow
 
 Another common use case is analyzing previously collected data:
 
-1. Load data from various sources using ParquetStorage
-2. Process and clean the data using Pandas
-3. Analyze relationships between different data sources
-4. Export results to CSV or other formats for visualization
-5. Generate reports based on the findings
+1.  Load data from various sources using `ParquetStorage`.
+2.  Process and clean the data using Pandas.
+3.  Analyze relationships between different data sources.
+4.  Export results to CSV or other formats for visualization.
+5.  Generate reports based on the findings.
 
 The Parquet format makes it easy to load and analyze the data using standard data science tools.
+
+```mermaid
+graph TD
+    A[Load Parquet Data] --> B(Process/Clean with Pandas);
+    B --> C(Analyze Relationships);
+    C --> D(Export Results);
+    D --> E[Generate Reports];
+    E --> F[End Analysis];
+```
 
 ### 5.3 Code Analysis Workflow
 
 For analyzing code repositories:
 
-1. Use GitHubCrawler to clone and process repositories
-2. Find patterns in the code using `find_similar_code`
-3. Generate summaries of repository contents
-4. Search for specific code features using `query_repo_content`
-5. Compare multiple repositories to identify common patterns
+1.  Use `GitHubCrawler` to clone and process repositories.
+2.  Find patterns in the code using `find_similar_code`.
+3.  Generate summaries of repository contents.
+4.  Search for specific code features using `query_repo_content`.
+5.  Compare multiple repositories to identify common patterns.
 
 This workflow is particularly useful for software engineers and researchers studying code patterns.
 
+```mermaid
+graph TD
+    A[Start Code Analysis] --> B(Clone/Process Repos);
+    B --> C(Find Similar Code);
+    B --> D(Generate Summaries);
+    B --> E(Query Repo Content);
+    C --> F(Compare Repos);
+    D --> F;
+    E --> F;
+    F --> G[End Analysis];
+```
+
 ## 6. Error Handling and Logging
 
-OARC-Crawlers implements a consistent error handling and logging strategy:
+Robust error handling and comprehensive logging are integral to the OARC-Crawlers framework, ensuring operational stability and providing clear diagnostics, aligning with the core concept of [Resilience](#21-core-concepts).
 
-1. All modules use Python's built-in logging module
-2. Log levels are used appropriately (INFO for normal operation, WARNING for potential issues, ERROR for failures)
-3. Exceptions are caught and logged, with informative error messages
-4. Failed operations return dictionaries with error information rather than raising exceptions
-5. When errors occur, the system attempts to continue with the next operation rather than aborting
+1.  **Standardized Logging**:
+    *   All modules utilize Python's built-in `logging` module for consistency and compatibility with standard logging configurations.
+    *   Log levels are employed semantically:
+        *   `INFO`: Tracks normal operational progress (e.g., starting a download, completing a search).
+        *   `WARNING`: Indicates potential issues or non-critical errors that don't halt the current operation (e.g., skipping an unreadable file, encountering an unexpected data format).
+        *   `ERROR`: Reports failures that prevent a specific operation from completing (e.g., network connection failure, API error, invalid URL).
+        *   `DEBUG` (if configured): Provides detailed diagnostic information for troubleshooting.
+    *   Logs provide traceability for operations and are crucial for diagnosing issues during development or production use.
 
-This makes the crawlers more resilient to network issues, API changes, and other potential failure points.
+2.  **Exception Handling Strategy**:
+    *   The framework aims to contain errors within specific operations rather than allowing exceptions to halt entire workflows.
+    *   Common exceptions (e.g., `ConnectionError`, `TimeoutError`, `IOError`, `PermissionError`, API-specific errors, `ValueError`, `TypeError`) are typically caught within the relevant methods (e.g., fetching a single URL, processing one file).
+    *   Instead of raising exceptions directly from high-level crawler methods, these methods often return structured output (e.g., a dictionary, `None`, or partial results) that includes status information and specific error messages if an operation failed. For example, attempting to download a playlist might successfully download several videos but return information about any videos that failed due to errors, allowing the overall process to complete.
+
+3.  **Resilience in Workflows**:
+    *   This combination of detailed logging and contained error handling makes the framework resilient to transient issues like network interruptions or problems with specific data items.
+    *   Workflows ([Section 5](#5-common-workflows)) involving multiple steps or processing numerous items (e.g., crawling multiple repositories, downloading many videos) can continue operating even if individual sub-tasks fail, maximizing data acquisition efforts. Users can then inspect logs or error statuses in the results to identify and potentially retry failed operations.
 
 ## 7. Performance Considerations
 
-Key performance aspects of the OARC-Crawlers system:
+The performance of the OARC-Crawlers framework is optimized through several key design choices and features:
 
-1. **Asynchronous Operations**: All network and I/O operations are implemented as async functions for improved efficiency
-2. **Parquet Storage**: The columnar storage format provides efficient compression and query performance
-3. **Resource Management**: Automatic cleanup of temporary files and proper handling of network connections
-4. **Size Limits**: Configurable limits on file sizes, number of results, etc. to prevent resource exhaustion
-5. **Binary Detection**: Automatic detection and skipping of binary files to improve processing efficiency
+1.  **Asynchronous Operations**: Core to the framework's design ([Section 2.1](#21-core-concepts)), all network-bound and I/O-intensive operations (e.g., fetching web pages, downloading files, interacting with APIs) utilize Python's `async`/`await` syntax. This allows for concurrent handling of multiple operations, significantly improving throughput compared to synchronous approaches, especially when dealing with network latency.
+2.  **Efficient Data Storage**: The adoption of Apache Parquet ([Section 2.3](#23-data-storage)) via the `ParquetStorage` component offers performance benefits. Its columnar nature allows for efficient compression and faster querying, particularly when only specific data columns are needed for analysis.
+3.  **Resource Management**: The framework incorporates mechanisms for managing resources effectively. This includes careful handling of network connections (e.g., using `aiohttp.ClientSession`) and automatic cleanup of temporary files where applicable (e.g., during repository cloning in `GitHubCrawler`).
+4.  **Configurable Limits**: Most crawler modules provide parameters to limit the scope of operations (e.g., `max_results` in `DuckDuckGoSearcher`, `limit` in `YouTubeDownloader`). These limits help prevent accidental resource exhaustion and allow users to control the scale of data collection.
+5.  **Selective Processing**: Components like the `GitHubCrawler` include logic to identify and potentially skip processing large or binary files, focusing efforts on relevant text-based content and improving overall processing speed.
 
-For large-scale data collection, consider:
-- Running the crawlers on a machine with sufficient memory and disk space
-- Setting appropriate limits on download sizes and result counts
-- Implementing task queues for very large collections
+For large-scale data collection tasks, users should consider the following:
+*   Ensure the execution environment has adequate RAM, CPU, and disk storage capacity.
+*   Utilize the available configuration options (e.g., download limits, search result counts) to manage resource consumption.
+*   For extremely large workloads, consider distributing tasks across multiple instances or integrating the crawlers into a larger distributed processing system (e.g., using task queues like Celery or RQ).
 
 ## 8. Conclusion
 
-OARC-Crawlers provides a comprehensive toolkit for collecting, processing, and analyzing data from a wide range of online sources. By combining specialized crawler modules with a unified storage system, it enables efficient research workflows and data analysis tasks.
-
-The modular architecture makes it easy to extend the system with new data sources or to modify the behavior of existing crawlers. The consistent interface pattern and error handling strategy ensure that adding new features doesn't compromise the reliability of the system.
-
-Whether used for academic research, software development, or data science projects, OARC-Crawlers offers a flexible and powerful set of tools for working with online information. The combination of asynchronous operations, structured data storage, and specialized processing features makes it particularly well-suited for complex data collection and analysis tasks.
+OARC-Crawlers offers a robust and extensible framework for acquiring and analyzing data from diverse online sources, including YouTube, GitHub, ArXiv, and general web pages. Its modular architecture, built upon asynchronous operations and unified Parquet storage, ensures efficient, scalable, and resilient data collection. By providing specialized crawlers with consistent interfaces and structured outputs, OARC-Crawlers streamlines complex data gathering workflows, making it a valuable tool for researchers, data scientists, and developers.
 
 ## 9. Appendix
 
@@ -532,26 +286,47 @@ Whether used for academic research, software development, or data science projec
 
 | Term | Definition |
 |---|---|
-| **API** | Application Programming Interface |
-| **Async/Await** | Python's asynchronous programming model |
-| **ArXiv** | Online repository of electronic preprints for scientific papers |
-| **BeautifulSoup** | Python library for pulling data out of HTML and XML files |
-| **Binary File** | Non-text file format (e.g., images, videos, executables) |
-| **Crawler** | Software that automatically browses the Web and collects data |
-| **DataFrame** | Two-dimensional labeled data structure in Pandas |
-| **DuckDuckGo** | Privacy-focused search engine |
-| **Git** | Distributed version control system |
-| **GitHub** | Web-based hosting service for Git repositories |
-| **LaTeX** | Document preparation system for scientific documents |
-| **Markdown** | Lightweight markup language with plain-text formatting syntax |
-| **Parquet** | Columnar storage file format in the Apache Hadoop ecosystem |
-| **PyPI** | Python Package Index, a repository of software for Python |
-| **Pytube** | Python library for downloading YouTube videos |
-| **Repository** | Storage location for software packages |
-| **SRT** | SubRip Text file format for subtitles |
-| **URL** | Uniform Resource Locator, web address |
-| **UTF-8** | Character encoding capable of encoding all Unicode characters |
-| **YouTube** | Video sharing platform |
+| **aiohttp** | Asynchronous HTTP client/server framework for Python. |
+| **API** | Application Programming Interface. |
+| **Arrow** | Apache Arrow, a cross-language development platform for in-memory data, often used with Parquet. |
+| **ArXiv** | Online repository of electronic preprints for scientific papers. |
+| **Async/Await** | Python's asynchronous programming model. |
+| **BeautifulSoup** | Python library for pulling data out of HTML and XML files. |
+| **Binary File** | Non-text file format (e.g., images, videos, executables). |
+| **Columnar Storage** | Data storage technique where data is stored by columns rather than rows, used by Parquet. |
+| **ConnectionError** | Python exception raised for network connection issues. |
+| **Crawler** | Software that automatically browses the Web and collects data. |
+| **DataFrame** | Two-dimensional labeled data structure in Pandas. |
+| **DuckDuckGo** | Privacy-focused search engine. |
+| **Git** | Distributed version control system. |
+| **GitHub** | Web-based hosting service for Git repositories. |
+| **GitPython** | Python library to interact with Git repositories. |
+| **IOError** | Python exception raised for input/output errors (often an alias for `OSError`). |
+| **JSON** | JavaScript Object Notation, a lightweight data-interchange format. |
+| **LaTeX** | Document preparation system for scientific documents. |
+| **Logging** | Recording events that occur in software. |
+| **Markdown** | Lightweight markup language with plain-text formatting syntax. |
+| **Mermaid** | Javascript based diagramming and charting tool that renders Markdown-inspired text definitions. |
+| **Pandas** | Python library providing high-performance, easy-to-use data structures and data analysis tools. |
+| **Parquet** | Columnar storage file format in the Apache Hadoop ecosystem. |
+| **PermissionError** | Python exception raised when trying to run an operation without the adequate access rights. |
+| **PyPI** | Python Package Index, a repository of software for Python. |
+| **pyarrow** | Python library for Apache Arrow, used for Parquet handling. |
+| **Pytube** | Python library for downloading YouTube videos. |
+| **Repository** | Storage location for software packages or code. |
+| **Schema** | The structure or definition of data organization, often enforced in Parquet files. |
+| **Semantic Search** | Search technique that aims to understand the intent and contextual meaning of search queries. |
+| **Sphinx** | Documentation generator used heavily in the Python ecosystem. |
+| **SRT** | SubRip Text file format for subtitles. |
+| **TypeError** | Python exception raised when an operation or function is applied to an object of an inappropriate type. |
+| **Type Hinting** | Static type hints for Python code (e.g., `Union`, `Optional`, `Dict`, `List`), improving readability and allowing static analysis. |
+| **URL** | Uniform Resource Locator, web address. |
+| **User-Agent** | HTTP header field identifying the client software originating the request. |
+| **UTF-8** | Character encoding capable of encoding all Unicode characters. |
+| **ValueError** | Python exception raised when a function receives an argument of the correct type but an inappropriate value. |
+| **XML** | Extensible Markup Language, a markup language for encoding documents. |
+| **YouTube** | Video sharing platform. |
+| **YouTube Data API** | Google API for interacting with YouTube features programmatically. |
 
 ### 9.2 Directory Structure
 
@@ -569,6 +344,8 @@ oarc-crawlers/
 │   ├── papers/                  # ArXiv paper metadata
 │   └── sources/                 # ArXiv paper source files
 ├── docs/                        # Documentation
+│   ├── API.md                   # API reference documentation
+│   ├── Crawlers.md              # Detailed crawler documentation
 │   └── Specification.md         # This specification document
 ├── examples/                    # Example usage scripts
 │   ├── arxiv_example.py         # ArXiv fetcher examples
@@ -596,4 +373,3 @@ oarc-crawlers/
 ├── run_tests.py                 # Script to run all tests
 └── README.md                    # Project overview
 ```
-````
