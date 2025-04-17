@@ -330,46 +330,15 @@ OARC-Crawlers offers a robust and extensible framework for acquiring and analyzi
 
 ### 9.2 Directory Structure
 
-```
+```Bash
 oarc-crawlers/
-├── data/                        # Default data storage directory
-│   ├── youtube_data/            # YouTube downloads and metadata
-│   │   ├── videos/              # Downloaded videos
-│   │   ├── metadata/            # Video metadata
-│   │   ├── captions/            # Video captions
-│   │   └── searches/            # Search results
-│   ├── github_repos/            # GitHub repository data
-│   ├── searches/                # DuckDuckGo search results
-│   ├── crawls/                  # Web crawl results
-│   ├── papers/                  # ArXiv paper metadata
-│   └── sources/                 # ArXiv paper source files
-├── docs/                        # Documentation
-│   ├── API.md                   # API reference documentation
-│   ├── Crawlers.md              # Detailed crawler documentation
-│   └── Specification.md         # This specification document
+├── .github/                     # GitHub workflows and config
+├── docs/                        # Core documentation
 ├── examples/                    # Example usage scripts
-│   ├── arxiv_example.py         # ArXiv fetcher examples
-│   ├── beautifulsoup_example.py # Web crawler examples
-│   ├── combined_example.py      # Combined usage of multiple crawlers
-│   ├── ddg_example.py           # DuckDuckGo searcher examples
-│   ├── github_example.py        # GitHub crawler examples
-│   ├── run_example.py           # Script to run examples
-│   └── youtube_example.py       # YouTube downloader examples
-├── src/                         # Source code
-│   ├── arxiv_fetcher.py         # ArXiv paper fetcher
-│   ├── beautiful_soup.py        # Web crawler using BeautifulSoup
-│   ├── ddg_search.py            # DuckDuckGo search interface
-│   ├── gh_crawler.py            # GitHub repository crawler
-│   ├── parquet_storage.py       # Parquet file storage utilities
-│   ├── youtube_script.py        # YouTube download utilities
-│   └── __init__.py              # Package initialization
-├── tests/                       # Unit tests
-│   ├── test_arxiv.py            # ArXiv fetcher tests
-│   ├── test_bs_crawler.py       # Web crawler tests
-│   ├── test_ddg.py              # DuckDuckGo searcher tests
-│   ├── test_github_crawler.py   # GitHub crawler tests
-│   ├── test_parquet_storage.py  # Parquet storage tests
-│   └── test_youtube_script.py   # YouTube downloader tests
-├── run_tests.py                 # Script to run all tests
+├── src/
+│   └── oarc_crawlers/           # Source code to package
+│   │   └── cli/                 # CLI tools directory
+│   └── tests/                   # Unit tests
 └── README.md                    # Project overview
+└── LICENSE                      # Apache 2.0
 ```
