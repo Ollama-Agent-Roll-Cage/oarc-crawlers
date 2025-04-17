@@ -55,9 +55,9 @@ classDiagram
         -_convert_to_dataframe(data) DataFrame
     }
     
-    ParquetStorage --> "pd.DataFrame"
-    ParquetStorage --> "pyarrow.Table"
-    ParquetStorage --> "pyarrow.parquet"
+    ParquetStorage ..> DataFrame : uses
+    ParquetStorage ..> pyarrow.Table : uses
+    ParquetStorage ..> pyarrow.parquet : uses
 ```
 
 The class is designed to handle multiple input data types, automatically converting between them as needed:
@@ -170,9 +170,9 @@ classDiagram
         -_save_video_metadata(video_info, file_path) None
     }
     
-    YouTubeDownloader --> "pytube.YouTube"
-    YouTubeDownloader --> "pytube.Playlist"
-    YouTubeDownloader --> "ParquetStorage"
+    YouTubeDownloader ..> pytube.YouTube : uses
+    YouTubeDownloader ..> pytube.Playlist : uses
+    YouTubeDownloader ..> ParquetStorage : uses
 ```
 
 The module leverages the pytube library for YouTube interactions while adding significant value through:
@@ -332,9 +332,9 @@ classDiagram
         -_calculate_similarity(code1, code2) float
     }
     
-    GitHubCrawler --> "git.Repo"
-    GitHubCrawler --> "ParquetStorage"
-    GitHubCrawler --> "pd.DataFrame"
+    GitHubCrawler ..> git.Repo : uses
+    GitHubCrawler ..> ParquetStorage : uses
+    GitHubCrawler ..> DataFrame : uses
 ```
 
 The GitHubCrawler leverages:
@@ -465,8 +465,8 @@ classDiagram
         -_format_results_as_markdown(results, query) str
     }
     
-    DuckDuckGoSearcher --> "aiohttp.ClientSession"
-    DuckDuckGoSearcher --> "ParquetStorage"
+    DuckDuckGoSearcher ..> aiohttp.ClientSession : uses
+    DuckDuckGoSearcher ..> ParquetStorage : uses
 ```
 
 The module leverages:
@@ -595,9 +595,9 @@ classDiagram
         -_extract_code_blocks(soup) List
     }
     
-    BSWebCrawler --> "aiohttp.ClientSession"
-    BSWebCrawler --> "bs4.BeautifulSoup"
-    BSWebCrawler --> "ParquetStorage"
+    BSWebCrawler ..> aiohttp.ClientSession : uses
+    BSWebCrawler ..> bs4.BeautifulSoup : uses
+    BSWebCrawler ..> ParquetStorage : uses
 ```
 
 The module combines:
@@ -727,10 +727,10 @@ classDiagram
         -_extract_latex_from_tarball(file_path, target_dir) Dict
     }
     
-    ArxivFetcher --> "aiohttp.ClientSession"
-    ArxivFetcher --> "tarfile"
-    ArxivFetcher --> "xml.etree.ElementTree"
-    ArxivFetcher --> "ParquetStorage"
+    ArxivFetcher ..> aiohttp.ClientSession : uses
+    ArxivFetcher ..> tarfile : uses
+    ArxivFetcher ..> xml.etree.ElementTree : uses
+    ArxivFetcher ..> ParquetStorage : uses
 ```
 
 The ArxivFetcher combines:
