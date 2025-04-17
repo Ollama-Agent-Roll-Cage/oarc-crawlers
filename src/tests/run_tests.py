@@ -1,6 +1,5 @@
 import unittest
 import sys
-from pathlib import Path
 
 def run_tests():
     """Run all tests in the tests directory."""

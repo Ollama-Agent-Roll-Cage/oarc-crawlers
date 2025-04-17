@@ -7,7 +7,7 @@ from .gh_crawler import GitHubCrawler
 from .youtube_script import YouTubeDownloader
 from .parquet_storage import ParquetStorage
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 __all__ = [
     "ArxivFetcher",
