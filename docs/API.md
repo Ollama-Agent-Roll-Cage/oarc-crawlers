@@ -43,6 +43,7 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [`async download_source(arxiv_id: str) -> Dict`](#download_sourcearxiv_id)
     - [`async fetch_paper_with_latex(arxiv_id: str) -> Dict`](#fetch_paper_with_latexarxiv_id)
     - [`@staticmethod format_paper_for_learning(paper_info: Dict) -> str`](#format_paper_for_learningpaper_info)
+- [7. Model Context Protocol (MCP) Integration](#7-model-context-protocol-mcp-integration)
 
 ## 1. Parquet Storage API
 
@@ -1021,3 +1022,142 @@ async def format_paper_example():
 - Lists authors with affiliations when available
 - Includes clickable links to paper and references
 - Highlights key mathematical formulas
+
+## 7. Model Context Protocol (MCP) Integration
+
+OARC-Crawlers provides a Visual Studio Code-compatible MCP server that exposes all crawler functionalities through a unified interface.
+
+### Server Configuration
+
+The MCP server runs on WebSocket transport with the following default configuration:
+- Port: 3000
+- Transport: WebSocket (ws://)
+- Streaming Support: Enabled
+
+### Installation
+
+```bash
+# Install the package
+pip install oarc-crawlers
+
+# Install for VS Code integration
+python -m oarc_crawlers.mcp_api install --name "OARC Crawlers"
+```
+
+### Available Tools
+
+Each tool is exposed through the MCP interface with proper error handling and response formatting:
+
+#### YouTube Operations
+```json
+{
+    "name": "download_youtube_video",
+    "description": "Download a YouTube video with specified format and resolution",
+    "parameters": {
+        "url": "string",
+        "format": "string?",
+        "resolution": "string?"
+    },
+    "returns": "object"
+}
+```
+
+#### GitHub Operations
+```json
+{
+    "name": "analyze_github_repo",
+    "description": "Get a summary analysis of a GitHub repository",
+    "parameters": {
+        "repo_url": "string"
+    },
+    "returns": "string"
+}
+```
+
+#### DuckDuckGo Search
+```json
+{
+    "name": "ddg_text_search",
+    "description": "Perform a DuckDuckGo text search",
+    "parameters": {
+        "query": "string",
+        "max_results": "number?"
+    },
+    "returns": "string"
+}
+```
+
+### Error Handling
+
+The server provides detailed error responses in the following format:
+```json
+{
+    "error": {
+        "code": "string",
+        "message": "string",
+        "details": "object?"
+    }
+}
+```
+
+Common error codes:
+- `TRANSPORT_ERROR`: Connection or communication issues
+- `CLIENT_ERROR`: Invalid request or parameters
+- `TOOL_ERROR`: Error during tool execution
+- `AUTH_ERROR`: Authentication or permission issues
+
+### VS Code Integration
+
+To use with Visual Studio Code:
+
+1. Install the package and register the MCP server
+2. Open VS Code settings (Ctrl+,)
+3. Search for "MCP Server"
+4. Add a new server with:
+   - Name: "OARC Crawlers"
+   - Port: 3000
+   - Transport: ws
+
+Example VS Code configuration:
+```json
+{
+    "mcp.servers": [
+        {
+            "name": "OARC Crawlers",
+            "port": 3000,
+            "transport": "ws"
+        }
+    ]
+}
+```
+
+### Programmatic Usage
+
+```python
+from oarc_crawlers import OARCCrawlersMCP
+
+# Initialize server
+mcp = OARCCrawlersMCP(
+    data_dir="./data",
+    name="OARC Crawlers",
+    port=3000
+)
+
+# Start server
+mcp.run()
+```
+
+For custom configuration:
+```python
+mcp = OARCCrawlersMCP()
+
+# Configure VS Code integration
+mcp.mcp.configure_vscode(
+    server_name="Custom OARC Server",
+    port=4000,
+    supports_streaming=True
+)
+
+# Start with custom transport
+mcp.run(transport="ws", port=4000)
+```
