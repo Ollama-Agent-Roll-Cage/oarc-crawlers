@@ -165,15 +165,15 @@ For detailed examples and advanced usage patterns, check our comprehensive [Exam
 
 ## Running Tests
 
+To run all tests:
+
 ```bash
-# Run all tests
-uv run src/oarc_crawlers/tests/run_tests.py
-
-# Using pytest (recommended)
 uv run pytest
+```
 
-# Using unittest for specific test
-uv run -m unittest oarc_crawlers.tests.test_parquet_storage
+Or to run a specific test:
+```bash
+uv run -m pytest oarc_crawlers.tests.test_parquet_storage
 ```
 
 ## Troubleshooting
@@ -186,20 +186,6 @@ Quick links to specific troubleshooting sections:
 - [Dependency Conflicts](docs/Troubleshoot.md#dependency-conflicts)
 - [Runtime Errors](docs/Troubleshoot.md#runtime-errors)
 - [Platform-Specific Issues](docs/Troubleshoot.md#platform-specific-issues)
-
-## Running Tests
-
-To run all tests:
-
-```bash
-uv run src/tests/run_tests.py
-```
-
-Or to run a specific test:
-
-```bash
-uv run -m unittest oarc_crawlers.tests.test_parquet_storage
-```
 
 ## Architecture
 
