@@ -553,6 +553,60 @@ Or to run a specific test:
 python -m unittest tests.test_parquet_storage
 ```
 
+## MCP API Usage
+
+OARC-Crawlers provides a Model Context Protocol (MCP) API that allows you to use the crawlers directly with AI assistants like Claude. The MCP API exposes all crawler functionalities through a unified interface.
+
+### Installation and Setup
+
+```python
+from oarc_crawlers import OARCCrawlersMCP
+
+# Initialize the MCP wrapper
+mcp = OARCCrawlersMCP(data_dir="./data")
+
+# Install for Claude Desktop
+mcp.install(name="OARC-Crawlers")
+
+# Or run the MCP server directly
+mcp.run()
+```
+
+### Available Tools
+
+The MCP API provides the following tools:
+
+#### YouTube Tools
+- `download_youtube_video(url: str, format: str = "mp4", resolution: str = "highest")` - Download a YouTube video
+- `download_youtube_playlist(playlist_url: str, max_videos: int = 10)` - Download videos from a playlist
+- `extract_youtube_captions(url: str, languages: List[str] = ["en"])` - Extract video captions
+
+#### GitHub Tools
+- `clone_github_repo(repo_url: str)` - Clone and analyze a repository
+- `analyze_github_repo(repo_url: str)` - Get repository summary
+- `find_similar_code(repo_url: str, code_snippet: str)` - Find similar code in a repository
+
+#### DuckDuckGo Tools
+- `ddg_text_search(query: str, max_results: int = 5)` - Perform text search
+- `ddg_image_search(query: str, max_results: int = 10)` - Perform image search
+- `ddg_news_search(query: str, max_results: int = 20)` - Perform news search
+
+#### Web Crawling Tools
+- `crawl_webpage(url: str)` - Extract content from a webpage
+- `crawl_documentation(url: str)` - Extract content from documentation sites
+
+#### ArXiv Tools
+- `fetch_arxiv_paper(arxiv_id: str)` - Fetch paper information
+- `download_arxiv_source(arxiv_id: str)` - Download LaTeX source files
+
+### Using with Claude
+
+Once installed, you can use OARC-Crawlers with Claude like this:
+
+```
+Human: Please download and analyze this YouTube video: https://youtube.com/...
+```
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
