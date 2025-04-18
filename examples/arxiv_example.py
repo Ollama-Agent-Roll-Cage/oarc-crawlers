@@ -1,14 +1,14 @@
 import asyncio
 import os
 from pathlib import Path
-from oarc_crawlers import ArxivFetcher
+from oarc_crawlers import ArxivCrawler
 
 async def arxiv_examples():
     """Examples for using the ArXiv Fetcher module."""
     
     # Initialize the fetcher
     data_dir = Path("./data")
-    fetcher = ArxivFetcher(data_dir=data_dir)
+    fetcher = ArxivCrawler(data_dir=data_dir)
     
     print("=== ArXiv Fetcher Examples ===")
     
@@ -21,7 +21,7 @@ async def arxiv_examples():
     ]
     
     for format_example in arxiv_formats:
-        arxiv_id = ArxivFetcher.extract_arxiv_id(format_example)
+        arxiv_id = ArxivCrawler.extract_arxiv_id(format_example)
         print(f"From '{format_example}' extracted ID: {arxiv_id}")
     
     # Example 2: Fetch paper metadata
@@ -34,7 +34,7 @@ async def arxiv_examples():
     
     # Example 3: Format paper for learning
     print("\n3. Format paper for learning")
-    formatted_paper = await ArxivFetcher.format_paper_for_learning(paper_info)
+    formatted_paper = await ArxivCrawler.format_paper_for_learning(paper_info)
     print(f"{formatted_paper[:300]}...\n")
     
     # Example 4: Download LaTeX source files

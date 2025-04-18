@@ -1,14 +1,14 @@
 import asyncio
 import os
 from pathlib import Path
-from oarc_crawlers import DuckDuckGoSearcher
+from oarc_crawlers import DDGCrawler
 
 async def ddg_examples():
     """Examples for using the DuckDuckGo Search module."""
     
     # Initialize the searcher
     data_dir = Path("./data")
-    searcher = DuckDuckGoSearcher(data_dir=data_dir)
+    searcher = DDGCrawler(data_dir=data_dir)
     
     print("=== DuckDuckGo Searcher Examples ===")
     
