@@ -54,7 +54,8 @@ PS M:\oarc_repos_git\oarc-crawlers> .venv\Scripts\activate
 
 # If you cannot deactivate with the deactivate command try killing the terminal, also make sure you are careful when working with multiple uv virtual environments at the same time, they get confused.
 
-# Clear the uv venv made with "uv venv --python 3.11"
+# Clear the uv venv made with "uv venv --python 3.11" with the following command:
+pip freeze | Select-String -Pattern "^(?!pip)" | ForEach-Object { pip uninstall -y $_.ToString().Trim() }
 
 # activate
 .venv\Scripts\activate
@@ -70,6 +71,9 @@ setuptools    78.1.0
 uv            0.6.14
 wheel         0.45.1
 (oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip uninstall oarc-crawlers
+
+# If you still find extra packages in your venv (NOT THE BASE PYTHON) then try running this again from venv:
+pip freeze | Select-String -Pattern "^(?!pip)" | ForEach-Object { pip uninstall -y $_.ToString().Trim() }
 
 # Now we remove the old oarc crawlers
 pip uninstall oarc-crawlers
