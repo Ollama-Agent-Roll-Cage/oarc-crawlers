@@ -1,22 +1,20 @@
-"""OARC Crawlers Package"""
+"""OARC Crawlers - A collection of web crawlers and data extraction tools."""
 
-from .arxiv_fetcher import ArxivFetcher
-from .beautiful_soup import BSWebCrawler
-from .ddg_search import DuckDuckGoSearcher
-from .gh_crawler import GitHubCrawler
-from .youtube_script import YouTubeDownloader
-from .parquet_storage import ParquetStorage
-from .mcp_api import OARCCrawlersMCP, default_wrapper
+__version__ = "0.1.5"
+__author__ = "OARC Team"
 
-__version__ = '0.1.3'
+from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
+from oarc_crawlers.core.crawlers.gh_crawler import GHCrawler
+from oarc_crawlers.core.crawlers.arxiv_crawler import ArxivCrawler
+from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
+from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
 
 __all__ = [
-    "ArxivFetcher",
-    "BSWebCrawler", 
-    "DuckDuckGoSearcher",
-    "GitHubCrawler",
-    "YouTubeDownloader",
+    "YTCrawler",
+    "GHCrawler", 
+    "ArxivCrawler",
+    "WebCrawler",
+    "DDGCrawler",
     "ParquetStorage",
-    "OARCCrawlersMCP",
-    "default_wrapper"
 ]
