@@ -305,37 +305,74 @@ class YouTubeDownloader:
             dict: Search results
         """
         try:
+            # Custom warning filter to suppress specific pytube warnings
+            import warnings
+            def ignore_reelshelf_warning(message, category, filename, lineno, file=None, line=None):
+                if category == UserWarning and "reelShelfRenderer" in str(message):
+                    return True
+                return False
+            
+            # Set up our custom warning filter
+            warnings.showwarning = ignore_reelshelf_warning
+            
+            # Perform the search
             search_results = Search(query)
             videos = []
-            
-            for i, video in enumerate(search_results.results):
-                if i >= limit:
+            errors = []
+
+            # Process all results until we get enough valid videos
+            for result in search_results.results:
+                if len(videos) >= limit:
                     break
-                
+                    
                 try:
+                    # Skip reels and non-video content
+                    if not hasattr(result, 'video_id'):
+                        continue
+
+                    # Basic video info that should always be available
                     video_info = {
-                        'title': video.title,
-                        'video_id': video.video_id,
-                        'url': f"https://www.youtube.com/watch?v={video.video_id}",
-                        'thumbnail_url': video.thumbnail_url,
-                        'author': video.author,
-                        'publish_date': video.publish_date.isoformat() if video.publish_date else None,
-                        'description': video.description,
-                        'length': video.length,
-                        'views': video.views
+                        'video_id': result.video_id,
+                        'url': f"https://www.youtube.com/watch?v={result.video_id}",
+                        'title': getattr(result, 'title', None),
+                        'author': getattr(result, 'author', None)
                     }
+                    
+                    # Add additional fields if available
+                    optional_fields = [
+                        ('description', 'description'),
+                        ('thumbnail_url', 'thumbnail_url'),
+                        ('publish_date', 'publish_date'),
+                        ('length', 'length'),
+                        ('views', 'views')
+                    ]
+                    
+                    for field, attr in optional_fields:
+                        try:
+                            value = getattr(result, attr, None)
+                            if field == 'publish_date' and value:
+                                value = value.isoformat()
+                            if value is not None:
+                                video_info[field] = value
+                        except Exception:
+                            pass  # Skip fields that can't be accessed
+                    
                     videos.append(video_info)
+
                 except Exception as e:
-                    self.logger.warning(f"Error extracting info for video result: {e}")
+                    errors.append(f"Error processing search result: {str(e)}")
+                    continue
             
-            # Save search results
+            # Prepare search results
             search_data = {
                 'query': query,
                 'timestamp': datetime.now(UTC).isoformat(),
                 'result_count': len(videos),
                 'results': videos
             }
-            
+            if errors:
+                search_data['errors'] = errors
+
             # Save to Parquet
             search_dir = self.youtube_data_dir / "searches"
             search_dir.mkdir(exist_ok=True)
@@ -348,7 +385,7 @@ class YouTubeDownloader:
         except Exception as e:
             error_msg = f"Error searching videos: {str(e)}"
             self.logger.error(error_msg)
-            return {'error': error_msg, 'query': query}
+            return {'error': error_msg, 'query': query, 'result_count': 0, 'results': []}
 
     async def download_youtube_video(url, format="mp4", save_dir=None, filename=None):
         """Legacy function for backward compatibility.

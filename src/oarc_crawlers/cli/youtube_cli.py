@@ -45,9 +45,22 @@ async def _search_videos(args):
         args.query,
         limit=args.limit
     )
-    print(f"Found {result['result_count']} videos for query '{args.query}'")
-    for i, video in enumerate(result['results']):
-        print(f"{i+1}. {video['title']} by {video['author']}")
+    print(f"\nFound {result['result_count']} videos for query '{args.query}'\n")
+    
+    # Format the results nicely
+    for i, video in enumerate(result['results'], 1):
+        publish_date = video.get('publish_date', 'Unknown date')
+        # Truncate title if it's too long
+        title = video.get('title', 'No title')
+        if len(title) > 70:
+            title = title[:67] + "..."
+            
+        print(f"{i}. {title}")
+        print(f"   By: {video.get('author', 'Unknown author')}")
+        print(f"   Published: {publish_date}")
+        print(f"   URL: {video.get('url')}")
+        print()
+        
     return result
 
 def main():
