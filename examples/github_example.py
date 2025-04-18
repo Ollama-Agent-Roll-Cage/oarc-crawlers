@@ -1,14 +1,14 @@
 import asyncio
 import os
 from pathlib import Path
-from oarc_crawlers import GitHubCrawler
+from oarc_crawlers import GHCrawler
 
 async def github_examples():
     """Examples for using the GitHub Crawler module."""
     
     # Initialize the crawler
     data_dir = Path("./data")
-    crawler = GitHubCrawler(data_dir=data_dir)
+    crawler = GHCrawler(data_dir=data_dir)
     
     print("=== GitHub Crawler Examples ===")
     
@@ -43,7 +43,7 @@ async def github_examples():
         "git@github.com:username/repo.git"
     ]
     for url in urls:
-        owner, repo, branch = GitHubCrawler.extract_repo_info_from_url(url)
+        owner, repo, branch = GHCrawler.extract_repo_info_from_url(url)
         print(f"URL: {url}")
         print(f"  Owner: {owner}")
         print(f"  Repo: {repo}")
