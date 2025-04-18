@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oarc-crawlers"
-version = "0.1.4"
+version = "0.1.5"
 description = "OARC's dynamic webcrawler module collection"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10,<3.12"
 license = {file = "LICENSE"}
 authors = [
     {name = "OARC Team"}
@@ -17,6 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
 
@@ -31,10 +32,11 @@ dependencies = [
     "pytube>=15.0.0",
     "pytchat>=0.5.0",
     "types-beautifulsoup4>=4.9.0",
-    "fastmcp>=0.2.0",  # MCP server implementation
-    "websockets>=12.0",  # For WebSocket transport
-    "build>=1.2.2.post1",  # For build command
-    "twine>=5.0.0"  # For publish command
+    "fastmcp>=0.2.0",
+    "websockets>=12.0",
+    "build>=1.2.2.post1",
+    "twine>=5.0.0",
+    "click>=8.1.8",
 ]
 
 [project.optional-dependencies]
@@ -50,16 +52,11 @@ dev = [
 
 # Define command-line scripts
 [project.scripts]
-oarc-youtube = "oarc_crawlers.cli.youtube_cli:main"
-oarc-github = "oarc_crawlers.cli.github_cli:main"
-oarc-arxiv = "oarc_crawlers.cli.arxiv_cli:main"
-oarc-bs = "oarc_crawlers.cli.beautiful_soup_cli:main"
-oarc-ddg = "oarc_crawlers.cli.ddg_cli:main"
 oarc-crawlers = "oarc_crawlers.cli.main:main"
 
 [project.urls]
-"Homepage" = "https://github.com/oarc/oarc-crawlers"
-"Bug Tracker" = "https://github.com/oarc/oarc-crawlers/issues"
+"Homepage" = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
+"Bug Tracker" = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
