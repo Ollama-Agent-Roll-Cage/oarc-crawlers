@@ -273,12 +273,6 @@ class Config:
             cls._config[CONFIG_KEY_DATA_DIR] = pathlib.Path(value).resolve()
 
 
-# Initialize the config singleton
-Config.initialize()
-
-# Export a global config object
-config = Config()
-
 # Export commonly used functions
 apply_config_file = Config.apply_config_file
 load_from_file = Config.load_from_file

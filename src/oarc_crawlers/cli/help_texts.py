@@ -53,667 +53,735 @@ ARGS_PYPI_CONFIG_FILE_HELP = "Path to PyPI config file (.pypirc)"
 ARGS_FILE_PATH_HELP = "Path to the file"
 ARGS_MAX_ROWS_HELP = "Maximum number of rows to display"
 
-# Main help text for the CLI
-MAIN_HELP = f"""
-Usage:
-  oarc-crawlers [--verbose] [--version] <command> [options]
+# --- Main CLI Help ---
+# This shorter version is meant to be used as a docstring with Click's built-in help formatting
+MAIN_HELP = """OARC Crawlers Command-Line Interface."""
 
-For detailed information about any command:
-  oarc-crawlers <command> --help
+# This is the original longer version, renamed so you can choose which to use in your CLI code
+MAIN_HELP_DETAILED = f"""
+OARC Crawlers Command-Line Interface.
+
+USAGE:
+  oarc-crawlers [OPTIONS] COMMAND [ARGS]...
+
+  For detailed information about any command:
+    oarc-crawlers <command> --help
+
+Options:
+  --version             Show the version and exit.
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this message and exit.
+
+Commands:
+  arxiv                 {ARXIV_GROUP_HELP}
+  build                 {BUILD_GROUP_HELP}
+  config                Manage configuration settings for OARC Crawlers.
+  data                  {DATA_GROUP_HELP}
+  ddg                   {DDG_GROUP_HELP}
+  gh                    {GH_GROUP_HELP}
+  mcp                   Model Context Protocol (MCP) server operations.
+  publish               {PUBLISH_GROUP_HELP}
+  web                   {WEB_GROUP_HELP}
+  yt                    {YOUTUBE_GROUP_HELP}
 """
 
-# Help for each command group
-BUILD_HELP = """
-Build Command Help
+# --- Command Group Help Texts ---
 
-Usage:
+BUILD_HELP = f"""
+Build operations for package management.
+
+USAGE:
   oarc-crawlers build COMMAND [OPTIONS]
 
 Commands:
-  package     Build the OARC Crawlers package
+  package               Build the OARC Crawlers package.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers build package
   oarc-crawlers build package --clean
   oarc-crawlers build package --config ~/.oarc/config.ini
+
 """
 
-PUBLISH_HELP = """
-Publish Command Help
+PUBLISH_HELP = f"""
+Publish operations for distributing packages.
 
-Usage:
+USAGE:
   oarc-crawlers publish COMMAND [OPTIONS]
 
 Commands:
-  pypi         Publish to PyPI or TestPyPI
+  pypi                  Publish to PyPI or TestPyPI.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers publish pypi
   oarc-crawlers publish pypi --test
   oarc-crawlers publish pypi --config ~/.oarc/config.ini
+
 """
 
-YOUTUBE_HELP = """
-YouTube Command Help
+YOUTUBE_HELP = f"""
+YouTube operations for downloading videos and extracting information.
 
-Usage:
+USAGE:
   oarc-crawlers youtube COMMAND [OPTIONS]
 
 Commands:
-  download    Download a YouTube video
-  playlist    Download videos from a YouTube playlist
-  captions    Extract captions/subtitles from a YouTube video
-  search      Search for videos on YouTube
-  chat        Fetch chat messages from a YouTube live stream
+  download              Download a YouTube video.
+  playlist              Download videos from a YouTube playlist.
+  captions              Extract captions/subtitles from a YouTube video.
+  search                Search for videos on YouTube.
+  chat                  Fetch chat messages from a YouTube live stream.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers youtube download --url https://youtube.com/watch?v=example
   oarc-crawlers youtube search --query "python tutorials"
   oarc-crawlers youtube download --url https://youtube.com/watch?v=example --config ~/.oarc/config.ini
+
 """
 
-GH_HELP = """
-GitHub Command Help
+GH_HELP = f"""
+GitHub operations for cloning, analyzing and extracting from repositories.
 
-Usage:
+USAGE:
   oarc-crawlers gh COMMAND [OPTIONS]
 
 Commands:
-  clone         Clone a GitHub repository
-  analyze       Analyze a GitHub repository's content
-  find-similar  Find code similar to a snippet in a repository
+  clone                 Clone a GitHub repository.
+  analyze               Analyze a GitHub repository's content.
+  find-similar          Find code similar to a snippet in a repository.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers gh clone --url https://github.com/username/repo
   oarc-crawlers gh analyze --url https://github.com/username/repo
   oarc-crawlers gh clone --url https://github.com/username/repo --config ~/.oarc/config.ini
+
 """
 
-ARXIV_HELP = """
-arXiv Command Help
+ARXIV_HELP = f"""
+ArXiv operations for downloading papers and extracting content.
 
-Usage:
+USAGE:
   oarc-crawlers arxiv COMMAND [OPTIONS]
 
 Commands:
-  download    Download LaTeX source files for a paper
-  search      Search for papers on arXiv
-  latex       Download and extract LaTeX content from a paper
+  download              Download LaTeX source files for a paper.
+  search                Search for papers on arXiv.
+  latex                 Download and extract LaTeX content from a paper.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers arxiv download --id 2310.12123
   oarc-crawlers arxiv latex --id 1909.11065
   oarc-crawlers arxiv download --id 2310.12123 --config ~/.oarc/config.ini
+
 """
 
-WEB_HELP = """
-Web Crawler Command Help
+WEB_HELP = f"""
+Web crawler operations for extracting content from websites.
 
-Usage:
+USAGE:
   oarc-crawlers web COMMAND [OPTIONS]
 
 Commands:
-  crawl       Extract content from a webpage
-  docs        Extract content from a documentation site
-  pypi        Extract information about a PyPI package
+  crawl                 Extract content from a webpage.
+  docs                  Extract content from a documentation site.
+  pypi                  Extract information about a PyPI package.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers web crawl --url https://example.com
   oarc-crawlers web pypi --package requests
   oarc-crawlers web crawl --url https://example.com --config ~/.oarc/config.ini
+
 """
 
-DDG_HELP = """
-DuckDuckGo Command Help
+DDG_HELP = f"""
+DuckDuckGo search operations for finding information online.
 
-Usage:
+USAGE:
   oarc-crawlers ddg COMMAND [OPTIONS]
 
 Commands:
-  text        Perform a DuckDuckGo text search
-  images      Perform a DuckDuckGo image search
-  news        Perform a DuckDuckGo news search
+  text                  Perform a DuckDuckGo text search.
+  images                Perform a DuckDuckGo image search.
+  news                  Perform a DuckDuckGo news search.
 
 Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
 
-Example Usage:
+Examples:
   oarc-crawlers ddg text --query "quantum computing"
   oarc-crawlers ddg images --query "cute cats"
   oarc-crawlers ddg text --query "quantum computing" --config ~/.oarc/config.ini
+
 """
 
-# YouTube command detailed help
-YOUTUBE_DOWNLOAD_HELP = """
+MCP_HELP = f"""
+Model Context Protocol (MCP) server operations.
+
+USAGE:
+  oarc-crawlers mcp COMMAND [OPTIONS]
+
+Commands:
+  run                   Run the MCP server.
+  install               Install the MCP server for VS Code integration.
+
+Options:
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
+
+Examples:
+  oarc-crawlers mcp run
+  oarc-crawlers mcp install --name "OARC Tools"
+  oarc-crawlers mcp run --config ~/.oarc/config.ini
+
+"""
+
+DATA_HELP = f"""
+Data management operations for viewing and manipulating data files.
+
+USAGE:
+  oarc-crawlers data COMMAND [OPTIONS]
+
+Commands:
+  view                  View contents of a Parquet file.
+
+Options:
+  --verbose             {ARGS_VERBOSE_HELP}
+  --config TEXT         {ARGS_CONFIG_HELP}
+  --help                Show this help message and exit.
+
+Examples:
+  oarc-crawlers data view data/sources/example.parquet
+  oarc-crawlers data view data/sources/example.parquet --max-rows 20
+
+"""
+
+CONFIG_HELP = f"""
+Manage configuration settings for OARC Crawlers.
+
+USAGE:
+  oarc-crawlers config [CONFIG_FILE] [OPTIONS]
+
+Arguments:
+  CONFIG_FILE           Optional path to a specific configuration file.
+                        If not provided, the default configuration file will be used or created.
+
+Options:
+  --verbose             {ARGS_VERBOSE_HELP}
+  --help                Show this help message and exit.
+
+Description:
+  This command launches an interactive menu-based interface for:
+    * Viewing current configuration settings
+    * Editing configuration values
+    * Creating new configuration files
+    * Resetting to default values
+    * Setting environment variables
+
+Examples:
+  oarc-crawlers config
+  oarc-crawlers config ~/.oarc/config/crawlers.ini
+  oarc-crawlers --config ~/my-config.ini youtube download --url https://youtu.be/example
+
+"""
+
+# --- Detailed Command Help Texts ---
+
+# YouTube
+YOUTUBE_DOWNLOAD_HELP = f"""
 Download a YouTube video with specified parameters.
 
-Usage:
+USAGE:
   oarc-crawlers youtube download [OPTIONS]
 
 Options:
-  --url TEXT                  YouTube video URL [required]
+  --url TEXT                  {ARGS_URL_HELP} [required]
   --format TEXT               Video format (mp4, webm, mp3) [default: mp4]
-  --resolution TEXT           Video resolution ("highest", "lowest", or specific like "720p") [default: highest]
-  --extract-audio/--no-extract-audio
-                              Extract audio only [default: no-extract-audio]
-  --output-path TEXT          Directory to save the video
-  --filename TEXT             Custom filename for the downloaded video
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --resolution TEXT           {ARGS_RESOLUTION_HELP} [default: highest]
+  --extract-audio / --no-extract-audio
+                              {ARGS_EXTRACT_AUDIO_HELP} [default: no-extract-audio]
+  --output-path TEXT          {ARGS_OUTPUT_PATH_HELP}
+  --filename TEXT             {ARGS_FILENAME_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ
   oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --format mp3 --extract-audio
   oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --resolution 720p --output-path ./videos
   oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
+
 """
 
-YOUTUBE_PLAYLIST_HELP = """
+YOUTUBE_PLAYLIST_HELP = f"""
 Download videos from a YouTube playlist.
 
-Usage:
+USAGE:
   oarc-crawlers youtube playlist [OPTIONS]
 
 Options:
-  --url TEXT                  YouTube playlist URL [required]
+  --url TEXT                  {ARGS_PLAYLIST_URL_HELP} [required]
   --format TEXT               Video format (mp4, webm) [default: mp4]
-  --max-videos INTEGER        Maximum number of videos to download [default: 10]
-  --output-path TEXT          Directory to save the playlist videos
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --max-videos INTEGER        {ARGS_MAX_VIDEOS_HELP} [default: 10]
+  --output-path TEXT          {ARGS_OUTPUT_PATH_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ
   oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --max-videos 5
   oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --format mp4 --output-path ./playlists
   oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --config ~/.oarc/config.ini
+
 """
 
-YOUTUBE_CAPTIONS_HELP = """
+YOUTUBE_CAPTIONS_HELP = f"""
 Extract captions/subtitles from a YouTube video.
 
-Usage:
+USAGE:
   oarc-crawlers youtube captions [OPTIONS]
 
 Options:
-  --url TEXT                  YouTube video URL [required]
-  --languages TEXT            Comma-separated language codes (e.g. "en,es,fr") [default: en]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --url TEXT                  {ARGS_VIDEO_URL_HELP} [required]
+  --languages TEXT            {ARGS_LANGUAGES_HELP} [default: en]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ
   oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --languages "en,es,fr"
   oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
+
 """
 
-YOUTUBE_SEARCH_HELP = """
+YOUTUBE_SEARCH_HELP = f"""
 Search for YouTube videos.
 
-Usage:
+USAGE:
   oarc-crawlers youtube search [OPTIONS]
 
 Options:
-  --query TEXT                Search query [required]
-  --limit INTEGER             Maximum number of results [default: 10]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --query TEXT                {ARGS_QUERY_HELP} [required]
+  --limit INTEGER             {ARGS_LIMIT_HELP} [default: 10]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers youtube search --query "python tutorials"
   oarc-crawlers youtube search --query "cooking recipes" --limit 20
   oarc-crawlers youtube search --query "python tutorials" --config ~/.oarc/config.ini
+
 """
 
-YOUTUBE_CHAT_HELP = """
+YOUTUBE_CHAT_HELP = f"""
 Fetch chat messages from a YouTube live stream or premiere.
 
-Usage:
+USAGE:
   oarc-crawlers youtube chat [OPTIONS]
 
 Options:
-  --video-id TEXT             YouTube video ID or URL [required]
-  --max-messages INTEGER      Maximum number of messages to collect [default: 1000]
-  --duration INTEGER          Duration to collect messages in seconds
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --video-id TEXT             {ARGS_VIDEO_ID_HELP} [required]
+  --max-messages INTEGER      {ARGS_MAX_MESSAGES_HELP} [default: 1000]
+  --duration INTEGER          {ARGS_DURATION_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers youtube chat --video-id dQw4w9WgXcQ
   oarc-crawlers youtube chat --video-id dQw4w9WgXcQ --max-messages 500 --duration 300
   oarc-crawlers youtube chat --video-id dQw4w9WgXcQ --config ~/.oarc/config.ini
+
 """
 
-# GitHub command detailed help
-GH_CLONE_HELP = """
+# GitHub
+GH_CLONE_HELP = f"""
 Clone and analyze a GitHub repository.
 
-Usage:
+USAGE:
   oarc-crawlers gh clone [OPTIONS]
 
 Options:
-  --url TEXT                  GitHub repository URL [required]
-  --output-path TEXT          Directory to save the cloned repository
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --url TEXT                  {ARGS_REPO_URL_HELP} [required]
+  --output-path TEXT          {ARGS_OUTPUT_PATH_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers gh clone --url https://github.com/username/repo
   oarc-crawlers gh clone --url https://github.com/username/repo --output-path ./repos
   oarc-crawlers gh clone --url https://github.com/username/repo --config ~/.oarc/config.ini
+
 """
 
-GH_ANALYZE_HELP = """
+GH_ANALYZE_HELP = f"""
 Get a summary analysis of a GitHub repository.
 
-Usage:
+USAGE:
   oarc-crawlers gh analyze [OPTIONS]
 
 Options:
-  --url TEXT                  GitHub repository URL [required]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --url TEXT                  {ARGS_REPO_URL_HELP} [required]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers gh analyze --url https://github.com/username/repo
   oarc-crawlers gh analyze --url https://github.com/username/repo --config ~/.oarc/config.ini
+
 """
 
-GH_FIND_SIMILAR_HELP = """
+GH_FIND_SIMILAR_HELP = f"""
 Find similar code in a GitHub repository.
 
-Usage:
+USAGE:
   oarc-crawlers gh find-similar [OPTIONS]
 
 Options:
-  --url TEXT                  GitHub repository URL [required]
-  --code TEXT                 Code snippet to find similar code for [required]
-  --language TEXT             Programming language of the code snippet
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --url TEXT                  {ARGS_REPO_URL_HELP} [required]
+  --code TEXT                 {ARGS_CODE_HELP} [required]
+  --language TEXT             {ARGS_LANGUAGE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers gh find-similar --url https://github.com/username/repo --code "def hello_world():"
   oarc-crawlers gh find-similar --url https://github.com/username/repo --code "import numpy as np" --language python
   oarc-crawlers gh find-similar --url https://github.com/username/repo --code "def hello_world():" --config ~/.oarc/config.ini
+
 """
 
-# ArXiv command detailed help
-ARXIV_DOWNLOAD_HELP = """
+# ArXiv
+ARXIV_DOWNLOAD_HELP = f"""
 Download LaTeX source files for an arXiv paper.
 
-Usage:
+USAGE:
   oarc-crawlers arxiv download [OPTIONS]
 
 Options:
-  --id TEXT                   arXiv paper ID [required]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --id TEXT                   {ARGS_ID_HELP} [required]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers arxiv download --id 2310.12123
   oarc-crawlers arxiv download --id 1909.11065
   oarc-crawlers arxiv download --id 2310.12123 --config ~/.oarc/config.ini
+
 """
 
-ARXIV_SEARCH_HELP = """
+ARXIV_SEARCH_HELP = f"""
 Search for papers on arXiv.
 
-Usage:
+USAGE:
   oarc-crawlers arxiv search [OPTIONS]
 
 Options:
-  --query TEXT                Search query [required]
-  --limit INTEGER             Maximum number of results [default: 5]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --query TEXT                {ARGS_QUERY_HELP} [required]
+  --limit INTEGER             {ARGS_LIMIT_HELP} [default: 5]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers arxiv search --query "quantum computing" --limit 10
   oarc-crawlers arxiv search --query "machine learning"
   oarc-crawlers arxiv search --query "quantum computing" --config ~/.oarc/config.ini
+
 """
 
-ARXIV_LATEX_HELP = """
+ARXIV_LATEX_HELP = f"""
 Download and extract LaTeX content from an arXiv paper.
 
-Usage:
+USAGE:
   oarc-crawlers arxiv latex [OPTIONS]
 
 Options:
-  --id TEXT                   arXiv paper ID [required]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --id TEXT                   {ARGS_ID_HELP} [required]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers arxiv latex --id 2310.12123
   oarc-crawlers arxiv latex --id 1909.11065
   oarc-crawlers arxiv latex --id 2310.12123 --config ~/.oarc/config.ini
+
 """
 
-# Web command detailed help
-WEB_CRAWL_HELP = """
+# Web
+WEB_CRAWL_HELP = f"""
 Crawl and extract content from a webpage.
 
-Usage:
+USAGE:
   oarc-crawlers web crawl [OPTIONS]
 
 Options:
-  --url TEXT                  URL to crawl [required]
-  --output-file TEXT          File to save the extracted content
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --url TEXT                  {ARGS_URL_HELP} [required]
+  --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers web crawl --url https://example.com
   oarc-crawlers web crawl --url https://example.com/blog --output-file blog.txt
   oarc-crawlers web crawl --url https://example.com --config ~/.oarc/config.ini
+
 """
 
-WEB_DOCS_HELP = """
+WEB_DOCS_HELP = f"""
 Crawl and extract content from a documentation site.
 
-Usage:
+USAGE:
   oarc-crawlers web docs [OPTIONS]
 
 Options:
   --url TEXT                  URL of documentation site [required]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers web docs --url https://docs.python.org
   oarc-crawlers web docs --url https://docs.sqlalchemy.org
   oarc-crawlers web docs --url https://docs.python.org --config ~/.oarc/config.ini
+
 """
 
-WEB_PYPI_HELP = """
+WEB_PYPI_HELP = f"""
 Extract information about a PyPI package.
 
-Usage:
+USAGE:
   oarc-crawlers web pypi [OPTIONS]
 
 Options:
-  --package TEXT              PyPI package name [required]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --package TEXT              {ARGS_PACKAGE_HELP} [required]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers web pypi --package requests
   oarc-crawlers web pypi --package numpy
   oarc-crawlers web pypi --package requests --config ~/.oarc/config.ini
+
 """
 
-# DuckDuckGo command detailed help
-DDG_TEXT_HELP = """
+# DuckDuckGo
+DDG_TEXT_HELP = f"""
 Perform a DuckDuckGo text search.
 
-Usage:
+USAGE:
   oarc-crawlers ddg text [OPTIONS]
 
 Options:
-  --query TEXT                Search query [required]
-  --max-results INTEGER       Maximum number of results [default: 5]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --query TEXT                {ARGS_QUERY_HELP} [required]
+  --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 5]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers ddg text --query "quantum computing"
   oarc-crawlers ddg text --query "machine learning" --max-results 10
   oarc-crawlers ddg text --query "quantum computing" --config ~/.oarc/config.ini
+
 """
 
-DDG_IMAGES_HELP = """
+DDG_IMAGES_HELP = f"""
 Perform a DuckDuckGo image search.
 
-Usage:
+USAGE:
   oarc-crawlers ddg images [OPTIONS]
 
 Options:
-  --query TEXT                Search query [required]
-  --max-results INTEGER       Maximum number of results [default: 10]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --query TEXT                {ARGS_QUERY_HELP} [required]
+  --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 10]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers ddg images --query "cute cats"
   oarc-crawlers ddg images --query "landscapes" --max-results 20
   oarc-crawlers ddg images --query "cute cats" --config ~/.oarc/config.ini
+
 """
 
-DDG_NEWS_HELP = """
+DDG_NEWS_HELP = f"""
 Perform a DuckDuckGo news search.
 
-Usage:
+USAGE:
   oarc-crawlers ddg news [OPTIONS]
 
 Options:
-  --query TEXT                Search query [required]
-  --max-results INTEGER       Maximum number of results [default: 20]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --query TEXT                {ARGS_QUERY_HELP} [required]
+  --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 20]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers ddg news --query "breaking news"
   oarc-crawlers ddg news --query "technology" --max-results 30
   oarc-crawlers ddg news --query "breaking news" --config ~/.oarc/config.ini
+
 """
 
-# Build command detailed help
-BUILD_PACKAGE_HELP = """
+# Build
+BUILD_PACKAGE_HELP = f"""
 Build the OARC Crawlers package.
 
-Usage:
+USAGE:
   oarc-crawlers build package [OPTIONS]
 
 Options:
-  --clean/--no-clean          Clean build directories first [default: no-clean]
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --clean / --no-clean        {ARGS_CLEAN_HELP} [default: no-clean]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers build package
   oarc-crawlers build package --clean
   oarc-crawlers build package --clean --config ~/.oarc/config.ini
+
 """
 
-# Publish command detailed help
-PUBLISH_PYPI_HELP = """
+# Publish
+PUBLISH_PYPI_HELP = f"""
 Publish the package to PyPI.
 
-Usage:
+USAGE:
   oarc-crawlers publish pypi [OPTIONS]
 
 Options:
-  --test                      Upload to TestPyPI instead of PyPI
-  --build/--no-build          Build the package before publishing [default: build]
-  --username TEXT             PyPI username (if not using keyring)
-  --password TEXT             PyPI password (if not using keyring)
-  --config-file TEXT          Path to PyPI config file (.pypirc)
-  --verbose                   Enable verbose output and debug logging
-  --config                    Path to custom configuration file
-  --help                      Show this help message
+  --test                      {ARGS_TEST_HELP}
+  --build / --no-build        {ARGS_BUILD_HELP} [default: build]
+  --username TEXT             {ARGS_PYPI_USERNAME_HELP}
+  --password TEXT             {ARGS_PYPI_PASSWORD_HELP}
+  --config-file TEXT          {ARGS_PYPI_CONFIG_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers publish pypi
   oarc-crawlers publish pypi --test
   oarc-crawlers publish pypi --no-build --config-file ~/.pypirc
   oarc-crawlers publish pypi --config ~/.oarc/config.ini
+
 """
 
-# Model Context Protocol (MCP) command detailed help
-MCP_HELP = """
-MCP Command Help
-
-Usage:
-  oarc-crawlers mcp COMMAND [OPTIONS]
-
-Commands:
-  run          Run the MCP server
-  install      Install the MCP server for VS Code integration
-
-Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
-
-Example Usage:
-  oarc-crawlers mcp run
-  oarc-crawlers mcp install --name "OARC Tools"
-  oarc-crawlers mcp run --config ~/.oarc/config.ini
-"""
-
-MCP_RUN_HELP = """
+# MCP
+MCP_RUN_HELP = f"""
 Run an MCP server for OARC Crawlers.
 
-Usage:
+USAGE:
   oarc-crawlers mcp run [OPTIONS]
 
 Options:
-  --port INTEGER            Port to run the server on [default: 3000]
-  --transport TEXT          Transport method to use (e.g., 'sse', 'ws') [default: ws]
-  --data-dir TEXT           Directory to store data
-  --verbose                 Enable verbose output and debug logging
-  --config                  Path to custom configuration file
-  --help                    Show this help message
+  --port INTEGER              {ARGS_PORT_HELP} [default: 3000]
+  --transport TEXT            {ARGS_TRANSPORT_HELP} (e.g., 'sse', 'ws') [default: ws]
+  --data-dir TEXT             {ARGS_DATA_DIR_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers mcp run
   oarc-crawlers mcp run --port 5000 --transport sse
   oarc-crawlers mcp run --config ~/.oarc/config.ini
+
 """
 
-MCP_INSTALL_HELP = """
+MCP_INSTALL_HELP = f"""
 Install the MCP server for VS Code integration.
 
-Usage:
+USAGE:
   oarc-crawlers mcp install [OPTIONS]
 
 Options:
-  --name TEXT               Custom name for the server in VS Code
-  --verbose                 Enable verbose output and debug logging
-  --config                  Path to custom configuration file
-  --help                    Show this help message
+  --name TEXT                 {ARGS_MCP_NAME_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers mcp install
   oarc-crawlers mcp install --name "OARC Tools"
   oarc-crawlers mcp install --config ~/.oarc/config.ini
+
 """
 
-# Data command detailed help
-DATA_HELP = """
-Data Command Help
-
-Usage:
-  oarc-crawlers data COMMAND [OPTIONS]
-
-Commands:
-  view        View contents of a Parquet file
-
-Options:
-  --verbose     Enable verbose output and debug logging
-  --config      Path to custom configuration file
-  --help        Show this help message
-
-Example Usage:
-  oarc-crawlers data view data/sources/example.parquet
-  oarc-crawlers data view data/sources/example.parquet --max-rows 20
-"""
-
-DATA_VIEW_HELP = """
+# Data
+DATA_VIEW_HELP = f"""
 View contents of a Parquet file.
 
-Usage:
+USAGE:
   oarc-crawlers data view [OPTIONS] FILE_PATH
 
 Arguments:
-  FILE_PATH            Path to the Parquet file [required]
+  FILE_PATH                   {ARGS_FILE_PATH_HELP} [required]
 
 Options:
-  --max-rows INTEGER   Maximum number of rows to display [default: 10]
-  --verbose           Enable verbose output and debug logging
-  --config            Path to custom configuration file
-  --help             Show this help message
+  --max-rows INTEGER          {ARGS_MAX_ROWS_HELP} [default: 10]
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      Show this help message and exit.
 
 Examples:
   oarc-crawlers data view data/sources/example.parquet
   oarc-crawlers data view data/sources/example.parquet --max-rows 20
   oarc-crawlers data view data/sources/example.parquet --config ~/.oarc/config.ini
+
 """
 
-# Config command help texts
-CONFIG_HELP = """
-Manage configuration settings for OARC Crawlers.
-
-Usage:
-  oarc-crawlers config [CONFIG_FILE]
-
-Arguments:
-  CONFIG_FILE    Optional path to a specific configuration file.
-                 If not provided, the default configuration file will be used or created.
-
-Options:
-  --verbose      Enable verbose output and debug logging
-  --help         Show this help message
-
-This command launches an interactive menu-based interface for:
-  • Viewing current configuration settings
-  • Editing configuration values
-  • Creating new configuration files
-  • Resetting to default values
-  • Setting environment variables
-"""
+# --- Deprecated/Internal Help Texts (Keep as is or remove if unused) ---
+# These seem less critical for user-facing help consistency but are included for completeness.
+# If they are not directly used by Click's help generation, they might not need formatting.
 
 CONFIG_SHOW_HELP = """
 Show current configuration settings.
@@ -736,10 +804,19 @@ Opens the configuration file in your default editor. If no config
 file exists, one will be created first.
 """
 
-# Config examples for the main help text
 CONFIG_EXAMPLES = """
 Examples:
   oarc-crawlers config
   oarc-crawlers config ~/.oarc/config/crawlers.ini
   oarc-crawlers --config ~/my-config.ini youtube download --url https://youtu.be/example
 """
+
+# --- Command Group Descriptions (Used in MAIN_HELP, keep as is) ---
+YOUTUBE_GROUP_HELP = "YouTube operations for downloading videos and extracting information."
+GH_GROUP_HELP = "GitHub operations for cloning, analyzing and extracting from repositories."
+ARXIV_GROUP_HELP = "ArXiv operations for downloading papers and extracting content."
+WEB_GROUP_HELP = "Web crawler operations for extracting content from websites."
+DDG_GROUP_HELP = "DuckDuckGo search operations for finding information online."
+BUILD_GROUP_HELP = "Build operations for package management."
+PUBLISH_GROUP_HELP = "Publish operations for distributing packages."
+DATA_GROUP_HELP = "Data management operations for viewing and manipulating data files."
