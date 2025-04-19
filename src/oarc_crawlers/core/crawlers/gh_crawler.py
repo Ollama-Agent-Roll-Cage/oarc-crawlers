@@ -33,6 +33,7 @@ import pandas as pd
 
 from ..storage.parquet_storage import ParquetStorage
 from oarc_crawlers.utils.log import log
+from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.errors import (
     ResourceNotFoundError, 
     NetworkError,
@@ -48,9 +49,12 @@ class GHCrawler:
         Args:
             data_dir (str, optional): Directory to store data.
         """
-        self.data_dir = data_dir
-        self.github_data_dir = Path(f"{self.data_dir}/github_repos")
-        self.github_data_dir.mkdir(parents=True, exist_ok=True)
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Paths.get_default_data_dir()
+            
+        self.github_data_dir = Paths.ensure_path(self.data_dir / "github_repos")
         log.debug(f"Initialized GitHubCrawler with data directory: {self.data_dir}")
 
     @staticmethod

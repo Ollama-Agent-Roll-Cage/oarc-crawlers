@@ -15,18 +15,16 @@ Dependencies: pytube, pytchat, moviepy (for audio conversion), and ParquetStorag
 Author: @Borcherdingl, RawsonK
 Date: 2025-04-18
 """
-import os
-import re
 from typing import Dict, List, Optional
 from datetime import datetime, UTC
 from pathlib import Path
 
 from pytube import YouTube, Playlist, Search
-import pytube.exceptions
-import pytchat
 
 from ..storage.parquet_storage import ParquetStorage
+from oarc_crawlers.config.config import Config
 from oarc_crawlers.utils.log import log
+from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.errors import (
     NetworkError,
     ResourceNotFoundError,
@@ -41,11 +39,14 @@ class YTCrawler:
         """Initialize the YouTube Downloader.
         
         Args:
-            data_dir (str, optional): Directory to store data
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
-        self.data_dir = data_dir or str(Path.home() / ".oarc" / "data")
-        self.youtube_data_dir = Path(self.data_dir) / "youtube_data"
-        self.youtube_data_dir.mkdir(parents=True, exist_ok=True)
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
+        self.data_dir = data_dir
+        # Use the Paths utility for standardized path handling
+        self.youtube_data_dir = Paths.youtube_data_dir(self.data_dir)
         log.debug(f"Initialized YTDownloader with data directory: {self.data_dir}")
 
     async def download_video(self, url: str, format: str = "mp4", 

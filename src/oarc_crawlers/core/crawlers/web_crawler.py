@@ -7,15 +7,13 @@ and general web content.
 Author: @BorcherdingL, RawsonK
 Date: 4/18/2025
 """
-import re
 from datetime import datetime, UTC
 from pathlib import Path
 
-import aiohttp
-from bs4 import BeautifulSoup
-
 from ..storage.parquet_storage import ParquetStorage
+from oarc_crawlers.config.config import Config
 from oarc_crawlers.utils.log import log
+from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.errors import (
     ResourceNotFoundError,
     DataExtractionError
@@ -28,11 +26,13 @@ class WebCrawler:
         """Initialize the Web Crawler.
         
         Args:
-            data_dir (str, optional): Directory to store data. Defaults to DATA_DIR.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
         self.data_dir = data_dir
-        self.crawl_data_dir = Path(f"{self.data_dir}/crawls")
-        self.crawl_data_dir.mkdir(parents=True, exist_ok=True)
+        self.crawl_data_dir = Paths.web_crawls_dir(self.data_dir)
         log.debug(f"Initialized WebCrawler with data directory: {self.data_dir}")
     
     async def fetch_url_content(self, url):

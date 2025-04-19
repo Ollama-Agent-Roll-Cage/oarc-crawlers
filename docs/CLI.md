@@ -19,6 +19,7 @@
 - [DuckDuckGo Commands](#duckduckgo-commands)
 - [Web Crawler Commands](#web-crawler-commands)
 - [Build Commands](#build-commands)
+- [Data Commands](#data-commands)
 - [Publish Commands](#publish-commands)
 - [MCP Commands](#mcp-commands)
 - [Configuration Commands](#configuration-commands)
@@ -58,7 +59,7 @@ The following options are available for all commands:
 
 Example with global options:
 ```bash
-oarc-crawlers --verbose --config ~/.oarc/config.ini youtube download --url https://youtu.be/example
+oarc-crawlers --verbose --config ~/.oarc/config.ini yt download --url https://youtu.be/example
 ```
 
 ## Command Overview
@@ -512,6 +513,57 @@ oarc-crawlers build package
 oarc-crawlers build package --clean
 ```
 
+## Data Commands
+
+### Overview
+
+```bash
+oarc-crawlers data [COMMAND] [OPTIONS]
+```
+
+Data commands allow you to view and manage data files stored by OARC Crawlers.
+
+### Commands
+
+#### `view`
+
+View contents of a Parquet file, including schema and sample data.
+
+```bash
+oarc-crawlers data view [FILE_PATH] [OPTIONS]
+```
+
+**Options:**
+- `FILE_PATH` - Path to the Parquet file [required]
+- `--max-rows INTEGER` - Maximum number of rows to display [default: 10]
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers data view ./data/papers/2310.12123_source.parquet
+oarc-crawlers data view ./data/sources/search_results.parquet --max-rows 20
+```
+
+**Output Example:**
+```
+Parquet File: ./data/papers/2310.12123_source.parquet
+Shape: 150 rows × 8 columns
+
+Schema:
+  • id: string
+  • title: string
+  • authors: list[string]
+  • abstract: string
+  • content: string
+  • source_files: dict
+  • metadata: dict
+  • timestamp: datetime64[ns]
+
+First 10 rows:
+[table output...]
+```
+
 ## Publish Commands
 
 ### Overview
@@ -663,17 +715,43 @@ cat video_urls.txt | while read url; do
 done
 ```
 
+## Platform-Specific Notes
+
+### Windows
+
+On Windows, the default data directory is `%APPDATA%\oarc\data`.
+
+Example setting environment variables:
+```batch
+set OARC_DATA_DIR=C:\Users\username\projects\data
+set OARC_LOG_LEVEL=DEBUG
+```
+
+### Linux/WSL
+
+On Linux and WSL, the default data directory is `~/.local/share/oarc/data`.
+
+Example setting environment variables:
+```bash
+export OARC_DATA_DIR=$HOME/projects/data
+export OARC_LOG_LEVEL=DEBUG
+```
+
 ## Environment Variables
 
 The OARC-Crawlers CLI respects the following environment variables:
 
-| Variable | Description |
-|----------|-------------|
-| `OARC_DATA_DIR` | Directory to store data (default: ~/.oarc/data) |
-| `OARC_LOG_LEVEL` | Logging level (default: INFO) |
-| `OARC_MAX_RETRIES` | Maximum number of retries for network operations |
-| `OARC_TIMEOUT` | Timeout in seconds for network operations |
-| `OARC_USER_AGENT` | User agent string for network requests |
+| Variable | Description | Default Value |
+|----------|-------------|---------------|
+| `OARC_DATA_DIR` | Directory to store data | Windows: `%APPDATA%\oarc\data`<br>Linux: `~/.local/share/oarc/data` |
+| `OARC_CONFIG_DIR` | Directory for config files | Windows: `%APPDATA%\oarc\config`<br>Linux: `~/.config/oarc` |
+| `OARC_CACHE_DIR` | Directory for cache files | Windows: `%LOCALAPPDATA%\oarc\cache`<br>Linux: `~/.cache/oarc` |
+| `OARC_LOG_LEVEL` | Logging level | INFO |
+| `OARC_MAX_RETRIES` | Maximum number of retries for network operations | 3 |
+| `OARC_TIMEOUT` | Timeout in seconds for network operations | 30 |
+| `OARC_USER_AGENT` | User agent string for network requests | oarc-crawlers/VERSION |
+| `OARC_PROXY` | HTTP/HTTPS proxy URL | None |
+| `OARC_NO_PROGRESS` | Disable progress bars if set to 1 | 0 |
 
 Example of setting environment variables:
 
