@@ -24,7 +24,7 @@ from oarc_crawlers.cli.cmd import (
 )
 
 @click.group(help=MAIN_HELP)
-@click.version_option()
+@click.version_option(message='%(prog)s %(version)s')
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def cli(verbose, config):
