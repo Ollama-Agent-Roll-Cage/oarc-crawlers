@@ -11,29 +11,34 @@ from oarc_crawlers.cli.help_texts import (
     WEB_CRAWL_HELP,
     WEB_DOCS_HELP,
     WEB_PYPI_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_URL_HELP,
+    ARGS_OUTPUT_FILE_HELP,
+    ARGS_PACKAGE_HELP,
 )
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
 from oarc_crawlers.decorators import asyncio_run, handle_error
-from oarc_crawlers.utils.const import SUCCESS
-from oarc_crawlers.utils.errors import (
-    ResourceNotFoundError,
-    DataExtractionError,
-)
+from oarc_crawlers.utils.const import SUCCESS, PYPI_PACKAGE_URL
+from oarc_crawlers.utils.errors import DataExtractionError, ResourceNotFoundError
 from oarc_crawlers.utils.log import log, enable_debug_logging
+
 
 @click.group(help=WEB_HELP)
 def web():
     """Group of web crawler CLI commands for extracting content from websites, documentation, and PyPI packages."""
     pass
 
+
 @web.command(help=WEB_CRAWL_HELP)
-@click.option('--url', required=True, help='URL to crawl')
-@click.option('--output-file', help='File to save the extracted content')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--url', required=True, help=ARGS_URL_HELP)
+@click.option('--output-file', help=ARGS_OUTPUT_FILE_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def crawl(url, output_file):
+async def crawl(url, output_file, verbose, config):
     """
     Crawl and extract content from a webpage.
 
@@ -73,13 +78,15 @@ async def crawl(url, output_file):
     
     return SUCCESS
 
+
 @web.command(help=WEB_DOCS_HELP)
-@click.option('--url', required=True, help='URL of documentation site')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
+@click.option('--url', required=True, help=ARGS_URL_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP,
               callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def docs(url):
+async def docs(url, verbose, config):
     """
     Crawl and extract content from a documentation site.
 
@@ -105,13 +112,15 @@ async def docs(url):
     click.echo(result)
     return SUCCESS
 
+
 @web.command(help=WEB_PYPI_HELP)
-@click.option('--package', required=True, help='PyPI package name')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
+@click.option('--package', required=True, help=ARGS_PACKAGE_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP,
               callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def pypi(package):
+async def pypi(package, verbose, config):
     """
     Extract and display information about a PyPI package.
 
@@ -131,8 +140,8 @@ async def pypi(package):
     log.debug(f"Connecting to PyPI for package {package}")
     
     # Using custom exceptions for better error handling
-    # TODO this url should be in #file:const.py
-    html = await crawler.fetch_url_content(f"https://pypi.org/project/{package}/")
+    # Using constant for PyPI URL
+    html = await crawler.fetch_url_content(PYPI_PACKAGE_URL.format(package=package))
     if not html:
         raise ResourceNotFoundError(f"Failed to fetch PyPI page for {package}")
     

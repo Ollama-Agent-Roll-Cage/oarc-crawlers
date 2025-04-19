@@ -6,7 +6,14 @@ including cleaning build directories and packaging the project.
 """
 import click
 
-from oarc_crawlers.cli.help_texts import BUILD_HELP, BUILD_PACKAGE_HELP
+from oarc_crawlers.cli.help_texts import (
+    BUILD_HELP,
+    BUILD_PACKAGE_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_CLEAN_HELP,
+)
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.decorators import handle_error
 from oarc_crawlers.utils.build_utils import BuildUtils
 from oarc_crawlers.utils.const import SUCCESS
@@ -21,11 +28,11 @@ def build():
 
 
 @build.command(help=BUILD_PACKAGE_HELP)
-@click.option('--clean/--no-clean', default=False, help='Clean build directories first')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--clean/--no-clean', default=False, help=ARGS_CLEAN_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @handle_error
-def package(clean):
+def package(clean, verbose, config):
     """
     Build the OARC Crawlers package.
 
@@ -34,6 +41,8 @@ def package(clean):
 
     Args:
         clean (bool): If True, clean build directories before building.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the build completes successfully.

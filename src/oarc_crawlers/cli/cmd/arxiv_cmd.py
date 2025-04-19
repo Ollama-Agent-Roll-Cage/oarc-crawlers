@@ -10,12 +10,19 @@ from oarc_crawlers.cli.help_texts import (
     ARXIV_DOWNLOAD_HELP,
     ARXIV_SEARCH_HELP,
     ARXIV_LATEX_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_ID_HELP,
+    ARGS_QUERY_HELP,
+    ARGS_LIMIT_HELP,
 )
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.arxiv_crawler import ArxivCrawler
 from oarc_crawlers.decorators import asyncio_run, handle_error
 from oarc_crawlers.utils.const import SUCCESS
 from oarc_crawlers.utils.errors import ResourceNotFoundError
 from oarc_crawlers.utils.log import log, enable_debug_logging
+from oarc_crawlers.utils.paths import Paths
 
 
 @click.group(help=ARXIV_HELP)
@@ -25,16 +32,18 @@ def arxiv():
 
 
 @arxiv.command(help=ARXIV_DOWNLOAD_HELP)
-@click.option('--id', required=True, help='arXiv paper ID')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--id', required=True, help=ARGS_ID_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def download(id):
+async def download(id, verbose, config):
     """Download LaTeX source files for an arXiv paper.
 
     Args:
         id (str): The arXiv paper identifier.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the download completes successfully.
@@ -71,18 +80,20 @@ async def download(id):
 
 
 @arxiv.command(help=ARXIV_SEARCH_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--limit', default=5, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--limit', default=5, type=int, help=ARGS_LIMIT_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def search(query, limit):
+async def search(query, limit, verbose, config):
     """Search for papers on arXiv.
 
     Args:
         query (str): The search query string.
         limit (int): Maximum number of results to return.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the search completes successfully.
@@ -114,17 +125,19 @@ async def search(query, limit):
     
 
 @arxiv.command(help=ARXIV_LATEX_HELP)
-@click.option('--id', required=True, help='arXiv paper ID')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--id', required=True, help=ARGS_ID_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def latex(id):
+async def latex(id, verbose, config):
     """
     Download and extract LaTeX content from an arXiv paper.
 
     Args:
         id (str): The arXiv paper identifier.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the operation completes successfully.

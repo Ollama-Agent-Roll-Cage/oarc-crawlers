@@ -92,9 +92,19 @@ class Logger:
         # Set flag first to prevent recursion
         cls._initialized = True
         
+        # Get log level from config
+        try:
+            from oarc_crawlers.config.config import Config
+            config = Config()
+            log_level_name = config.log_level.upper()
+            log_level = getattr(logging, log_level_name, logging.INFO)
+        except (ImportError, AttributeError):
+            # Fall back to default if config not available
+            log_level = logging.INFO
+        
         # Configure root logger to output to stderr
         root_logger = logging.getLogger()
-        root_logger.setLevel(logging.INFO)
+        root_logger.setLevel(log_level)
 
         # Clear any existing handlers to avoid duplication
         if root_logger.handlers:
@@ -109,7 +119,7 @@ class Logger:
 
         # Create and export the logger to be used by everything in the application
         main_logger = logging.getLogger(cls.LOGGER_NAME)
-        main_logger.setLevel(logging.INFO)
+        main_logger.setLevel(log_level)
         main_logger.propagate = False  # Prevent propagation to avoid duplicate logs
 
         # Add the same handler to our specific logger
