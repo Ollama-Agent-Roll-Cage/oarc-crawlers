@@ -32,7 +32,7 @@ uv pip install oarc-crawlers
 
 ## Using the CLI
 
-The OARC-Crawlers package can be installed directly using pip and used immediately from the command line, without any complex setup:
+The OARC-Crawlers package can be installed directly using pip and used immediately from the command line, without any complex setup. See our [Cheat Sheet](docs/CHEATSHEET.md) for quick reference of common commands.
 
 ```bash
 # Install the package

@@ -20,12 +20,10 @@ from oarc_crawlers.decorators import handle_error
 from oarc_crawlers.utils.errors import ResourceNotFoundError
 from oarc_crawlers.utils.log import log, enable_debug_logging
 
-
 @click.group(help=DATA_HELP)
 def data():
     """Group of data management CLI commands for viewing and manipulating data files."""
     pass
-
 
 @data.command(help=DATA_VIEW_HELP)
 @click.argument('file_path', type=click.Path(exists=True))

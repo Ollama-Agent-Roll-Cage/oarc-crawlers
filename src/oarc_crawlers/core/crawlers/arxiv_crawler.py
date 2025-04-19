@@ -31,6 +31,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 
 from ..storage.parquet_storage import ParquetStorage
+from oarc_crawlers.utils.paths import Paths
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,11 +45,13 @@ class ArxivCrawler:
         Args:
             data_dir (str, optional): Directory to store data.
         """
-        self.data_dir = data_dir if data_dir else Path("./data")
-        self.papers_dir = Path(f"{self.data_dir}/papers")
-        self.sources_dir = Path(f"{self.data_dir}/sources")
-        self.papers_dir.mkdir(parents=True, exist_ok=True)
-        self.sources_dir.mkdir(parents=True, exist_ok=True)
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Paths.get_default_data_dir()
+            
+        self.papers_dir = Paths.ensure_path(self.data_dir / "papers")
+        self.sources_dir = Paths.ensure_path(self.data_dir / "sources")
         self.logger = logging.getLogger(__name__)
     
     @staticmethod

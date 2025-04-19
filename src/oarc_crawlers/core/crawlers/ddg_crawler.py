@@ -19,6 +19,7 @@ from pathlib import Path
 import aiohttp
 
 from ..storage.parquet_storage import ParquetStorage
+from oarc_crawlers.utils.paths import Paths
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,9 +33,12 @@ class DDGCrawler:
         Args:
             data_dir (str, optional): Directory to store data.
         """
-        self.data_dir = data_dir if data_dir else Path("./data")
-        self.searches_dir = Path(f"{self.data_dir}/searches")
-        self.searches_dir.mkdir(parents=True, exist_ok=True)
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Paths.get_default_data_dir()
+        
+        self.searches_dir = Paths.ensure_path(self.data_dir / "searches")
         self.logger = logging.getLogger(__name__)
     
     async def text_search(self, search_query, max_results=5):
