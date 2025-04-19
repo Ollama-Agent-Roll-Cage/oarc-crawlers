@@ -22,7 +22,7 @@ from oarc_crawlers.core import (
     WebCrawler,
     ArxivCrawler,
 )
-from oarc_crawlers.utils.const import ERROR, VERSION
+from oarc_crawlers.utils.const import FAILURE, VERSION
 from oarc_crawlers.utils.errors import MCPError, TransportError
 from oarc_crawlers.utils.log import log
 from oarc_crawlers.decorators.singleton import singleton
@@ -189,7 +189,7 @@ class MCPServer:
             return asyncio.run(self.start_server())
         except KeyboardInterrupt:
             log.error("Server stopped by user")
-            sys.exit(ERROR)
+            sys.exit(FAILURE)
         except (TransportError, MCPError) as e:
             raise MCPError(f"MCP server error: {e}")
         except Exception as e:
