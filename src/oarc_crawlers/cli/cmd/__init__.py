@@ -3,6 +3,7 @@
 from oarc_crawlers.cli.cmd.arxiv_cmd import arxiv
 from oarc_crawlers.cli.cmd.build_cmd import build
 from oarc_crawlers.cli.cmd.config_cmd import config
+from oarc_crawlers.cli.cmd.data_cmd import data
 from oarc_crawlers.cli.cmd.ddg_cmd import ddg
 from oarc_crawlers.cli.cmd.gh_cmd import gh
 from oarc_crawlers.cli.cmd.mcp_cmd import mcp
@@ -15,6 +16,7 @@ __all__ = [
     "arxiv",
     "build",
     "config",
+    "data",
     "ddg",
     "gh",
     "mcp",

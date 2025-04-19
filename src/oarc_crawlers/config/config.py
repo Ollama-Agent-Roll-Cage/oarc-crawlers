@@ -66,12 +66,11 @@ class Config:
     _config: Dict[str, Any] = {}
     
 
-    @classmethod
-    def __init__(cls):
+    def __init__(self):
         """Initialize the configuration singleton instance."""
         # Ensure configuration is initialized
-        if not cls.__class__._initialized:
-            cls.__class__.initialize()
+        if not self.__class__._initialized:
+            self.__class__.initialize()
     
     @classmethod
     def initialize(cls) -> None:

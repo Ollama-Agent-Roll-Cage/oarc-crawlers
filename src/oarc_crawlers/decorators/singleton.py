@@ -52,6 +52,10 @@ def singleton(cls: Type[T]) -> Type[T]:
     def __new__(cls, *args, **kwargs):
         if cls not in _instances:
             instance = original_new(cls)
+            # Initialize tracking attributes before any other initialization
+            instance._init_args = ()
+            instance._init_kwargs = {}
+            instance._initialized = False
             _instances[cls] = instance
             return instance
         return _instances[cls]
@@ -59,8 +63,10 @@ def singleton(cls: Type[T]) -> Type[T]:
     @functools.wraps(original_init)
     def __init__(self, *args, **kwargs):
         # Check if this instance has already been initialized
-        if not hasattr(self, '_initialized'):
+        if not self._initialized:
             log.info(f"Creating new {cls.__name__} instance")
+            
+            # Proceed with the original initialization logic
             original_init(self, *args, **kwargs)
             
             # Store initialization parameters for comparison

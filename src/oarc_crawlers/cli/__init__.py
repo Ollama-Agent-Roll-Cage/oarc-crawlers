@@ -14,6 +14,7 @@ from oarc_crawlers.cli.cmd import (
     arxiv,
     build,
     config,
+    data,
     ddg,
     gh,
     mcp,
@@ -34,6 +35,7 @@ def cli(verbose, config):
 cli.add_command(arxiv)
 cli.add_command(build)
 cli.add_command(config)
+cli.add_command(data)
 cli.add_command(ddg)
 cli.add_command(gh)
 cli.add_command(mcp)

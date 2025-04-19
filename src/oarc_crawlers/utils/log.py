@@ -64,6 +64,10 @@ class ContextAwareLogger:
         logger = logging.getLogger(caller)
         logger.exception(msg, *args, **kwargs)
 
+    def is_debug_enabled(self) -> bool:
+        """Check if debug logging is enabled."""
+        return self._base_logger.level == logging.DEBUG
+
 
 class Logger:
     """Singleton logger manager for the OARC project."""

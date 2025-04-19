@@ -13,6 +13,7 @@ WEB_GROUP_HELP = "Web crawler operations for extracting content from websites."
 DDG_GROUP_HELP = "DuckDuckGo search operations for finding information online."
 BUILD_GROUP_HELP = "Build operations for package management."
 PUBLISH_GROUP_HELP = "Publish operations for distributing packages."
+DATA_GROUP_HELP = "Data management operations for viewing and manipulating data files."
 
 # Command option descriptions
 ARGS_VERBOSE_HELP = "Enable verbose output and debug logging"
@@ -49,6 +50,8 @@ ARGS_MCP_NAME_HELP = "Custom name for the MCP server in VS Code"
 ARGS_PYPI_USERNAME_HELP = "PyPI username (if not using keyring)'"
 ARGS_PYPI_PASSWORD_HELP = "PyPI password (if not using keyring)"
 ARGS_PYPI_CONFIG_FILE_HELP = "Path to PyPI config file (.pypirc)"
+ARGS_FILE_PATH_HELP = "Path to the file"
+ARGS_MAX_ROWS_HELP = "Maximum number of rows to display"
 
 # Main help text for the CLI
 MAIN_HELP = f"""
@@ -646,6 +649,47 @@ Examples:
   oarc-crawlers mcp install
   oarc-crawlers mcp install --name "OARC Tools"
   oarc-crawlers mcp install --config ~/.oarc/config.ini
+"""
+
+# Data command detailed help
+DATA_HELP = """
+Data Command Help
+
+Usage:
+  oarc-crawlers data COMMAND [OPTIONS]
+
+Commands:
+  view        View contents of a Parquet file
+
+Options:
+  --verbose     Enable verbose output and debug logging
+  --config      Path to custom configuration file
+  --help        Show this help message
+
+Example Usage:
+  oarc-crawlers data view data/sources/example.parquet
+  oarc-crawlers data view data/sources/example.parquet --max-rows 20
+"""
+
+DATA_VIEW_HELP = """
+View contents of a Parquet file.
+
+Usage:
+  oarc-crawlers data view [OPTIONS] FILE_PATH
+
+Arguments:
+  FILE_PATH            Path to the Parquet file [required]
+
+Options:
+  --max-rows INTEGER   Maximum number of rows to display [default: 10]
+  --verbose           Enable verbose output and debug logging
+  --config            Path to custom configuration file
+  --help             Show this help message
+
+Examples:
+  oarc-crawlers data view data/sources/example.parquet
+  oarc-crawlers data view data/sources/example.parquet --max-rows 20
+  oarc-crawlers data view data/sources/example.parquet --config ~/.oarc/config.ini
 """
 
 # Config command help texts

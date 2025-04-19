@@ -2,7 +2,7 @@
 Interactive configuration editor for OARC Crawlers.
 
 This module provides a command-line interface for editing configuration settings
-using PyInquirer for an interactive experience.
+using questionary for an interactive experience.
 """
 
 import configparser
@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from click import clear, echo, style
-from PyInquirer import Separator, prompt
+import questionary
 
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.config.config_manager import ConfigManager
@@ -44,55 +44,41 @@ class ConfigEditor:
         """Display the main configuration menu."""
         echo(style("\nOARC Crawlers Configuration Editor", fg='green', bold=True))
         
-        # Create menu options
-        questions = [
-            {
-                'type': 'list',
-                'name': 'action',
-                'message': 'Select an action:',
-                'choices': [
-                    {'name': 'Edit configuration settings', 'value': 'edit'},
-                    {'name': 'Save current configuration', 'value': 'save'},
-                    {'name': 'Reset to defaults', 'value': 'reset'},
-                    {'name': 'Show current configuration', 'value': 'show'},
-                    Separator(),
-                    {'name': 'Exit', 'value': 'exit'}
-                ]
-            }
-        ]
+        action = questionary.select(
+            "Select an action:",
+            choices=[
+                "Edit configuration settings",
+                "Save current configuration",
+                "Reset to defaults",
+                "Show current configuration",
+                questionary.Separator(),
+                "Exit"
+            ]
+        ).ask()
         
-        answers = prompt(questions)
-        if not answers or 'action' not in answers:
+        if not action:
             return
             
-        action = answers['action']
-        
-        # Using match-case instead of if-elif
         match action:
-            case 'edit':
+            case "Edit configuration settings":
                 self.edit_settings()
-            case 'save':
+            case "Save current configuration":
                 self.save_changes(self.current_config)
-            case 'reset':
+            case "Reset to defaults":
                 if self.confirm_reset():
                     self.reset_to_defaults()
                     echo(style("All settings reset to defaults.", fg='green'))
                     self.main_menu()
-            case 'show':
+            case "Show current configuration":
                 self.manager.display_config_info()
                 self.main_menu()
-            case 'exit':
+            case "Exit":
                 if self.is_config_changed():
-                    questions = [
-                        {
-                            'type': 'confirm',
-                            'name': 'save',
-                            'message': 'You have unsaved changes. Save before exiting?',
-                            'default': True
-                        }
-                    ]
-                    answers = prompt(questions)
-                    if answers.get('save', False):
+                    save = questionary.confirm(
+                        'You have unsaved changes. Save before exiting?',
+                        default=True
+                    ).ask()
+                    if save:
                         self.save_changes(self.current_config)
                 return
     
@@ -101,34 +87,23 @@ class ConfigEditor:
         choices = []
         for key in self.current_config.keys():
             description = self.config_details.get(key, {}).get("description", "")
-            choices.append({
-                'name': f"{key}: {self.current_config[key]} - {description}",
-                'value': key
-            })
+            choices.append(f"{key}: {self.current_config[key]} - {description}")
         
-        choices.append(Separator())
-        choices.append({'name': 'Back to main menu', 'value': 'back'})
+        choices.append(questionary.Separator())
+        choices.append("Back to main menu")
         
-        questions = [
-            {
-                'type': 'list',
-                'name': 'setting',
-                'message': 'Select a setting to edit:',
-                'choices': choices
-            }
-        ]
+        setting = questionary.select(
+            "Select a setting to edit:",
+            choices=choices
+        ).ask()
         
-        answers = prompt(questions)
-        if not answers or 'setting' not in answers:
-            return
-            
-        key = answers['setting']
-        if key == 'back':
+        if not setting or setting == "Back to main menu":
             self.main_menu()
             return
             
+        key = setting.split(":")[0].strip()
         self.edit_setting(key)
-        self.edit_settings()  # Return to settings list
+        self.edit_settings()
     
     def edit_setting(self, key: str) -> None:
         """Edit a specific setting using appropriate input type."""
@@ -136,98 +111,60 @@ class ConfigEditor:
         description = self.config_details.get(key, {}).get("description", "")
         help_text = self.config_details.get(key, {}).get("help", "")
         
-        # Construct a message with description and help
         message = f"Enter {key} ({description})"
         if help_text:
             message += f"\n{help_text}"
-            
+        
         if setting_type == "select":
             options = self.config_details.get(key, {}).get("options", [])
-            questions = [
-                {
-                    'type': 'list',
-                    'name': 'value',
-                    'message': message,
-                    'choices': options,
-                    'default': self.current_config[key]
-                }
-            ]
+            value = questionary.select(
+                message,
+                choices=options,
+                default=self.current_config[key]
+            ).ask()
         elif setting_type == "int":
             value_range = self.config_details.get(key, {}).get("range", (0, 100))
-            questions = [
-                {
-                    'type': 'input',
-                    'name': 'value',
-                    'message': message,
-                    'default': str(self.current_config[key]),
-                    'validate': lambda document: NumberValidator().validate(
-                        document, min_val=value_range[0], max_val=value_range[1]
-                    )
-                }
-            ]
-        elif setting_type == "path":
-            questions = [
-                {
-                    'type': 'input',
-                    'name': 'value',
-                    'message': message,
-                    'default': str(self.current_config[key]),
-                    'validate': PathValidator()
-                }
-            ]
-        else:  # string or other
-            questions = [
-                {
-                    'type': 'input',
-                    'name': 'value',
-                    'message': message,
-                    'default': str(self.current_config[key])
-                }
-            ]
-            
-        answers = prompt(questions)
-        if not answers or 'value' not in answers:
-            return
-            
-        value = answers['value']
-        
-        # Type conversion if needed
-        if setting_type == "int":
+            value = questionary.text(
+                message,
+                default=str(self.current_config[key]),
+                validate=lambda text: NumberValidator().validate(text, min_val=value_range[0], max_val=value_range[1])
+            ).ask()
             value = int(value)
         elif setting_type == "path":
-            path = Path(value).expanduser().resolve()
-            if not path.exists():
-                questions = [
-                    {
-                        'type': 'confirm',
-                        'name': 'create',
-                        'message': f"Directory {path} doesn't exist. Create it?",
-                        'default': True
-                    }
-                ]
-                create_answer = prompt(questions)
-                if create_answer.get('create', False):
-                    try:
-                        path.mkdir(parents=True, exist_ok=True)
-                        echo(style(f"Created directory: {path}", fg='green'))
-                    except Exception as e:
-                        echo(style(f"Error creating directory: {e}", fg='red'))
-            value = str(path)
+            value = questionary.path(
+                message,
+                default=str(self.current_config[key])
+            ).ask()
             
-        self.current_config[key] = value
+            if value:
+                path = Path(value).expanduser().resolve()
+                if not path.exists():
+                    create = questionary.confirm(
+                        f"Directory {path} doesn't exist. Create it?",
+                        default=True
+                    ).ask()
+                    if create:
+                        try:
+                            path.mkdir(parents=True, exist_ok=True)
+                            echo(style(f"Created directory: {path}", fg='green'))
+                        except Exception as e:
+                            echo(style(f"Error creating directory: {e}", fg='red'))
+                value = str(path)
+        else:  # string or other
+            value = questionary.text(
+                message,
+                default=str(self.current_config[key])
+            ).ask()
+        
+        if value is not None:
+            self.current_config[key] = value
     
     def confirm_reset(self) -> bool:
         """Confirm if user wants to reset to defaults."""
-        questions = [
-            {
-                'type': 'confirm',
-                'name': 'reset',
-                'message': 'Reset all settings to defaults?',
-                'default': False
-            }
-        ]
-        answers = prompt(questions)
-        return answers.get('reset', False)
+        return questionary.confirm(
+            'Reset all settings to defaults?',
+            default=False
+        ).ask()
     
     def reset_to_defaults(self) -> None:
         """Reset all values to their defaults."""
@@ -265,17 +202,12 @@ class ConfigEditor:
             echo(style("\nConfiguration saved successfully!", fg='green'))
             
             # Ask if user wants to update environment variables
-            questions = [
-                {
-                    'type': 'confirm',
-                    'name': 'set_env',
-                    'message': 'Do you want to also set these as persistent environment variables?',
-                    'default': False
-                }
-            ]
-            answers = prompt(questions)
+            set_env = questionary.confirm(
+                'Do you want to also set these as persistent environment variables?',
+                default=False
+            ).ask()
             
-            if answers.get('set_env', False):
+            if set_env:
                 self.manager.update_env_vars(edited_values)
             
             return True
