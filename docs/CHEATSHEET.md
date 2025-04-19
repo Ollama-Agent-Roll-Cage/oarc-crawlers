@@ -24,19 +24,19 @@ crawler = YTCrawler(data_dir="./my_data_dir")
 ## YouTube Operations (yt)
 ```bash
 # Download video
-oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" 
+oarc-crawlers yt download --url "https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams" 
 
 # Download specific quality
-oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --resolution 720p
+oarc-crawlers yt download --url "https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams" --resolution 720p
 
 # Download as audio only
-oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --extract-audio --format mp3
+oarc-crawlers yt download --url "https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams" --extract-audio --format mp3
 
 # Download playlist (first 10 videos)
-oarc-crawlers yt playlist --url "https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ"
+oarc-crawlers yt playlist --url "https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams"
 
 # Get video captions
-oarc-crawlers yt captions --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --languages "en,es,fr"
+oarc-crawlers yt captions --url "https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams" --languages "en,es,fr"
 
 # Search videos
 oarc-crawlers yt search --query "python tutorials" --limit 5
@@ -81,13 +81,13 @@ oarc-crawlers ddg news --query "technology" --max-results 20
 ## Web Crawling (web)
 ```bash
 # Crawl webpage
-oarc-crawlers web crawl --url "https://example.com"
+oarc-crawlers web crawl --url "https://docs.llamaindex.ai/en/stable/examples/query_engine/pandas_query_engine/"
 
 # Save to file
-oarc-crawlers web crawl --url "https://example.com" --output-file page.txt
+oarc-crawlers web crawl --url "https://docs.llamaindex.ai/en/stable/examples/query_engine/pandas_query_engine/" --output-file page.txt
 
 # Get docs
-oarc-crawlers web docs --url "https://docs.python.org"
+oarc-crawlers web docs --url "https://docs.llamaindex.ai/en/stable/examples/query_engine/pandas_query_engine/"
 
 # Get PyPI info
 oarc-crawlers web pypi --package "requests"
@@ -132,7 +132,7 @@ ddg = DDGCrawler(data_dir=data_dir)
 import asyncio
 async def download_video():
     result = await yt.download_video(
-        url="https://youtube.com/watch?v=dQw4w9WgXcQ",
+        url="https://www.youtube.com/watch?v=MDbdb-W4x4w&t=330s&ab_channel=MattWilliams",
         format="mp4",
         resolution="720p"
     )
