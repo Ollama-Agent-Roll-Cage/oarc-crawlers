@@ -10,12 +10,18 @@ from oarc_crawlers.cli.help_texts import (
     DDG_TEXT_HELP,
     DDG_IMAGES_HELP,
     DDG_NEWS_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_QUERY_HELP,
+    ARGS_MAX_RESULTS_HELP,
 )
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
 from oarc_crawlers.decorators import asyncio_run, handle_error
 from oarc_crawlers.utils.const import SUCCESS
 from oarc_crawlers.utils.errors import NetworkError
 from oarc_crawlers.utils.log import log, enable_debug_logging
+from oarc_crawlers.utils.paths import Paths
 
 @click.group(help=DDG_HELP)
 def ddg():
@@ -23,18 +29,20 @@ def ddg():
     pass
 
 @ddg.command(help=DDG_TEXT_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=5, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=5, type=int, help=ARGS_MAX_RESULTS_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def text(query, max_results):
+async def text(query, max_results, verbose, config):
     """Perform a DuckDuckGo text search.
 
     Args:
         query (str): The search query string.
         max_results (int): Maximum number of results to return.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the search completes successfully.
@@ -54,18 +62,20 @@ async def text(query, max_results):
     return SUCCESS
 
 @ddg.command(help=DDG_IMAGES_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=10, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=10, type=int, help=ARGS_MAX_RESULTS_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def images(query, max_results):
+async def images(query, max_results, verbose, config):
     """Perform a DuckDuckGo image search.
 
     Args:
         query (str): The search query string.
         max_results (int): Maximum number of image results to return.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the image search completes successfully.
@@ -85,18 +95,20 @@ async def images(query, max_results):
     return SUCCESS
 
 @ddg.command(help=DDG_NEWS_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=20, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=20, type=int, help=ARGS_MAX_RESULTS_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-async def news(query, max_results):
+async def news(query, max_results, verbose, config):
     """Perform a DuckDuckGo news search.
 
     Args:
         query (str): The search query string.
         max_results (int): Maximum number of news results to return.
+        verbose (bool): Whether to enable verbose output.
+        config (str, optional): Path to configuration file.
 
     Returns:
         int: SUCCESS constant if the news search completes successfully.

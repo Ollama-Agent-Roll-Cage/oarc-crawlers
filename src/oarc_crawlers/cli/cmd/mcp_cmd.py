@@ -5,7 +5,18 @@ including running the server and installing it for VS Code integration.
 """
 import click
 
-from oarc_crawlers.cli.help_texts import MCP_HELP, MCP_RUN_HELP, MCP_INSTALL_HELP
+from oarc_crawlers.cli.help_texts import (
+    MCP_HELP,
+    MCP_RUN_HELP,
+    MCP_INSTALL_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_PORT_HELP,
+    ARGS_TRANSPORT_HELP,
+    ARGS_DATA_DIR_HELP,
+    ARGS_MCP_NAME_HELP
+)
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.utils.const import SUCCESS, ERROR
 from oarc_crawlers.core.mcp.mcp_server import MCPServer
 from oarc_crawlers.decorators import asyncio_run, handle_error
@@ -18,14 +29,14 @@ def mcp():
     pass
 
 @mcp.command(help=MCP_RUN_HELP)
-@click.option('--port', default=3000, help='Port to run the server on')
-@click.option('--transport', default='ws', help='Transport method to use (e.g., "sse", "ws")')
-@click.option('--data-dir', help='Directory to store data')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--port', default=3000, help=ARGS_PORT_HELP)
+@click.option('--transport', default='ws', help=ARGS_TRANSPORT_HELP)
+@click.option('--data-dir', help=ARGS_DATA_DIR_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-def run(port, transport, data_dir, verbose):
+def run(port, transport, data_dir, verbose, config):
     """Run the Model Context Protocol (MCP) server for OARC Crawlers.
 
     Args:
@@ -33,6 +44,7 @@ def run(port, transport, data_dir, verbose):
         transport (str): The transport method to use ("ws" or "sse").
         data_dir (str): Directory to store server data.
         verbose (bool): Enable verbose/debug logging.
+        config (str): Path to configuration file.
 
     Returns:
         int: SUCCESS if the server starts successfully, ERROR otherwise.
@@ -49,18 +61,19 @@ def run(port, transport, data_dir, verbose):
         return ERROR
 
 @mcp.command(help=MCP_INSTALL_HELP)
-@click.option('--name', help='Custom name for the server in VS Code')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--name', help=ARGS_MCP_NAME_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 @asyncio_run
 @handle_error
-def install(name, verbose):
+def install(name, verbose, config):
     """
     Install the Model Context Protocol (MCP) server for VS Code integration.
 
     Args:
         name (str): Optional custom name for the server in VS Code.
         verbose (bool): Enable verbose/debug logging.
+        config (str): Path to configuration file.
 
     Returns:
         int: SUCCESS if installation completes successfully, ERROR otherwise.
