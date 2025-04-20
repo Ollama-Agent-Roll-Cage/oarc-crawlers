@@ -1,6 +1,6 @@
-# Contributing to the Thinking Dataset Project
+# Contributing to the oarc-crawlers Project
 
-Thank you for considering contributing to the Thinking Dataset Project! We welcome contributions from the community to help improve and expand this project. Please take a moment to review this document to understand how you can contribute effectively.
+Thank you for considering contributing to the oarc-crawlers! We welcome contributions from the community to help improve and expand this project. Please take a moment to review this document to understand how you can contribute effectively.
 
 ## Table of Contents
 
