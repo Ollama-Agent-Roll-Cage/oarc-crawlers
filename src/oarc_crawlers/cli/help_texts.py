@@ -15,6 +15,7 @@ BUILD_GROUP_HELP = "Build operations for package management."
 PUBLISH_GROUP_HELP = "Publish operations for distributing packages."
 DATA_GROUP_HELP = "Data management operations for viewing and manipulating data files."
 CONFIG_GROUP_HELP = "Manage configuration settings for OARC Crawlers."
+MCP_GROUP_HELP = "Model Context Protocol (MCP) server operations."
 
 # Command option descriptions
 ARGS_HELP = "Show this help message and exit."

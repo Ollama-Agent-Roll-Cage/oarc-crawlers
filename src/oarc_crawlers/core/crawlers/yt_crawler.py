@@ -26,7 +26,7 @@ import os
 import re
 from datetime import datetime, UTC
 from typing import Dict, List, Optional
-from http.client import HTTPError
+from urllib.error import HTTPError
 
 import pytube
 from pytube import YouTube, Playlist, Search
