@@ -43,18 +43,18 @@ from oarc_crawlers.utils.errors import (
 class GHCrawler:
     """Class for crawling and extracting content from GitHub repositories."""
 
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the GitHub Crawler.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
-        if data_dir:
-            self.data_dir = Path(data_dir)
-        else:
-            self.data_dir = Paths.get_default_data_dir()
-            
-        self.github_data_dir = Paths.ensure_path(self.data_dir / "github_repos")
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
+        self.data_dir = data_dir
+        # Use the Paths utility for standardized path handling
+        self.github_data_dir = Paths.github_repos_dir(self.data_dir)
         log.debug(f"Initialized GitHubCrawler with data directory: {self.data_dir}")
 
     @staticmethod

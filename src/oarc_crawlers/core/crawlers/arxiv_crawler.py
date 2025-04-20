@@ -39,20 +39,21 @@ logger = logging.getLogger(__name__)
 class ArxivCrawler:
     """Class for searching and retrieving ArXiv papers."""
     
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the ArXiv Fetcher.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
-        if data_dir:
-            self.data_dir = Path(data_dir)
-        else:
-            self.data_dir = Paths.get_default_data_dir()
-            
-        self.papers_dir = Paths.ensure_path(self.data_dir / "papers")
-        self.sources_dir = Paths.ensure_path(self.data_dir / "sources")
-        self.logger = logging.getLogger(__name__)
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
+        self.data_dir = data_dir
+        # Use the Paths utility for standardized path handling
+        self.papers_dir = Paths.arxiv_papers_dir(self.data_dir)
+        self.sources_dir = Paths.arxiv_sources_dir(self.data_dir)
+        self.combined_dir = Paths.arxiv_combined_dir(self.data_dir)
+        log.debug(f"Initialized ArxivCrawler with data directory: {self.data_dir}")
     
     @staticmethod
     def extract_arxiv_id(arxiv_input):

@@ -19,28 +19,27 @@ from pathlib import Path
 import aiohttp
 
 from ..storage.parquet_storage import ParquetStorage
+from oarc_crawlers.config.config import Config
+from oarc_crawlers.utils.log import log
 from oarc_crawlers.utils.paths import Paths
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class DDGCrawler:
     """Class for performing searches using DuckDuckGo API."""
     
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the DuckDuckGo Searcher.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
-        if data_dir:
-            self.data_dir = Path(data_dir)
-        else:
-            self.data_dir = Paths.get_default_data_dir()
-        
-        self.searches_dir = Paths.ensure_path(self.data_dir / "searches")
-        self.logger = logging.getLogger(__name__)
-    
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
+        self.data_dir = data_dir
+        # Use the Paths utility for standardized path handling
+        self.searches_dir = Paths.ddg_searches_dir(self.data_dir)
+        log.debug(f"Initialized DDGCrawler with data directory: {self.data_dir}")
+
     async def text_search(self, search_query, max_results=5):
         """Perform an async text search using DuckDuckGo.
         

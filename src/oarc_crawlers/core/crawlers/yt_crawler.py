@@ -18,6 +18,7 @@ Date: 2025-04-18
 from typing import Dict, List, Optional
 from datetime import datetime, UTC
 from pathlib import Path
+import os
 
 from pytube import YouTube, Playlist, Search
 
@@ -49,6 +50,34 @@ class YTCrawler:
         self.youtube_data_dir = Paths.youtube_data_dir(self.data_dir)
         log.debug(f"Initialized YTDownloader with data directory: {self.data_dir}")
 
+    def _sanitize_url(self, url: str) -> str:
+        """Extract and return the clean YouTube video URL from any YouTube URL format.
+        
+        Args:
+            url (str): Input YouTube URL, can contain extra parameters
+            
+        Returns:
+            str: Clean YouTube video URL with just the video ID
+            
+        Raises:
+            ResourceNotFoundError: If video ID cannot be extracted from URL
+        """
+        if "youtube.com/watch" in url:
+            # Handle youtube.com URLs
+            try:
+                video_id = re.search(r'v=([^&]+)', url).group(1)
+                return f"https://www.youtube.com/watch?v={video_id}"
+            except (AttributeError, IndexError):
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        elif "youtu.be/" in url:
+            # Handle youtu.be URLs
+            try:
+                video_id = url.split("youtu.be/")[1].split("?")[0]
+                return f"https://www.youtube.com/watch?v={video_id}"
+            except IndexError:
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        return url
+
     async def download_video(self, url: str, format: str = "mp4", 
                            resolution: str = "highest", output_path: Optional[str] = None,
                            filename: Optional[str] = None, extract_audio: bool = False) -> Dict:
@@ -74,19 +103,33 @@ class YTCrawler:
         if output_path is None:
             output_path = str(self.youtube_data_dir / "videos")
             os.makedirs(output_path, exist_ok=True)
-        
-        log.debug(f"Starting download of YouTube video: {url}")
+
+        # Sanitize the URL before proceeding
+        clean_url = self._sanitize_url(url)
+        log.debug(f"Starting download of YouTube video: {clean_url}")
         log.debug(f"Format: {format}, Resolution: {resolution}, Extract audio: {extract_audio}")
         
-        # Create YouTube object
         try:
-            youtube = YouTube(url)
+            youtube = YouTube(clean_url)
         except pytube.exceptions.RegexMatchError:
             raise ResourceNotFoundError(f"Invalid YouTube URL: {url}")
         except pytube.exceptions.VideoUnavailable:
             raise ResourceNotFoundError(f"The video {url} is unavailable")
         except Exception as e:
-            raise NetworkError(f"Error connecting to YouTube: {str(e)}")
+            if isinstance(e, HTTPError):
+                if e.code == 400:
+                    log.error(f"Bad request error, trying alternative URL format")
+                    # Try alternative URL format
+                    try:
+                        video_id = url.split("v=")[1].split("&")[0]
+                        alt_url = f"https://youtube.com/watch?v={video_id}"
+                        youtube = YouTube(alt_url)
+                    except Exception:
+                        raise NetworkError(f"Failed to connect to YouTube after retrying: {str(e)}")
+                else:
+                    raise NetworkError(f"HTTP error {e.code} connecting to YouTube: {str(e)}")
+            else:
+                raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
         video_info = self._extract_video_info(youtube)
         log.debug(f"Successfully extracted metadata for video: {video_info['title']}")
@@ -491,7 +534,6 @@ class YTCrawler:
                 
                 if hasattr(c.author, 'badges') and c.author.badges:
                     message["badges"] = c.author.badges
-                    
                 chat_data["messages"].append(message)
                 
                 if len(chat_data["messages"]) >= max_messages:
