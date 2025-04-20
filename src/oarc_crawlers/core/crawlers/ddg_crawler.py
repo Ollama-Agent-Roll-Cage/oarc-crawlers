@@ -8,34 +8,39 @@ Author: @BorcherdingL, RawsonK
 Date: 4/20/2025
 """
 
-import urllib.parse
 import json
-
+import urllib.parse
 from datetime import datetime, UTC
 from pathlib import Path
+from typing import Optional
+
 import aiohttp
 
 from oarc_log import log
 
-from ..storage.parquet_storage import ParquetStorage
-from oarc_crawlers.utils.paths import Paths
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.utils.const import (
-    DDG_BASE_URL, DDG_API_PARAMS, DDG_IMAGES_PARAMS, DDG_NEWS_PARAMS,
-    DDG_TEXT_SEARCH_HEADER, DDG_IMAGE_SEARCH_HEADER, DDG_NEWS_SEARCH_HEADER,
-    DEFAULT_HEADERS
+    DDG_BASE_URL,
+    DDG_API_PARAMS,
+    DDG_IMAGES_PARAMS,
+    DDG_NEWS_PARAMS,
+    DDG_TEXT_SEARCH_HEADER,
+    DDG_IMAGE_SEARCH_HEADER,
+    DDG_NEWS_SEARCH_HEADER,
+    DEFAULT_HEADERS,
 )
+from oarc_crawlers.utils.paths import Paths
 
 
 class DDGCrawler:
     """Class for performing searches using DuckDuckGo API."""
     
-
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the DuckDuckGo Searcher.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
         # Get configuration using get_instance() pattern
         if data_dir:

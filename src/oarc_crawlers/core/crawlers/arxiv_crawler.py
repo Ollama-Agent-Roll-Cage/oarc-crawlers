@@ -18,6 +18,7 @@ Date: 4/10/2025
 
 import re
 import os
+from typing import Optional
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -45,11 +46,11 @@ from oarc_crawlers.utils.const import (
 class ArxivCrawler:
     """Class for searching and retrieving ArXiv papers."""
     
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the ArXiv Fetcher.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
         log.debug("Initializing ArxivCrawler")
         if data_dir:

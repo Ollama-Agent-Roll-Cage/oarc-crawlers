@@ -23,8 +23,10 @@ Last updated: 2025-04-18
 """
 
 import os
+import re
 from datetime import datetime, UTC
 from typing import Dict, List, Optional
+from http.client import HTTPError
 
 import pytube
 from pytube import YouTube, Playlist, Search
@@ -67,6 +69,35 @@ class YTCrawler:
     """
 
     @classmethod
+    def _sanitize_url(cls, url: str) -> str:
+        """Extract and return the clean YouTube video URL from any YouTube URL format.
+        
+        Args:
+            url (str): Input YouTube URL, can contain extra parameters
+            
+        Returns:
+            str: Clean YouTube video URL with just the video ID
+            
+        Raises:
+            ResourceNotFoundError: If video ID cannot be extracted from URL
+        """
+        if "youtube.com/watch" in url:
+            # Handle youtube.com URLs
+            try:
+                video_id = re.search(r'v=([^&]+)', url).group(1)
+                return f"https://www.youtube.com/watch?v={video_id}"
+            except (AttributeError, IndexError):
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        elif "youtu.be/" in url:
+            # Handle youtu.be URLs
+            try:
+                video_id = url.split("youtu.be/")[1].split("?")[0]
+                return f"https://www.youtube.com/watch?v={video_id}"
+            except IndexError:
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        return url
+
+    @classmethod
     async def download_video(cls, url: str, video_format: str = "mp4", 
                            resolution: str = "highest", output_path: Optional[str] = None,
                            filename: Optional[str] = None, extract_audio: bool = False,
@@ -98,15 +129,30 @@ class YTCrawler:
         log.debug(f"Starting download of YouTube video: {url}")
         log.debug(f"Format: {video_format}, Resolution: {resolution}, Extract audio: {extract_audio}")
         
-        # Create YouTube object
+        # Sanitize the URL before proceeding
+        clean_url = cls._sanitize_url(url)
+        
         try:
-            youtube = YouTube(url)
+            youtube = YouTube(clean_url)
         except pytube.exceptions.RegexMatchError:
             raise ResourceNotFoundError(f"Invalid YouTube URL: {url}")
         except pytube.exceptions.VideoUnavailable:
             raise ResourceNotFoundError(f"The video {url} is unavailable")
         except Exception as e:
-            raise NetworkError(f"Error connecting to YouTube: {str(e)}")
+            if isinstance(e, HTTPError):
+                if e.code == 400:
+                    log.error(f"Bad request error, trying alternative URL format")
+                    # Try alternative URL format
+                    try:
+                        video_id = url.split("v=")[1].split("&")[0]
+                        alt_url = f"https://youtube.com/watch?v={video_id}"
+                        youtube = YouTube(alt_url)
+                    except Exception:
+                        raise NetworkError(f"Failed to connect to YouTube after retrying: {str(e)}")
+                else:
+                    raise NetworkError(f"HTTP error {e.code} connecting to YouTube: {str(e)}")
+            else:
+                raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
         video_info = cls._extract_video_info(youtube)
         log.debug(f"Successfully extracted metadata for video: {video_info['title']}")
@@ -514,7 +560,6 @@ class YTCrawler:
                 
                 if hasattr(c.author, 'badges') and c.author.badges:
                     message["badges"] = c.author.badges
-                    
                 chat_data["messages"].append(message)
                 
                 if len(chat_data["messages"]) >= max_messages:
