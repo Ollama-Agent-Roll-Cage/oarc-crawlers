@@ -1,9 +1,6 @@
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 import tempfile
-from pathlib import Path
-import json
-import bs4
 
 from oarc_crawlers import WebCrawler
 
@@ -15,7 +12,7 @@ class MockResponse:
     async def text(self):
         return self._text
 
-class TestBSWebCrawler(unittest.TestCase):
+class TestWebCrawler(unittest.TestCase):
     """Test the BeautifulSoup web crawler module."""
     
     def setUp(self):

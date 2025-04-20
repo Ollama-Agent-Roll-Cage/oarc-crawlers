@@ -1,7 +1,6 @@
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 import tempfile
-from pathlib import Path
 import json
 
 from oarc_crawlers import DDGCrawler
@@ -14,7 +13,7 @@ class MockResponse:
     async def text(self):
         return self._text
 
-class TestDuckDuckGoSearcher(unittest.TestCase):
+class TestDDGCrawler(unittest.TestCase):
     """Test the DuckDuckGo search module."""
     
     def setUp(self):

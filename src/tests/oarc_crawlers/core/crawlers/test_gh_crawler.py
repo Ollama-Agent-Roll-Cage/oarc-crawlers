@@ -1,6 +1,6 @@
 import os
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 import tempfile
 import pandas as pd
 from pathlib import Path
@@ -16,9 +16,9 @@ class TestGitHubCrawler(unittest.TestCase):
         self.crawler = GHCrawler(data_dir=self.temp_dir.name)
         
         # Test URLs
-        self.repo_url = "https://github.com/username/repo"
-        self.repo_url_with_branch = "https://github.com/username/repo/tree/dev"
-        self.git_url = "git@github.com:username/repo.git"
+        self.repo_url = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
+        self.repo_url_with_branch = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers/tree/develop"
+        self.git_url = "git@github.com:Ollama-Agent-Roll-Cage/oarc/oarc-crawlers.git"
     
     def tearDown(self):
         """Clean up after tests."""
@@ -31,20 +31,20 @@ class TestGitHubCrawler(unittest.TestCase):
         self.assertEqual(owner, "username")
         self.assertEqual(repo, "repo")
         self.assertEqual(branch, "main")
-        
+    
         # Test URL with branch specified
         owner, repo, branch = GHCrawler.extract_repo_info_from_url(self.repo_url_with_branch)
         self.assertEqual(owner, "username")
         self.assertEqual(repo, "repo")
         self.assertEqual(branch, "dev")
-        
+
         # Test git URL
         owner, repo, branch = GHCrawler.extract_repo_info_from_url(self.git_url)
         self.assertEqual(owner, "username")
         self.assertEqual(repo, "repo")
         self.assertEqual(branch, "main")
-        
-        # Test invalid URL
+
+        # Test invalid URL - expect ValueError instead of ResourceNotFoundError
         with self.assertRaises(ValueError):
             GHCrawler.extract_repo_info_from_url("https://example.com")
     

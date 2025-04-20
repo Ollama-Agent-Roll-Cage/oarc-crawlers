@@ -1,18 +1,19 @@
 import os
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 import tempfile
 from pathlib import Path
 
 from oarc_crawlers import YTCrawler
 
 @patch('oarc_crawlers.yt_crawler.ParquetStorage')
-class TestYouTubeDownloader(unittest.TestCase):
+class TestYTCrawler(unittest.TestCase):
     """Test the YouTube downloader module."""
     
     def setUp(self):
         """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
+        # YTCrawler should accept data_dir parameter
         self.crawler = YTCrawler(data_dir=self.temp_dir.name)
         
         # Mock YouTube video data

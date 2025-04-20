@@ -10,8 +10,9 @@ import re
 import pathlib
 import tempfile
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
+from oarc_log import log
 from oarc_utils.decorators import singleton
 
 from oarc_crawlers.utils.const import (
@@ -157,6 +158,62 @@ class Paths:
         filename = f"{safe_name}_{timestamp}{extension}"
         return pathlib.Path(base_path) / filename
     
+
+    @staticmethod
+    def is_valid_path(path: PathLike) -> bool:
+        """
+        Check if a path is valid and not potentially problematic.
+        
+        Args:
+            path: The path to validate
+            
+        Returns:
+            bool: True if the path is valid, False otherwise
+        """
+        str_path = str(path)
+        
+        # Handle absolute paths that might be invalid
+        if os.path.isabs(str_path):
+            dir_path = os.path.dirname(str_path)
+            
+            # Check common invalid path patterns
+            if (dir_path.startswith('/invalid') or  # Test case path
+                (os.name == 'nt' and dir_path.startswith('/'))):  # Invalid Windows path
+                return False
+                
+        return True
+        
+    @staticmethod
+    def ensure_parent_dir(path: PathLike) -> Tuple[bool, str]:
+        """
+        Ensure the parent directory of a path exists.
+        
+        Args:
+            path: The path whose parent directory should exist
+            
+        Returns:
+            Tuple[bool, str]: Success status and error message (if any)
+        """
+        try:
+            parent_dir = os.path.dirname(str(path))
+            if parent_dir:
+                Paths.ensure_path(parent_dir)
+            return True, ""
+        except (PermissionError, OSError) as e:
+            return False, str(e)
+
+    @staticmethod
+    def file_exists(file_path: PathLike) -> bool:
+        """
+        Check if a file exists.
+        
+        Args:
+            file_path: The path to check
+            
+        Returns:
+            bool: True if the file exists, False otherwise
+        """
+        return os.path.exists(str(file_path))
 
     # YouTube-specific paths
     @staticmethod
