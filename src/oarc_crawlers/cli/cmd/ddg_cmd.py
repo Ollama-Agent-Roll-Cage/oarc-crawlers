@@ -8,12 +8,12 @@ such as query terms and result limits.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    NetworkError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import NetworkError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
+from oarc_crawlers.utils.const import ERROR, SUCCESS
 from oarc_crawlers.cli.help_texts import (
     ARGS_CONFIG_HELP,
     ARGS_MAX_RESULTS_HELP,
@@ -24,9 +24,6 @@ from oarc_crawlers.cli.help_texts import (
     DDG_NEWS_HELP,
     DDG_TEXT_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
-from oarc_crawlers.utils.const import ERROR, SUCCESS
 
 
 @click.group(help=DDG_GROUP_HELP)
@@ -40,6 +37,7 @@ def ddg(verbose, config):
     Use the available subcommands to specify the type of search and customize options such as query and result limits.
     """
     pass
+
 
 @ddg.command(help=DDG_TEXT_HELP)
 @click.option('--query', required=True, help=ARGS_QUERY_HELP)
@@ -72,6 +70,7 @@ async def text(query, max_results):
     click.echo(result)
     return SUCCESS
 
+
 @ddg.command(help=DDG_IMAGES_HELP)
 @click.option('--query', required=True, help=ARGS_QUERY_HELP)
 @click.option('--max-results', default=10, type=int, help=ARGS_MAX_RESULTS_HELP)
@@ -102,6 +101,7 @@ async def images(query, max_results):
     log.debug(f"Got {len(result.get('results', []))} image results")
     click.echo(result)
     return SUCCESS
+
 
 @ddg.command(help=DDG_NEWS_HELP)
 @click.option('--query', required=True, help=ARGS_QUERY_HELP)

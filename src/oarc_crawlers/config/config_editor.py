@@ -12,13 +12,14 @@ from typing import Any, Dict
 import questionary
 from click import clear, echo, style
 
-from oarc_decorators import singleton
+from oarc_utils.decorators import singleton
 
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.config.config_manager import ConfigManager
 from oarc_crawlers.config.config_validators import NumberValidator
-from oarc_crawlers.utils.const import CONFIG_SECTION, DEFAULT_CONFIG_FILENAME
 from oarc_crawlers.utils.paths import Paths
+from oarc_crawlers.utils.const import CONFIG_SECTION, DEFAULT_CONFIG_FILENAME
+
 
 # global class
 @singleton
@@ -29,6 +30,7 @@ class ConfigEditor:
     _current_config = None
     _config_details = None
     
+
     @classmethod
     def _ensure_initialized(cls):
         """Ensure that the class variables are initialized."""
@@ -37,6 +39,7 @@ class ConfigEditor:
             cls._current_config = ConfigManager.get_current_config()
             cls._config_details = ConfigManager.get_config_details()
     
+
     @classmethod
     def is_config_changed(cls) -> bool:
         """Check if the current config differs from saved/default config."""
@@ -48,6 +51,7 @@ class ConfigEditor:
                 return True
         return False
     
+
     @classmethod
     def main_menu(cls) -> None:
         """Display the main configuration menu."""
@@ -92,6 +96,7 @@ class ConfigEditor:
                         cls.save_changes(cls._current_config)
                 return
     
+
     @classmethod
     def edit_settings(cls) -> None:
         """Present a menu to select which setting to edit."""
@@ -117,6 +122,7 @@ class ConfigEditor:
         cls.edit_setting(key)
         cls.edit_settings()
     
+
     @classmethod
     def edit_setting(cls, key: str) -> None:
         """Edit a specific setting using appropriate input type."""
@@ -173,6 +179,7 @@ class ConfigEditor:
         if value is not None:
             cls._current_config[key] = value
     
+
     @staticmethod
     def confirm_reset() -> bool:
         """Confirm if user wants to reset to defaults."""
@@ -181,6 +188,7 @@ class ConfigEditor:
             default=False
         ).ask()
     
+
     @classmethod
     def reset_to_defaults(cls) -> None:
         """Reset all values to their defaults."""
@@ -192,6 +200,7 @@ class ConfigEditor:
             else:
                 cls._current_config[key] = value
     
+
     @classmethod
     def save_changes(cls, edited_values: Dict[str, Any]) -> bool:
         """Save changes to configuration file."""
@@ -233,6 +242,7 @@ class ConfigEditor:
             echo(style(f"Error saving config: {e}", fg='red'))
             return False
     
+
     @classmethod
     def load_config_file(cls, config_file: str = None) -> None:
         """
@@ -249,6 +259,7 @@ class ConfigEditor:
             cls._current_config = ConfigManager.get_current_config()
             
             echo(style(f"Loaded configuration from: {config_file}", fg='green'))
+
 
     @classmethod
     def run(cls, config_file: str = None) -> None:

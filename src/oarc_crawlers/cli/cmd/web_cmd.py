@@ -7,13 +7,12 @@ from websites, documentation sites, and PyPI packages.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    DataExtractionError, 
-    ResourceNotFoundError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import DataExtractionError, ResourceNotFoundError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
+from oarc_crawlers.utils.const import SUCCESS, PYPI_PACKAGE_URL
 from oarc_crawlers.cli.help_texts import (
     WEB_GROUP_HELP,
     WEB_CRAWL_HELP,
@@ -25,10 +24,6 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_OUTPUT_FILE_HELP,
     ARGS_PACKAGE_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
-from oarc_crawlers.utils.const import SUCCESS, PYPI_PACKAGE_URL
-
 
 @click.group(help=WEB_GROUP_HELP)
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)

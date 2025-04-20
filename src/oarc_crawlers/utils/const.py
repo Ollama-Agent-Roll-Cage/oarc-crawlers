@@ -70,6 +70,21 @@ PYPI_JSON_URL = "https://pypi.org/pypi/{package}/json"
 YOUTUBE_VIDEO_URL_FORMAT = "https://www.youtube.com/watch?v={video_id}"
 YOUTUBE_CHANNEL_URL_FORMAT = "https://www.youtube.com/channel/{channel_id}"
 
+# YouTube video format constants
+YT_FORMAT_MP4 = "mp4"
+YT_FORMAT_WEBM = "webm"
+YT_FORMAT_MP3 = "mp3"
+
+# YouTube resolution constants
+YT_RESOLUTION_HIGHEST = "highest"
+YT_RESOLUTION_LOWEST = "lowest"
+YT_RESOLUTION_720P = "720p"
+YT_RESOLUTION_1080P = "1080p"
+YT_RESOLUTION_480P = "480p"
+YT_RESOLUTION_360P = "360p"
+YT_RESOLUTION_240P = "240p"
+YT_RESOLUTION_144P = "144p"
+
 # DuckDuckGo API constants
 DDG_BASE_URL = "https://api.duckduckgo.com/"
 DDG_API_PARAMS = "format=json&pretty=1"

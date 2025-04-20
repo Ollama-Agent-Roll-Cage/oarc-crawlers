@@ -9,7 +9,7 @@ import inspect
 from typing import List, Dict, Any, Optional
 
 from oarc_log import log
-from oarc_decorators import MCPError
+from oarc_utils.errors import MCPError
 
 
 class MCPUtils:

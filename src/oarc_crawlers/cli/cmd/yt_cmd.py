@@ -7,12 +7,12 @@ searching for videos, and fetching live chat messages from streams or premieres.
 import click
 
 from oarc_log import enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    OarcError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import OARCError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
+from oarc_crawlers.utils.const import SUCCESS, ERROR
 from oarc_crawlers.cli.help_texts import (
     YOUTUBE_GROUP_HELP,
     YOUTUBE_DOWNLOAD_HELP,
@@ -37,11 +37,6 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_MAX_MESSAGES_HELP,
     ARGS_DURATION_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
-from oarc_crawlers.utils.const import SUCCESS, ERROR
-
-
 
 
 @click.group(help=YOUTUBE_GROUP_HELP)
@@ -84,7 +79,7 @@ async def download(url, video_format, resolution, extract_audio, output_path, fi
     )
     
     if 'error' in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
         
     click.secho(f"✓ Downloaded: {result.get('title')}", fg='green')
     click.echo(f"File: {result.get('file_path')}")
@@ -127,7 +122,7 @@ async def playlist(url, format, max_videos, output_path):
         )
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     video_count = len(result.get('videos', []))
     click.secho(f"✓ Downloaded {video_count} videos from playlist: {result.get('title')}", fg='green')
@@ -166,7 +161,7 @@ async def captions(url, languages):
     result = await crawler.extract_captions(url=url, languages=lang_list)
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     caption_langs = list(result.get('captions', {}).keys())
     if not caption_langs:
@@ -206,7 +201,7 @@ async def search(query, limit):
     result = await crawler.search_videos(query=query, limit=limit)
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     click.secho(f"✓ Found {result.get('result_count', 0)} videos", fg='green')
     
@@ -259,7 +254,7 @@ async def chat(video_id, max_messages, duration):
     )
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     msg_count = result.get('message_count', 0)
     click.secho(f"✓ Collected {msg_count} chat messages", fg='green')

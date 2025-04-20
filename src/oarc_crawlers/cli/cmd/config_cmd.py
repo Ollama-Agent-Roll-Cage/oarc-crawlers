@@ -7,15 +7,14 @@ Supports interactive editing and custom configuration file selection via the com
 import click
 
 from oarc_log import enable_debug_logging
-from oarc_decorators import handle_error
+from oarc_utils.decorators import handle_error
 
+from oarc_crawlers.config.config_manager import ConfigManager
+from oarc_crawlers.utils.const import SUCCESS
 from oarc_crawlers.cli.help_texts import (
     CONFIG_GROUP_HELP,
     ARGS_VERBOSE_HELP,
 )
-from oarc_crawlers.config.config_manager import ConfigManager
-from oarc_crawlers.utils.const import SUCCESS
-
 
 @click.command(help=CONFIG_GROUP_HELP)
 @click.argument('config_file', required=False)

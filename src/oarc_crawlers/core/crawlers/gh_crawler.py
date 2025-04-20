@@ -33,7 +33,7 @@ import git
 import pandas as pd
 
 from oarc_log import log
-from oarc_decorators import (
+from oarc_utils.errors import (
     ResourceNotFoundError,
     NetworkError,
     DataExtractionError,

@@ -41,7 +41,7 @@ dependencies = [
     "pyinstaller>=6.0.0",
     "questionary>=2.1.0",
     "oarc-log @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-log.git",
-    "oarc-decorators @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-decorators.git"
+    "oarc-utils @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-utils.git"
 ]
 
 [project.optional-dependencies]

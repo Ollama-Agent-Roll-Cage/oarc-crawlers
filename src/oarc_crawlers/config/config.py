@@ -12,7 +12,7 @@ import pathlib
 from typing import Any, Dict, Optional
 
 from oarc_log import log
-from oarc_decorators import singleton
+from oarc_utils.decorators import singleton
 
 from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.const import (

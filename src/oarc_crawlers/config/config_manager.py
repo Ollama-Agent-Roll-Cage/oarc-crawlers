@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Tuple
 import click
 from click import echo, style
 
-from oarc_decorators import singleton
+from oarc_utils.decorators import singleton
 
 from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.config.config import Config

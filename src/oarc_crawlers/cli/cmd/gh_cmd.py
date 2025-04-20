@@ -11,12 +11,12 @@ Intended for use via the OARC Crawlers command-line interface.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    DataExtractionError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import DataExtractionError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.crawlers.gh_crawler import GHCrawler
+from oarc_crawlers.utils.const import SUCCESS
 from oarc_crawlers.cli.help_texts import (
     GH_GROUP_HELP,
     GH_CLONE_HELP,
@@ -29,10 +29,6 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_CODE_HELP,
     ARGS_LANGUAGE_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.crawlers.gh_crawler import GHCrawler
-from oarc_crawlers.utils.const import SUCCESS
-
 
 @click.group(help=GH_GROUP_HELP)
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)

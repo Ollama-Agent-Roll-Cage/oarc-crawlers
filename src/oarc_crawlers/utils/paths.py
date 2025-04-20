@@ -12,13 +12,23 @@ import tempfile
 from datetime import datetime
 from typing import List, Optional, Union
 
-from oarc_decorators import singleton
+from oarc_utils.decorators import singleton
 
 from oarc_crawlers.utils.const import (
-    ENV_DATA_DIR, ENV_HOME_DIR, DEFAULT_CONFIG_FILENAME, DATA_SUBDIR,
-    CONFIG_DIR, OARC_DIR, TEMP_DIR_PREFIX, YOUTUBE_DATA_DIR, GITHUB_REPOS_DIR,
-    WEB_CRAWLS_DIR, ARXIV_PAPERS_DIR, ARXIV_SOURCES_DIR,
-    ARXIV_COMBINED_DIR, DDG_SEARCHES_DIR
+    ENV_DATA_DIR, 
+    ENV_HOME_DIR, 
+    DEFAULT_CONFIG_FILENAME, 
+    DATA_SUBDIR,
+    CONFIG_DIR, 
+    OARC_DIR, 
+    TEMP_DIR_PREFIX, 
+    YOUTUBE_DATA_DIR, 
+    GITHUB_REPOS_DIR,
+    WEB_CRAWLS_DIR, 
+    ARXIV_PAPERS_DIR, 
+    ARXIV_SOURCES_DIR,
+    ARXIV_COMBINED_DIR, 
+    DDG_SEARCHES_DIR
 )
 
 PathLike = Union[str, pathlib.Path]
@@ -208,19 +218,38 @@ class Paths:
     
 
     @staticmethod
-    def youtube_metadata_path(video_id: str, base_dir: Optional[PathLike] = None) -> pathlib.Path:
+    def youtube_metadata_path(base_dir: Optional[PathLike] = None, video_id: str = None) -> pathlib.Path:
         """
         Get the path for YouTube video metadata.
         
         Args:
-            video_id: YouTube video ID
             base_dir: Base data directory. If None, uses the default from Config.
+            video_id: YouTube video ID
             
         Returns:
             Path to the metadata file
         """
-        return Paths.youtube_metadata_dir(base_dir) / f"{video_id}.parquet"
+        metadata_dir = Paths.youtube_metadata_dir(base_dir)
+        if video_id:
+            return metadata_dir / f"{video_id}.parquet"
+        return metadata_dir
     
+    @staticmethod
+    def youtube_playlist_dir(output_path: PathLike, playlist_title: str, playlist_id: str) -> pathlib.Path:
+        """
+        Create a standardized directory path for a YouTube playlist.
+        
+        Args:
+            output_path: Base output directory
+            playlist_title: Title of the playlist
+            playlist_id: YouTube playlist ID
+            
+        Returns:
+            Path to the playlist directory
+        """
+        safe_title = Paths.sanitize_filename(playlist_title)
+        playlist_dir = pathlib.Path(output_path) / f"{safe_title}_{playlist_id}"
+        return Paths.ensure_path(playlist_dir)
 
     # GitHub-specific paths
     @staticmethod

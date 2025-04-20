@@ -10,7 +10,8 @@ Intended for use via the OARC Crawlers command-line interface.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import handle_error, BuildError
+from oarc_utils.decorators import handle_error
+from oarc_utils.errors import BuildError
 
 from oarc_crawlers.cli.help_texts import (
     BUILD_GROUP_HELP,

@@ -2,7 +2,7 @@
 import sys
 
 from oarc_crawlers.cli import cli
-from oarc_decorators import handle_error
+from oarc_utils.decorators import handle_error
 
 
 @handle_error

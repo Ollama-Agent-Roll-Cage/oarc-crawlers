@@ -11,11 +11,8 @@ Intended for use via the OARC Crawlers command-line interface.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    ResourceNotFoundError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import ResourceNotFoundError
 
 from oarc_crawlers.cli.help_texts import (
     ARXIV_GROUP_HELP,

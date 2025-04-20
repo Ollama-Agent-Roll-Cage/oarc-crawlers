@@ -15,11 +15,12 @@ import re
 from bs4 import BeautifulSoup
 import aiohttp
 
-from oarc_decorators import (
+from oarc_log import log
+from oarc_utils.errors import (
     ResourceNotFoundError,
     DataExtractionError
 )
-from oarc_log import log
+
 
 from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
 from oarc_crawlers.config.config import Config

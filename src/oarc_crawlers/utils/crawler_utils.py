@@ -13,7 +13,7 @@ from typing import Dict, Optional, Union
 from pytube import YouTube
 
 from oarc_log import log
-from oarc_decorators import ResourceNotFoundError
+from oarc_utils.errors import ResourceNotFoundError
 
 class CrawlerUtils:
     """
