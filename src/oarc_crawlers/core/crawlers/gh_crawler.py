@@ -19,38 +19,45 @@ Typical usage:
     await crawler.clone_and_store_repo("https://github.com/owner/repo")
     summary = await crawler.get_repo_summary("https://github.com/owner/repo")
 """
+
 import os
 import re
 import glob
-import git
 import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime, UTC
 from typing import Optional, Tuple
 
+import git
 import pandas as pd
 
-from ..storage.parquet_storage import ParquetStorage
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.utils.errors import (
-    ResourceNotFoundError, 
+from oarc_log import log
+from oarc_decorators import (
+    ResourceNotFoundError,
     NetworkError,
-    DataExtractionError
+    DataExtractionError,
 )
+
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
+from oarc_crawlers.utils.paths import Paths
+
 
 class GHCrawler:
     """Class for crawling and extracting content from GitHub repositories."""
 
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the GitHub Crawler.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
+        # Use the global config if no data_dir provided
+        if data_dir is None:
+            data_dir = str(Config().data_dir)
         self.data_dir = data_dir
-        self.github_data_dir = Path(f"{self.data_dir}/github_repos")
-        self.github_data_dir.mkdir(parents=True, exist_ok=True)
+        # Use the Paths utility for standardized path handling
+        self.github_data_dir = Paths.github_repos_dir(self.data_dir)
         log.debug(f"Initialized GitHubCrawler with data directory: {self.data_dir}")
 
     @staticmethod

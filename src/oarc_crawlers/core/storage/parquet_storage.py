@@ -9,8 +9,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.utils.errors import ResourceNotFoundError
+from oarc_log import log
+from oarc_decorators import ResourceNotFoundError
 
 class ParquetStorage:
     """"Utility class for saving and loading data in Parquet format."""

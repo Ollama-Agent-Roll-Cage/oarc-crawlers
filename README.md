@@ -4,16 +4,16 @@ OARC-Crawlers is a Python framework designed for acquiring, processing, and stor
 
 | Feature                     | Description                                                  |
 | :-------------------------- | :----------------------------------------------------------- |
-| 🎬 **YouTube Downloader**   | Download videos, playlists, and extract captions             |
+| 🎬 **YouTube Crawler**      | Download videos, playlists, and extract captions             |
 | 🐙 **GitHub Crawler**       | Clone repositories and extract code for analysis             |
-| 🦆 **DuckDuckGo Searcher**  | Search for text, images, and news                            |
-| 🌐 **Web Crawler (BS4)**    | Extract content from websites using BeautifulSoup            |
-| 📜 **ArXiv Fetcher**        | Download academic papers and their LaTeX source              |
+| 🦆 **DuckDuckGo Crawler**   | Search for text, images, and news                            |
+| 🌐 **Web Crawler**          | Extract content from websites using BeautifulSoup            |
+| 📜 **ArXiv Crawler**        | Download academic papers and their LaTeX source              |
 | 💾 **Parquet Storage**      | Utility for saving and loading data in Parquet format        |
 
 ## Setup
 
-OARC-Crawlers requires Python 3.11 (Python 3.12+ is not yet fully supported due to some dependency compatibility issues).
+OARC-Crawlers requires Python >=3.10 and <3.12 (Python 3.12+ is not yet fully supported due to some dependency compatibility issues).
 
 ### Creating a new project
 
@@ -23,67 +23,34 @@ This script first installs `uv`, a fast Python package installer and resolver. I
 # Install UV package manager
 pip install uv
 
-# Create & activate virtual environment with UV
+# Create & activate virtual environment with UV (use 3.10 or 3.11)
 uv venv --python 3.11
 
 # Install package from PyPI
 uv pip install oarc-crawlers
 ```
-### Using the CLI
 
-The OARC-Crawlers package can be installed directly using pip and used immediately from the command line, without any complex setup:
+## Using the CLI
+
+The OARC-Crawlers package can be installed directly using pip and used immediately from the command line, without any complex setup. See our [Cheat Sheet](docs/CHEATSHEET.md) for quick reference of common commands.
 
 ```bash
 # Install the package
 pip install oarc-crawlers
 
 # Basic CLI usage examples
-oarc-crawlers youtube download --url "https://youtube.com/watch?v=dQw4w9WgXcQ"
-oarc-crawlers github analyze --url "https://github.com/pytorch/pytorch"
+oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ"
+oarc-crawlers gh analyze --url "https://github.com/pytorch/pytorch"
 oarc-crawlers arxiv download --id "2103.00020"
 oarc-crawlers ddg text --query "python async programming" --max-results 5
-oarc-crawlers bs pypi --package "requests"
+oarc-crawlers web pypi --package "requests"
 
 # Get help for any command
 oarc-crawlers --help
-oarc-crawlers youtube --help
+oarc-crawlers yt --help # help for specific command
 ```
 
 For more detailed CLI usage examples and command patterns, see the [CLI Usage](docs/Examples.md#cli-usage) section in our Examples documentation.
-
-### Development
-
-For development purposes, oarc-crawlers can be installed by cloning the repository:
-
-```bash
-# Clone the repository
-git clone https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers.git
-cd oarc-crawlers
-
-# Install UV package manager
-pip install uv
-
-# Create & activate virtual environment with UV
-uv venv --python 3.11
-
-# Install the package and dependencies in one step
-uv run pip install -e .[dev]
-```
-
-#### Package Structure
-
-```Bash
-oarc-crawlers/
-├── .github/                     # GitHub workflows and config
-├── docs/                        # Core documentation
-├── examples/                    # Example usage scripts
-├── src/
-│   └── oarc_crawlers/           # Source code to package
-│   │   └── cli/                 # CLI tools directory
-│   └── tests/                   # Unit tests
-└── README.md                    # Project overview
-└── LICENSE                      # Apache 2.0
-```
 
 ## API Usage
 
@@ -92,7 +59,7 @@ OARC-Crawlers provides a simple, intuitive Python API that allows you to integra
 ### Basic Import Pattern
 
 ```python
-from oarc_crawlers import YouTubeDownloader, GitHubCrawler, ArxivFetcher, DuckDuckGoSearcher, BSWebCrawler
+from oarc_crawlers import YTCrawler, GHCrawler, ArxivCrawler, DDGCrawler, WebCrawler
 
 # Optional: Configure the data directory
 DATA_DIR = "./my_data_directory"
@@ -102,18 +69,18 @@ DATA_DIR = "./my_data_directory"
 
 ```python
 import asyncio
-from oarc_crawlers import YouTubeDownloader, ParquetStorage
+from oarc_crawlers import YTCrawler, ParquetStorage
 
 async def download_video():
-    # Initialize the downloader
-    yt = YouTubeDownloader(data_dir="./data")
+    # Initialize the crawler
+    yt = YTCrawler(data_dir="./data")
     
     # Download a video
     result = await yt.download_video("https://youtube.com/watch?v=dQw4w9WgXcQ")
     
     # Print the result
-    print(f"Video saved to: {result['file_path']}")
-    print(f"Video metadata: {result['metadata']}")
+    print(f"Video saved to: {result.get('file_path', 'N/A')}")
+    print(f"Video title: {result.get('title', 'Unknown')}")
 
 # Run the async function
 asyncio.run(download_video())
@@ -125,18 +92,18 @@ The package includes a collection of example scripts that demonstrate how to use
 
 ```bash
 # Run specific module example
-uv run examples/run_example.py youtube
-uv run examples/run_example.py github
-uv run examples/run_example.py ddg
-uv run examples/run_example.py bs
-uv run examples/run_example.py arxiv
-uv run examples/run_example.py parquet
+uv run python examples/run_example.py youtube
+uv run python examples/run_example.py github
+uv run python examples/run_example.py ddg
+uv run python examples/run_example.py bs # Note: 'bs' refers to BeautifulSoup/WebCrawler examples
+uv run python examples/run_example.py arxiv
+uv run python examples/run_example.py parquet
 
 # Run the combined example
-uv run examples/run_example.py combined
+uv run python examples/run_example.py combined
 
 # Run all examples
-uv run examples/run_example.py all
+uv run python examples/run_example.py all
 ```
 
 For detailed examples and advanced usage patterns, check our comprehensive [Examples](docs/Examples.md) documentation.
@@ -163,7 +130,42 @@ For detailed examples and advanced usage patterns, check our comprehensive [Exam
 | **Data Management** | [Working with Parquet Files](docs/Examples.md#working-with-parquet-files) |
 | | [Converting Between Formats](docs/Examples.md#converting-between-formats) |
 
-## Running Tests
+## Development
+
+For development purposes, oarc-crawlers can be installed by cloning the repository:
+
+```bash
+# Clone the repository
+git clone https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers.git
+cd oarc-crawlers
+
+# Install UV package manager
+pip install uv
+
+# Create & activate virtual environment with UV (use 3.10 or 3.11)
+uv venv --python 3.11
+
+# Install the package and dependencies in one step
+uv run pip install -e .[dev]
+```
+
+### Package Structure
+
+```Bash
+oarc-crawlers/
+├── .github/                     # GitHub workflows and config
+├── docs/                        # Core documentation
+├── examples/                    # Example usage scripts
+├── src/
+│   └── oarc_crawlers/           # Source code to package
+│   └── tests/                   # Unit tests
+└── README.md                    # Project overview
+└── LICENSE                      # Apache 2.0
+```
+
+See the [Project](docs/Project.md) for more detail information on our exact module structure for the project.
+
+### Running OARC Tests
 
 To run all tests:
 
@@ -173,38 +175,27 @@ uv run pytest
 
 Or to run a specific test:
 ```bash
-uv run -m pytest oarc_crawlers.tests.test_parquet_storage
+uv run pytest src/tests/test_parquet_storage.py
 ```
-
-## Troubleshooting
-
-For common issues and their solutions, please refer to our [Troubleshooting Guide](docs/Troubleshoot.md).
-
-Quick links to specific troubleshooting sections:
-- [Virtual Environment Issues](docs/Troubleshoot.md#virtual-environment-issues)
-- [Installation Problems](docs/Troubleshoot.md#installation-problems)
-- [Dependency Conflicts](docs/Troubleshoot.md#dependency-conflicts)
-- [Runtime Errors](docs/Troubleshoot.md#runtime-errors)
-- [Platform-Specific Issues](docs/Troubleshoot.md#platform-specific-issues)
 
 ## Architecture
 
-The `oarc-crawlers` package is designed with a modular architecture, allowing for easy extension and maintenance. Each crawler (YouTube, GitHub, ArXiv, DuckDuckGo, BeautifulSoup) operates independently but shares a common interface for data storage via the `ParquetStorage` utility. The system leverages asynchronous programming (`asyncio`) for efficient I/O operations, especially crucial for network-bound tasks like downloading videos or cloning repositories. A unified Command Line Interface (CLI) built with `typer` provides a consistent user experience across all modules.
+The `oarc-crawlers` package is designed with a modular architecture, allowing for easy extension and maintenance. Each crawler (`YTCrawler`, `GHCrawler`, `ArxivCrawler`, `DDGCrawler`, `WebCrawler`) operates independently but shares a common interface for data storage via the `ParquetStorage` utility. The system leverages asynchronous programming (`asyncio`) for efficient I/O operations, especially crucial for network-bound tasks like downloading videos or cloning repositories. A unified Command Line Interface (CLI) built with `click` provides a consistent user experience across all modules.
 
 ```mermaid
 graph TD
     subgraph UserInteraction
-        CLI[CLI Typer]
+        CLI[CLI Click]
         API[Python API]
     end
 
     subgraph CoreModules
         Router{Module Router}
-        YT[YouTubeDownloader]
-        GH[GitHubCrawler]
-        AX[ArxivFetcher]
-        DDG[DuckDuckGoSearcher]
-        BS[BSWebCrawler]
+        YT[YTCrawler]
+        GH[GHCrawler]
+        AX[ArxivCrawler]
+        DDG[DDGCrawler]
+        WEB[WebCrawler]
     end
 
     subgraph DataHandling
@@ -226,25 +217,25 @@ graph TD
     Router --> GH
     Router --> AX
     Router --> DDG
-    Router --> BS
+    Router --> WEB
 
     YT --> SourceYT
     GH --> SourceGH
     AX --> SourceAX
     DDG --> SourceDDG
-    BS --> SourceWeb
+    WEB --> SourceWeb
 
     SourceYT -- Data --> YT
     SourceGH -- Data --> GH
     SourceAX -- Data --> AX
     SourceDDG -- Data --> DDG
-    SourceWeb -- Data --> BS
+    SourceWeb -- Data --> WEB
 
     YT -- Data --> PS
     GH -- Data --> PS
     AX -- Data --> PS
     DDG -- Data --> PS
-    BS -- Data --> PS
+    WEB -- Data --> PS
 
     PS --> FS
 ```
@@ -260,6 +251,65 @@ While numerous web scraping and data extraction tools exist, `oarc-crawlers` was
 
 In essence, `oarc-crawlers` acts as the sensory input mechanism for AI agents within the OARC framework, enabling them to perceive and interact with dynamic, real-world information from various online sources in a structured and actionable way.
 
+## FAQ
+
+**Q: What is OARC-Crawlers?**  
+A: OARC-Crawlers is a modular Python framework for acquiring, processing, and storing data from sources like YouTube, GitHub, ArXiv, DuckDuckGo, and general websites. It provides both CLI and Python API interfaces, with unified Parquet storage for all outputs.
+
+**Q: Which Python versions are supported?**  
+A: Python 3.10 and 3.11 are supported. Python 3.12+ is not yet fully supported due to dependency compatibility.
+
+**Q: How do I install OARC-Crawlers?**  
+A: You can install via pip (`pip install oarc-crawlers`) or from source. See the "Setup" section above for details.
+
+**Q: What is the recommended way to manage environments?**  
+A: Use the `uv` package manager to create a virtual environment with Python 3.10 or 3.11 for best compatibility.
+
+**Q: How do I run a crawler from the command line?**  
+A: Use the CLI, e.g.,  
+```bash
+oarc-crawlers yt download --url "https://youtube.com/watch?v=..."
+oarc-crawlers gh analyze --url "https://github.com/..."
+```
+See the CLI Usage section for more examples.
+
+**Q: How do I use the Python API?**  
+A: Import the relevant crawler and use async methods. Example:
+```python
+from oarc_crawlers import YTCrawler
+yt = YTCrawler(data_dir="./data")
+result = await yt.download_video("https://youtube.com/watch?v=...")
+```
+
+**Q: What data format is used for storage?**  
+A: All crawlers use Apache Parquet for structured, efficient, and analysis-ready data storage.
+
+**Q: Can I use OARC-Crawlers in agentic or AI workflows?**  
+A: Yes. The framework is designed for integration with agentic systems and supports asynchronous operation for non-blocking workflows.
+
+**Q: How does error handling work?**  
+A: Errors are logged and returned as structured output (e.g., dictionaries with error messages) rather than raising exceptions, allowing workflows to continue when possible.
+
+**Q: Where can I find more examples?**  
+A: See the [Examples](docs/Examples.md) documentation for detailed usage patterns.
+
+**Q: How do I report bugs or request features?**  
+A: Please open an issue on [GitHub Issues](https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers/issues).
+
+**Q: Where can I get help?**  
+A: Refer to the [Troubleshooting Guide](docs/Troubleshoot.md) or contact the maintainers via email or GitHub Issues.
+
+## Troubleshooting
+
+For common issues and their solutions, please refer to our [Troubleshooting Guide](docs/Troubleshoot.md).
+
+Quick links to specific troubleshooting sections:
+- [Virtual Environment Issues](docs/Troubleshoot.md#virtual-environment-issues)
+- [Installation Problems](docs/Troubleshoot.md#installation-problems)
+- [Dependency Conflicts](docs/Troubleshoot.md#dependency-conflicts)
+- [Runtime Errors](docs/Troubleshoot.md#runtime-errors)
+- [Platform-Specific Issues](docs/Troubleshoot.md#platform-specific-issues)
+
 ## License
 
 This project is licensed under the [Apache 2.0 License](LICENSE)
@@ -269,11 +319,13 @@ This project is licensed under the [Apache 2.0 License](LICENSE)
 Please use the following BibTeX entry to cite this project:
 
 ```bibtex
-@software{oarc,
-  author = {Leo Borcherding, Kara Rawson},
-  title = {OARC: Ollama Agent Roll Cage is a powerful multimodal toolkit for AI interactions, automation, and workflows.},
-  date = {4-10-2025},
-  howpublished = {\url{https://github.com/Ollama-Agent-Roll-Cage/oarc}}
+@software{oarc_crawlers,
+  author = {OARC Team},
+  title = {OARC-Crawlers: OARC's dynamic webcrawler module collection},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers}}
 }
 ```
 

@@ -8,8 +8,8 @@ import tempfile
 import inspect
 from typing import List, Dict, Any, Optional
 
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.utils.errors import MCPError
+from oarc_log import log
+from oarc_decorators import MCPError
 
 
 class MCPUtils:

@@ -9,6 +9,7 @@ from oarc_crawlers.core.crawlers.arxiv_crawler import ArxivCrawler
 from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
 from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
 from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
 
 __all__ = [
     "YTCrawler",
@@ -17,4 +18,5 @@ __all__ = [
     "WebCrawler",
     "DDGCrawler",
     "ParquetStorage",
+    "MCPServer",
 ]

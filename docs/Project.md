@@ -35,7 +35,7 @@
 │       ├── fastmcp_wrapper.py      # Wrapper for FastMCP (if applicable)
 │       ├── gh_crawler.py           # GitHub crawler logic
 │       ├── parquet_storage.py      # Parquet file storage handler
-│       ├── youtube_script.py       # YouTube script fetching logic
+│       ├── yt_crawler.py       # YouTube script fetching logic
 │       └── __init__.py             # Makes 'oarc_crawlers' a Python package
 └── tests/                  # Unit and integration tests
    ├── run_tests.py            # Script to run tests (if needed)
@@ -44,7 +44,7 @@
    ├── test_ddg.py
    ├── test_github_crawler.py
    ├── test_parquet_storage.py
-   └── test_youtube_script.py
+   └── test_yt_crawler.py
 
 # Notes:
 # - .git/ directory (Git repository data) is omitted for brevity.

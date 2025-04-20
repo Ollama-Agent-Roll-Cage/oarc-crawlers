@@ -1,44 +1,76 @@
-"""GitHub command module for OARC Crawlers.
+"""GitHub CLI command module for OARC Crawlers.
 
-This module provides CLI commands for interacting with GitHub repositories,
-including cloning, analyzing, and finding similar code snippets using the OARC Crawlers framework.
+Provides commands to interact with GitHub repositories, including:
+    • Cloning repositories
+    • Analyzing repository metadata and contents
+    • Finding similar code snippets within repositories
+
+Intended for use via the OARC Crawlers command-line interface.
 """
+
 import click
 
+from oarc_log import log, enable_debug_logging
+from oarc_decorators import (
+    asyncio_run, 
+    handle_error, 
+    DataExtractionError,
+)
+
 from oarc_crawlers.cli.help_texts import (
-    GH_HELP,
+    GH_GROUP_HELP,
     GH_CLONE_HELP,
     GH_ANALYZE_HELP,
     GH_FIND_SIMILAR_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_REPO_URL_HELP,
+    ARGS_OUTPUT_PATH_HELP,
+    ARGS_CODE_HELP,
+    ARGS_LANGUAGE_HELP,
 )
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.gh_crawler import GHCrawler
-from oarc_crawlers.decorators import asyncio_run, handle_error
 from oarc_crawlers.utils.const import SUCCESS
-from oarc_crawlers.utils.errors import DataExtractionError
-from oarc_crawlers.utils.log import log, enable_debug_logging
 
 
-@click.group(help=GH_HELP)
-def gh():
-    """Group of GitHub-related CLI commands: clone, analyze, and find similar code in repositories."""
+@click.group(help=GH_GROUP_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
+def gh(verbose, config):
+    """
+    Group of GitHub-related CLI commands for repository operations.
+
+    This group provides commands to interact with GitHub repositories, including:
+      • Cloning repositories
+      • Analyzing repository metadata and contents
+      • Finding similar code snippets within repositories
+
+    Use --help with subcommands for more details.
+    """
     pass
 
+
 @gh.command(help=GH_CLONE_HELP)
-@click.option('--url', required=True, help='GitHub repository URL')
-@click.option('--output-path', help='Directory to save the cloned repository')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--url', required=True, help=ARGS_REPO_URL_HELP)
+@click.option('--output-path', help=ARGS_OUTPUT_PATH_HELP)
 @asyncio_run
 @handle_error
 async def clone(url, output_path):
     """Clone a GitHub repository and store it locally.
 
+    Clones the specified GitHub repository and saves it to the given output path.
+    If no output path is provided, the repository is stored in the default data directory.
+
     Args:
         url (str): The GitHub repository URL to clone.
-        output_path (str, optional): Directory to save the cloned repository.
+        output_path (str, optional): Directory where the cloned repository will be saved.
 
     Returns:
-        int: SUCCESS constant if the operation completes successfully.
+        int: SUCCESS constant if the repository is cloned successfully.
+
+    Raises:
+        Exception: If cloning fails due to network issues, invalid URL, or permission errors.
     """
     crawler = GHCrawler(data_dir=output_path)
     
@@ -51,21 +83,28 @@ async def clone(url, output_path):
         click.secho(f"✓ Repository cloned and stored at: {result}", fg='green')
         return SUCCESS
     except Exception as e:
-        # Just re-raise the exception for the error handler to deal with
         raise
 
 
 @gh.command(help=GH_ANALYZE_HELP)
-@click.option('--url', required=True, help='GitHub repository URL')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--url', required=True, help=ARGS_REPO_URL_HELP)
 @asyncio_run
 @handle_error
 async def analyze(url):
     """Analyze and summarize a GitHub repository.
 
-    This command fetches repository metadata, analyzes its contents,
-    and provides a summary including languages, topics, and key statistics.
+    Retrieves metadata and analyzes the contents of the specified GitHub repository.
+    Provides a summary including primary languages, topics, contributors, and key statistics
+    such as stars, forks, and recent activity.
+
+    Args:
+        url (str): The GitHub repository URL to analyze.
+
+    Returns:
+        int: SUCCESS constant if the analysis completes successfully.
+
+    Raises:
+        DataExtractionError: If the repository cannot be analyzed or data extraction fails.
     """
     crawler = GHCrawler()
     
@@ -82,15 +121,17 @@ async def analyze(url):
 
 
 @gh.command(help=GH_FIND_SIMILAR_HELP)
-@click.option('--url', required=True, help='GitHub repository URL')
-@click.option('--code', required=True, help='Code snippet to find similar code for')
-@click.option('--language', help='Programming language of the code snippet')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--url', required=True, help=ARGS_REPO_URL_HELP)
+@click.option('--code', required=True, help=ARGS_CODE_HELP)
+@click.option('--language', help=ARGS_LANGUAGE_HELP)
 @asyncio_run
 @handle_error
 async def find_similar(url, code, language):
-    """Find code snippets in a GitHub repository that are similar to the provided code.
+    """Search for code snippets in a GitHub repository similar to the provided code.
+
+    This command scans the specified repository for code fragments that closely match
+    the given code snippet. Optionally, a programming language can be specified to
+    refine the search and improve matching accuracy.
 
     Args:
         url (str): The GitHub repository URL to search within.
@@ -99,6 +140,9 @@ async def find_similar(url, code, language):
 
     Returns:
         int: SUCCESS constant if similar code is found and displayed.
+
+    Raises:
+        DataExtractionError: If no similar code is found or the search fails.
     """
     crawler = GHCrawler()
     

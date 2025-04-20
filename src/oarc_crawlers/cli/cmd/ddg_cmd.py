@@ -1,36 +1,55 @@
 """DuckDuckGo command module for OARC Crawlers.
 
-This module provides CLI commands for performing DuckDuckGo searches,
-including text, image, and news queries using the OARC Crawlers framework.
+This module defines CLI commands for interacting with DuckDuckGo via the OARC Crawlers framework.
+It provides commands for performing text, image, and news searches, supporting configurable options
+such as query terms and result limits.
 """
+
 import click
 
+from oarc_log import log, enable_debug_logging
+from oarc_decorators import (
+    asyncio_run, 
+    handle_error, 
+    NetworkError,
+)
+
 from oarc_crawlers.cli.help_texts import (
-    DDG_HELP,
-    DDG_TEXT_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_MAX_RESULTS_HELP,
+    ARGS_QUERY_HELP,
+    ARGS_VERBOSE_HELP,
+    DDG_GROUP_HELP,
     DDG_IMAGES_HELP,
     DDG_NEWS_HELP,
+    DDG_TEXT_HELP,
 )
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.ddg_crawler import DDGCrawler
-from oarc_crawlers.decorators import asyncio_run, handle_error
-from oarc_crawlers.utils.const import SUCCESS
-from oarc_crawlers.utils.errors import NetworkError
-from oarc_crawlers.utils.log import log, enable_debug_logging
+from oarc_crawlers.utils.const import ERROR, SUCCESS
 
-@click.group(help=DDG_HELP)
-def ddg():
-    """Group of DuckDuckGo-related CLI commands: text, image, and news search."""
+
+@click.group(help=DDG_GROUP_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
+def ddg(verbose, config):
+    """
+    Group of DuckDuckGo-related CLI commands for search operations.
+
+    This group provides commands to perform text, image, and news searches using DuckDuckGo.
+    Use the available subcommands to specify the type of search and customize options such as query and result limits.
+    """
     pass
 
 @ddg.command(help=DDG_TEXT_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=5, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=5, type=int, help=ARGS_MAX_RESULTS_HELP)
 @asyncio_run
 @handle_error
 async def text(query, max_results):
     """Perform a DuckDuckGo text search.
+
+    Executes a search query using DuckDuckGo and returns a list of relevant text results.
 
     Args:
         query (str): The search query string.
@@ -39,12 +58,12 @@ async def text(query, max_results):
     Returns:
         int: SUCCESS constant if the search completes successfully.
     """
-    searcher = DDGCrawler()
+    crawler = DDGCrawler()
     
     click.echo(f"Searching DuckDuckGo for: {query}")
     log.debug(f"Using max_results: {max_results}")
     
-    result = await searcher.text_search(query, max_results=max_results)
+    result = await crawler.text_search(query, max_results=max_results)
     
     if 'error' in result:
         raise NetworkError(f"Search failed: {result['error']}")
@@ -54,14 +73,14 @@ async def text(query, max_results):
     return SUCCESS
 
 @ddg.command(help=DDG_IMAGES_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=10, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=10, type=int, help=ARGS_MAX_RESULTS_HELP)
 @asyncio_run
 @handle_error
 async def images(query, max_results):
     """Perform a DuckDuckGo image search.
+
+    Executes an image search query using DuckDuckGo and returns a list of relevant image results.
 
     Args:
         query (str): The search query string.
@@ -70,12 +89,12 @@ async def images(query, max_results):
     Returns:
         int: SUCCESS constant if the image search completes successfully.
     """
-    searcher = DDGCrawler()
+    crawler = DDGCrawler()
     
     click.echo(f"Searching DuckDuckGo images for: {query}")
     log.debug(f"Using max_results: {max_results}")
     
-    result = await searcher.image_search(query, max_results=max_results)
+    result = await crawler.image_search(query, max_results=max_results)
     
     if 'error' in result:
         raise NetworkError(f"Image search failed: {result['error']}")
@@ -85,30 +104,30 @@ async def images(query, max_results):
     return SUCCESS
 
 @ddg.command(help=DDG_NEWS_HELP)
-@click.option('--query', required=True, help='Search query')
-@click.option('--max-results', default=20, type=int, help='Maximum number of results')
-@click.option('--verbose', is_flag=True, help='Show detailed error information', 
-              callback=enable_debug_logging)
+@click.option('--query', required=True, help=ARGS_QUERY_HELP)
+@click.option('--max-results', default=20, type=int, help=ARGS_MAX_RESULTS_HELP)
 @asyncio_run
 @handle_error
 async def news(query, max_results):
     """Perform a DuckDuckGo news search.
 
+    Executes a news search query using DuckDuckGo and returns a list of relevant news articles.
+
     Args:
         query (str): The search query string.
-        max_results (int): Maximum number of news results to return.
+        max_results (int): Maximum number of news articles to return.
 
     Returns:
         int: SUCCESS constant if the news search completes successfully.
     """
-    searcher = DDGCrawler()
+    crawler = DDGCrawler()
     
     click.echo(f"Searching DuckDuckGo news for: {query}")
     log.debug(f"Using max_results: {max_results}")
     
-    result = await searcher.news_search(query, max_results=max_results)
+    result = await crawler.news_search(query, max_results=max_results)
     
-    if 'error' in result:
+    if ERROR in result:
         raise NetworkError(f"News search failed: {result['error']}")
     
     log.debug(f"Got {len(result.get('results', []))} news results")

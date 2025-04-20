@@ -8,12 +8,20 @@ enabling seamless integration with FastMCP servers and VS Code extensions.
 Author: @Borcherdingl, RawsonK
 Date: 2025-04-18
 """
+
 import sys
 import asyncio
 from typing import Dict, List, Optional
 
 from fastmcp import FastMCP
 from aiohttp.client_exceptions import ClientError
+
+from oarc_log import log
+from oarc_decorators import (
+    singleton,
+    MCPError,
+    TransportError,
+)
 
 from oarc_crawlers.core import (
     YTCrawler,
@@ -22,10 +30,8 @@ from oarc_crawlers.core import (
     WebCrawler,
     ArxivCrawler,
 )
-from oarc_crawlers.utils.const import ERROR, VERSION
-from oarc_crawlers.utils.errors import MCPError, TransportError
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.decorators.singleton import singleton
+from oarc_crawlers.utils.const import FAILURE, VERSION
+
 
 @singleton
 class MCPServer:
@@ -189,7 +195,7 @@ class MCPServer:
             return asyncio.run(self.start_server())
         except KeyboardInterrupt:
             log.error("Server stopped by user")
-            sys.exit(ERROR)
+            sys.exit(FAILURE)
         except (TransportError, MCPError) as e:
             raise MCPError(f"MCP server error: {e}")
         except Exception as e:

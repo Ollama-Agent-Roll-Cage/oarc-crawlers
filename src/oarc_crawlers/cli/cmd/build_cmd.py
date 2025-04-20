@@ -1,36 +1,53 @@
-"""
-Build command module for OARC Crawlers.
+"""Build CLI command module for OARC Crawlers.
 
-This module provides CLI commands for building and managing the OARC Crawlers package,
-including cleaning build directories and packaging the project.
+Provides commands to build and manage OARC Crawlers packages, including:
+    • Cleaning build directories
+    • Creating distribution packages
+
+Intended for use via the OARC Crawlers command-line interface.
 """
+
 import click
 
-from oarc_crawlers.cli.help_texts import BUILD_HELP, BUILD_PACKAGE_HELP
-from oarc_crawlers.decorators import handle_error
+from oarc_log import log, enable_debug_logging
+from oarc_decorators import handle_error, BuildError
+
+from oarc_crawlers.cli.help_texts import (
+    BUILD_GROUP_HELP,
+    BUILD_PACKAGE_HELP,
+    ARGS_VERBOSE_HELP,
+    ARGS_CONFIG_HELP,
+    ARGS_CLEAN_HELP,
+)
+from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.utils.build_utils import BuildUtils
 from oarc_crawlers.utils.const import SUCCESS
-from oarc_crawlers.utils.errors import BuildError
-from oarc_crawlers.utils.log import log, enable_debug_logging
 
 
-@click.group(help=BUILD_HELP)
-def build():
-    """Group of build-related CLI commands: clean, package, and manage build artifacts."""
+@click.group(help=BUILD_GROUP_HELP)
+@click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
+@click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
+def build(verbose, config):
+    """
+    Group of build-related CLI commands for OARC Crawlers.
+
+    This group provides commands to build and manage OARC Crawlers packages,
+    such as cleaning build directories and creating distribution packages.
+
+    Use --help with subcommands for more details.
+    """
     pass
 
 
 @build.command(help=BUILD_PACKAGE_HELP)
-@click.option('--clean/--no-clean', default=False, help='Clean build directories first')
-@click.option('--verbose', is_flag=True, help='Show detailed error information',
-              callback=enable_debug_logging)
+@click.option('--clean/--no-clean', default=False, help=ARGS_CLEAN_HELP)
 @handle_error
 def package(clean):
     """
     Build the OARC Crawlers package.
 
-    This command optionally cleans build directories before packaging,
-    then builds the OARC Crawlers distribution package.
+    Optionally cleans build directories before building, then creates the
+    OARC Crawlers distribution package.
 
     Args:
         clean (bool): If True, clean build directories before building.

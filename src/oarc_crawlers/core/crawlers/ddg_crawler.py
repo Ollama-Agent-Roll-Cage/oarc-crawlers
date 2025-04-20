@@ -4,38 +4,58 @@ DuckDuckGo Search API with Extended Capabilities
 This module provides an enhanced interface for performing DuckDuckGo text, image, and news searches.
 This module also includes functionality to save search results in Parquet format for later analysis.
 
-Author: @BorcherdingL
-Date: 4/9/2025
+Author: @BorcherdingL, RawsonK
+Date: 4/20/2025
 """
 
-import re
-import logging
-import urllib.parse
-import xml.etree.ElementTree as ET
 import json
-
+import urllib.parse
 from datetime import datetime, UTC
 from pathlib import Path
+from typing import Optional
+
 import aiohttp
 
-from ..storage.parquet_storage import ParquetStorage
+from oarc_log import log
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
+from oarc_crawlers.config.config import Config
+from oarc_crawlers.utils.const import (
+    DDG_BASE_URL,
+    DDG_API_PARAMS,
+    DDG_IMAGES_PARAMS,
+    DDG_NEWS_PARAMS,
+    DDG_TEXT_SEARCH_HEADER,
+    DDG_IMAGE_SEARCH_HEADER,
+    DDG_NEWS_SEARCH_HEADER,
+    DEFAULT_HEADERS,
+)
+from oarc_crawlers.utils.paths import Paths
+
 
 class DDGCrawler:
     """Class for performing searches using DuckDuckGo API."""
     
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir: Optional[str] = None):
         """Initialize the DuckDuckGo Searcher.
         
         Args:
-            data_dir (str, optional): Directory to store data.
+            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
-        self.data_dir = data_dir if data_dir else Path("./data")
-        self.searches_dir = Path(f"{self.data_dir}/searches")
-        self.searches_dir.mkdir(parents=True, exist_ok=True)
-        self.logger = logging.getLogger(__name__)
+        # Get configuration using get_instance() pattern
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        else:
+            self.data_dir = Paths.get_default_data_dir()
+        
+        self.searches_dir = Paths.ddg_searches_dir(self.data_dir)
+        
+        # Get headers from config
+        self.headers = DEFAULT_HEADERS.copy()
+        config = Config.get_instance()
+        if config.user_agent:
+            self.headers["User-Agent"] = config.user_agent
+
     
     async def text_search(self, search_query, max_results=5):
         """Perform an async text search using DuckDuckGo.
@@ -49,10 +69,10 @@ class DDGCrawler:
         """
         try:
             encoded_query = urllib.parse.quote(search_query)
-            url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&pretty=1"
+            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get(url, timeout=Config.get_instance().timeout) as response:
                     if response.status == 200:
                         result_text = await response.text()
                         try:
@@ -65,13 +85,12 @@ class DDGCrawler:
                                 'raw_results': result_text
                             }
                             
-                            # Generate a filename from the query
-                            filename = re.sub(r'[^\w]', '_', search_query)[:50]
-                            file_path = f"{self.data_dir}/searches/{filename}_{int(datetime.now().timestamp())}.parquet"
+                            # Use path utilities to save the search data
+                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "text")
                             ParquetStorage.save_to_parquet(search_data, file_path)
                             
                             # Format the response nicely for Discord
-                            formatted_results = "# DuckDuckGo Search Results\n\n"
+                            formatted_results = f"{DDG_TEXT_SEARCH_HEADER}\n\n"
                             
                             if 'AbstractText' in results and results['AbstractText']:
                                 formatted_results += f"## Summary\n{results['AbstractText']}\n\n"
@@ -92,7 +111,7 @@ class DDGCrawler:
                     else:
                         return f"Error: Received status code {response.status} from DuckDuckGo API."
         except Exception as e:
-            self.logger.error(f"DuckDuckGo search error: {e}")
+            log.error(f"DuckDuckGo search error: {e}")
             return f"An error occurred during the search: {str(e)}"
 
     async def image_search(self, search_query, max_results=10):
@@ -107,10 +126,10 @@ class DDGCrawler:
         """
         try:
             encoded_query = urllib.parse.quote(search_query)
-            url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&pretty=1&iax=images&ia=images"
+            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}&{DDG_IMAGES_PARAMS}"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get(url, timeout=Config.get_instance().timeout) as response:
                     if response.status == 200:
                         result_text = await response.text()
                         try:
@@ -124,13 +143,12 @@ class DDGCrawler:
                                 'raw_results': result_text
                             }
                             
-                            # Generate a filename from the query
-                            filename = re.sub(r'[^\w]', '_', search_query)[:50]
-                            file_path = f"{self.data_dir}/searches/img_{filename}_{int(datetime.now().timestamp())}.parquet"
+                            # Use path utilities to save the search data
+                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "image")
                             ParquetStorage.save_to_parquet(search_data, file_path)
                             
                             # Format the response nicely
-                            formatted_results = "# DuckDuckGo Image Search Results\n\n"
+                            formatted_results = f"{DDG_IMAGE_SEARCH_HEADER}\n\n"
                             
                             # Extract image results
                             if 'Images' in results:
@@ -165,7 +183,7 @@ class DDGCrawler:
                     else:
                         return f"Error: Received status code {response.status} from DuckDuckGo API."
         except Exception as e:
-            self.logger.error(f"DuckDuckGo image search error: {e}")
+            log.error(f"DuckDuckGo image search error: {e}")
             return f"An error occurred during the image search: {str(e)}"
 
     async def news_search(self, search_query, max_results=20):
@@ -180,10 +198,10 @@ class DDGCrawler:
         """
         try:
             encoded_query = urllib.parse.quote(search_query)
-            url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&pretty=1&ia=news"
+            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}&{DDG_NEWS_PARAMS}"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get(url, timeout=Config.get_instance().timeout) as response:
                     if response.status == 200:
                         result_text = await response.text()
                         try:
@@ -197,13 +215,12 @@ class DDGCrawler:
                                 'raw_results': result_text
                             }
                             
-                            # Generate a filename from the query
-                            filename = re.sub(r'[^\w]', '_', search_query)[:50]
-                            file_path = f"{self.data_dir}/searches/news_{filename}_{int(datetime.now().timestamp())}.parquet"
+                            # Use path utilities to save the search data
+                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "news")
                             ParquetStorage.save_to_parquet(search_data, file_path)
                             
                             # Format the response nicely
-                            formatted_results = "# DuckDuckGo News Search Results\n\n"
+                            formatted_results = f"{DDG_NEWS_SEARCH_HEADER}\n\n"
                             
                             # Try to extract news results
                             if 'News' in results:
@@ -232,7 +249,7 @@ class DDGCrawler:
                                         formatted_results += f"- [{topic['Text']}]({topic['FirstURL']})\n"
                                         count += 1
                             
-                            if formatted_results == "# DuckDuckGo News Search Results\n\n":
+                            if formatted_results == f"{DDG_NEWS_SEARCH_HEADER}\n\n":
                                 formatted_results += "No news results found.\n"
                                 
                             return formatted_results
@@ -241,5 +258,5 @@ class DDGCrawler:
                     else:
                         return f"Error: Received status code {response.status} from DuckDuckGo API."
         except Exception as e:
-            self.logger.error(f"DuckDuckGo news search error: {e}")
+            log.error(f"DuckDuckGo news search error: {e}")
             return f"An error occurred during the news search: {str(e)}"
