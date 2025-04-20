@@ -6,6 +6,8 @@ import pandas as pd
 from pathlib import Path
 
 from oarc_crawlers import GHCrawler
+from oarc_crawlers.utils.crawler_utils import CrawlerUtils
+from oarc_crawlers.utils.paths import Paths
 
 class TestGitHubCrawler(unittest.TestCase):
     """Test the GitHub crawler module."""
@@ -15,10 +17,10 @@ class TestGitHubCrawler(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.crawler = GHCrawler(data_dir=self.temp_dir.name)
         
-        # Test URLs
-        self.repo_url = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
-        self.repo_url_with_branch = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers/tree/develop"
-        self.git_url = "git@github.com:Ollama-Agent-Roll-Cage/oarc/oarc-crawlers.git"
+        # Use test URLs with 'username' as owner
+        self.repo_url = "https://github.com/username/repo"
+        self.repo_url_with_branch = "https://github.com/username/repo/tree/dev"
+        self.git_url = "git@github.com:username/repo.git"
     
     def tearDown(self):
         """Clean up after tests."""
@@ -44,7 +46,7 @@ class TestGitHubCrawler(unittest.TestCase):
         self.assertEqual(repo, "repo")
         self.assertEqual(branch, "main")
 
-        # Test invalid URL - expect ValueError instead of ResourceNotFoundError
+        # Test invalid URL
         with self.assertRaises(ValueError):
             GHCrawler.extract_repo_info_from_url("https://example.com")
     
@@ -62,15 +64,16 @@ class TestGitHubCrawler(unittest.TestCase):
             f.write("This is a text file.")
             
         # Test extension-based detection
-        self.assertTrue(self.crawler.is_binary_file(os.path.join(self.temp_dir.name, "image.png")))
-        self.assertTrue(self.crawler.is_binary_file(os.path.join(self.temp_dir.name, "document.pdf")))
-        self.assertFalse(self.crawler.is_binary_file(text_file))
+        self.assertTrue(Paths.is_binary_file(os.path.join(self.temp_dir.name, "image.png")))
+        self.assertTrue(Paths.is_binary_file(os.path.join(self.temp_dir.name, "document.pdf")))
+        self.assertFalse(Paths.is_binary_file(text_file))
     
     def test_get_language_from_extension(self):
         """Test language detection from file extension."""
-        self.assertEqual(GHCrawler.get_language_from_extension(".py"), "Python")
-        self.assertEqual(GHCrawler.get_language_from_extension(".js"), "JavaScript")
-        self.assertEqual(GHCrawler.get_language_from_extension(".unknown"), "Unknown")
+        # Now test CrawlerUtils instead of GHCrawler
+        self.assertEqual(CrawlerUtils.get_language_from_extension(".py"), "Python")
+        self.assertEqual(CrawlerUtils.get_language_from_extension(".js"), "JavaScript")
+        self.assertEqual(CrawlerUtils.get_language_from_extension(".unknown"), "Unknown")
 
     @patch('git.Repo')
     async def test_clone_repo(self, mock_git):

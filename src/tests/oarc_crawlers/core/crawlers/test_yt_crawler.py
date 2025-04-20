@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from oarc_crawlers import YTCrawler
+from oarc_crawlers.utils.crawler_utils import CrawlerUtils
 
 @patch('oarc_crawlers.yt_crawler.ParquetStorage')
 class TestYTCrawler(unittest.TestCase):
@@ -210,7 +211,7 @@ class TestYTCrawler(unittest.TestCase):
     @patch('pytube.YouTube')
     def test_extract_video_info(self, mock_youtube_class):
         """Test extracting video information."""
-        # Setup mock object
+        # Test the CrawlerUtils method instead
         mock_youtube = MagicMock()
         mock_youtube.title = "Test Video"
         mock_youtube.video_id = self.mock_video_id
@@ -225,7 +226,7 @@ class TestYTCrawler(unittest.TestCase):
         mock_youtube.keywords = ["test", "video"]
         
         # Call the method
-        result = self.crawler._extract_video_info(mock_youtube)
+        result = CrawlerUtils.extract_video_info(mock_youtube)
         
         # Assertions
         self.assertEqual(result['title'], "Test Video")

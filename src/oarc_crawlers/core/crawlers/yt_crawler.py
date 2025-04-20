@@ -45,6 +45,8 @@ from oarc_crawlers.utils.crawler_utils import CrawlerUtils
 from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.const import (
     YOUTUBE_VIDEO_URL_FORMAT,
+    YOUTUBE_WATCH_PATTERN,
+    YOUTUBE_SHORT_PATTERN,
     YT_FORMAT_MP4, YT_FORMAT_MP3,
     YT_RESOLUTION_HIGHEST, 
     YT_RESOLUTION_LOWEST,
@@ -73,6 +75,18 @@ class YTCrawler:
     All methods are designed for robustness, scalability, and integration into research workflows.
     """
 
+    # Class-level attribute to store default data directory
+    _default_data_dir = None
+
+    @classmethod
+    def set_default_data_dir(cls, data_dir: Optional[str] = None):
+        """Set the default data directory for all operations.
+        
+        Args:
+            data_dir: Directory to store downloaded data
+        """
+        cls._default_data_dir = data_dir
+
     @classmethod
     def _sanitize_url(cls, url: str) -> str:
         """Extract and return the clean YouTube video URL from any YouTube URL format.
@@ -86,21 +100,7 @@ class YTCrawler:
         Raises:
             ResourceNotFoundError: If video ID cannot be extracted from URL
         """
-        if "youtube.com/watch" in url:
-            # Handle youtube.com URLs
-            try:
-                video_id = re.search(r'v=([^&]+)', url).group(1)
-                return YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id)
-            except (AttributeError, IndexError):
-                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
-        elif "youtu.be/" in url:
-            # Handle youtu.be URLs
-            try:
-                video_id = url.split("youtu.be/")[1].split("?")[0]
-                return YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id)
-            except IndexError:
-                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
-        return url
+        return CrawlerUtils.sanitize_youtube_url(url)
 
     @classmethod
     async def download_video(cls, url: str, video_format: str = YT_FORMAT_MP4, 
@@ -129,7 +129,7 @@ class YTCrawler:
         """
         # Create default output path if not specified
         if output_path is None:
-            output_path = str(Paths.youtube_videos_dir(data_dir))
+            output_path = str(Paths.youtube_videos_dir(data_dir or cls._default_data_dir))
         
         log.debug(f"Starting download of YouTube video: {url}")
         log.debug(f"Format: {video_format}, Resolution: {resolution}, Extract audio: {extract_audio}")
@@ -159,7 +159,7 @@ class YTCrawler:
             else:
                 raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
-        video_info = cls._extract_video_info(youtube)
+        video_info = CrawlerUtils.extract_video_info(youtube)
         log.debug(f"Successfully extracted metadata for video: {video_info['title']}")
         
         # Get appropriate stream based on parameters
@@ -230,7 +230,7 @@ class YTCrawler:
         })
         
         # Save metadata to Parquet
-        metadata_path = str(Paths.youtube_metadata_path(data_dir, youtube.video_id))
+        metadata_path = str(Paths.youtube_metadata_path(data_dir or cls._default_data_dir, youtube.video_id))
         log.debug(f"Saving metadata to: {metadata_path}")
         ParquetStorage.save_to_parquet(video_info, metadata_path)
         
@@ -250,26 +250,7 @@ class YTCrawler:
         Raises:
             DataExtractionError: If metadata extraction fails.
         """
-        log.debug(f"Extracting metadata for video ID: {youtube.video_id}")
-        
-        video_info = {
-            'title': youtube.title,
-            'video_id': youtube.video_id,
-            'url': YOUTUBE_VIDEO_URL_FORMAT.format(video_id=youtube.video_id),
-            'author': youtube.author,
-            'channel_url': youtube.channel_url,
-            'description': youtube.description,
-            'length': youtube.length,
-            'publish_date': youtube.publish_date.isoformat() if youtube.publish_date else None,
-            'views': youtube.views,
-            'rating': youtube.rating,
-            'thumbnail_url': youtube.thumbnail_url,
-            'keywords': youtube.keywords,
-            'timestamp': datetime.now(UTC).isoformat()
-        }
-        
-        log.debug(f"Successfully extracted metadata for: {video_info['title']}")
-        return video_info
+        return CrawlerUtils.extract_video_info(youtube)
 
     @classmethod
     async def download_playlist(cls, playlist_url: str, format: str = YT_FORMAT_MP4, 
@@ -294,7 +275,7 @@ class YTCrawler:
             DownloadError: If any video download fails.
         """
         if output_path is None:
-            output_path = str(Paths.youtube_playlists_dir(data_dir))
+            output_path = str(Paths.youtube_playlists_dir(data_dir or cls._default_data_dir))
         
         log.debug(f"Starting download of YouTube playlist: {playlist_url}")
         log.debug(f"Format: {format}, Max videos: {max_videos}")
@@ -380,7 +361,7 @@ class YTCrawler:
         except Exception as e:
             raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
-        video_info = cls._extract_video_info(youtube)
+        video_info = CrawlerUtils.extract_video_info(youtube)
         
         captions_data = {
             'video_id': youtube.video_id,
@@ -411,7 +392,7 @@ class YTCrawler:
                 captions_data['captions'][caption.code] = caption.generate_srt_captions()
                 log.debug(f"Used {caption.code} captions as fallback for English")
         
-        captions_dir = Paths.youtube_captions_dir(data_dir)
+        captions_dir = Paths.youtube_captions_dir(data_dir or cls._default_data_dir)
         log.debug(f"Saving captions to directory: {captions_dir}")
         
         for lang_code, content in captions_data['captions'].items():
@@ -481,7 +462,7 @@ class YTCrawler:
             'results': videos
         }
         
-        search_dir = Paths.youtube_search_dir(data_dir)
+        search_dir = Paths.youtube_search_dir(data_dir or cls._default_data_dir)
         safe_query = Paths.sanitize_filename(query)
         metadata_path = Paths.timestamped_path(search_dir, safe_query, "parquet")
         log.debug(f"Saving search results to: {metadata_path}")
@@ -579,7 +560,7 @@ class YTCrawler:
         log.debug(f"Collected {chat_data['message_count']} chat messages")
         
         if chat_data["message_count"] > 0:
-            chat_dir = Paths.youtube_chats_dir(data_dir)
+            chat_dir = Paths.youtube_chats_dir(data_dir or cls._default_data_dir)
             
             parquet_path = str(Paths.timestamped_path(chat_dir, video_id, "parquet"))
             log.debug(f"Saving chat data to Parquet: {parquet_path}")

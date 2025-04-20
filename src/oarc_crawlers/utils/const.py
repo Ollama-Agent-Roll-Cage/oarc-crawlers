@@ -70,6 +70,10 @@ PYPI_JSON_URL = "https://pypi.org/pypi/{package}/json"
 YOUTUBE_VIDEO_URL_FORMAT = "https://www.youtube.com/watch?v={video_id}"
 YOUTUBE_CHANNEL_URL_FORMAT = "https://www.youtube.com/channel/{channel_id}"
 
+# YouTube URL patterns for detection
+YOUTUBE_WATCH_PATTERN = "youtube.com/watch"
+YOUTUBE_SHORT_PATTERN = "youtu.be/"
+
 # YouTube video format constants
 YT_FORMAT_MP4 = "mp4"
 YT_FORMAT_WEBM = "webm"
@@ -104,4 +108,51 @@ ARXIV_PDF_URL_FORMAT = "https://arxiv.org/pdf/{arxiv_id}.pdf"
 ARXIV_NAMESPACES = {
     'atom': 'http://www.w3.org/2005/Atom',
     'arxiv': 'http://arxiv.org/schemas/atom'
+}
+
+# GitHub binary file extensions
+GITHUB_BINARY_EXTENSIONS = {
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
+    '.zip', '.tar', '.gz', '.rar', '.7z',
+    '.exe', '.dll', '.so', '.dylib',
+    '.pyc', '.pyd', '.pyo',
+    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf',
+    '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv',
+    '.ttf', '.otf', '.woff', '.woff2'
+}
+
+# GitHub language mapping from extension
+GITHUB_LANGUAGE_EXTENSIONS = {
+    '.py': 'Python',
+    '.js': 'JavaScript',
+    '.ts': 'TypeScript',
+    '.jsx': 'React',
+    '.tsx': 'React TypeScript',
+    '.html': 'HTML',
+    '.css': 'CSS',
+    '.scss': 'SCSS',
+    '.java': 'Java',
+    '.c': 'C',
+    '.cpp': 'C++',
+    '.cs': 'C#',
+    '.go': 'Go',
+    '.rb': 'Ruby',
+    '.php': 'PHP',
+    '.swift': 'Swift',
+    '.kt': 'Kotlin',
+    '.rs': 'Rust',
+    '.sh': 'Shell',
+    '.md': 'Markdown',
+    '.json': 'JSON',
+    '.yaml': 'YAML',
+    '.yml': 'YAML',
+    '.xml': 'XML',
+    '.sql': 'SQL',
+    '.r': 'R',
+    '.m': 'Objective-C',
+    '.dart': 'Dart',
+    '.lua': 'Lua',
+    '.pl': 'Perl',
+    '.toml': 'TOML',
+    '.ipynb': 'Jupyter Notebook'
 }

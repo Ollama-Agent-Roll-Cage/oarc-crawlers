@@ -15,6 +15,14 @@ from pytube import YouTube
 from oarc_log import log
 from oarc_utils.errors import ResourceNotFoundError
 
+from oarc_crawlers.utils.const import (
+    YOUTUBE_VIDEO_URL_FORMAT,
+    YOUTUBE_WATCH_PATTERN,
+    YOUTUBE_SHORT_PATTERN,
+    GITHUB_LANGUAGE_EXTENSIONS,
+    GITHUB_BINARY_EXTENSIONS
+)
+
 class CrawlerUtils:
     """
     Utility methods for crawler operations across all OARC crawler modules.
@@ -75,21 +83,6 @@ class CrawlerUtils:
         if dt is None:
             dt = datetime.now(UTC)
         return dt.isoformat()
-
-    @staticmethod
-    def ensure_directory(path: Union[str, Path]) -> Path:
-        """
-        Ensure a directory exists and return its Path object.
-        
-        Args:
-            path: Directory path to ensure exists
-            
-        Returns:
-            Path object of the ensured directory
-        """
-        path_obj = Path(path)
-        path_obj.mkdir(parents=True, exist_ok=True)
-        return path_obj
 
     @staticmethod
     def file_size_format(size_bytes: int) -> str:
@@ -214,3 +207,44 @@ class CrawlerUtils:
         
         author_suffix = f" ({', '.join(author_tags)})" if author_tags else ""
         return f"[{msg['datetime']}] {msg['author_name']}{author_suffix}: {msg['message']}"
+    
+    @staticmethod
+    def sanitize_youtube_url(url: str) -> str:
+        """Extract and return the clean YouTube video URL from any YouTube URL format.
+        
+        Args:
+            url (str): Input YouTube URL, can contain extra parameters
+            
+        Returns:
+            str: Clean YouTube video URL with just the video ID
+            
+        Raises:
+            ResourceNotFoundError: If video ID cannot be extracted from URL
+        """
+        if YOUTUBE_WATCH_PATTERN in url:
+            # Handle youtube.com URLs
+            try:
+                video_id = re.search(r'v=([^&]+)', url).group(1)
+                return YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id)
+            except (AttributeError, IndexError):
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        elif YOUTUBE_SHORT_PATTERN in url:
+            # Handle youtu.be URLs
+            try:
+                video_id = url.split(YOUTUBE_SHORT_PATTERN)[1].split("?")[0]
+                return YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id)
+            except IndexError:
+                raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        return url
+        
+    @staticmethod
+    def get_language_from_extension(extension: str) -> str:
+        """Get programming language name from file extension.
+        
+        Args:
+            extension (str): File extension with leading dot
+            
+        Returns:
+            str: Language name or 'Unknown'
+        """
+        return GITHUB_LANGUAGE_EXTENSIONS.get(extension.lower(), 'Unknown')

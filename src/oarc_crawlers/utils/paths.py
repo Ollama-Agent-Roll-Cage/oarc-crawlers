@@ -9,6 +9,7 @@ import os
 import re
 import pathlib
 import tempfile
+import shutil
 from datetime import datetime
 from typing import List, Optional, Union, Tuple
 
@@ -29,7 +30,8 @@ from oarc_crawlers.utils.const import (
     ARXIV_PAPERS_DIR, 
     ARXIV_SOURCES_DIR,
     ARXIV_COMBINED_DIR, 
-    DDG_SEARCHES_DIR
+    DDG_SEARCHES_DIR,
+    GITHUB_BINARY_EXTENSIONS
 )
 
 PathLike = Union[str, pathlib.Path]
@@ -215,6 +217,105 @@ class Paths:
         """
         return os.path.exists(str(file_path))
 
+    @staticmethod
+    def create_temp_dir(prefix: Optional[str] = None) -> pathlib.Path:
+        """
+        Create a temporary directory with an optional prefix.
+        
+        Args:
+            prefix: Optional prefix for the directory name
+            
+        Returns:
+            Path: Path to the created temporary directory
+        """
+        if prefix:
+            temp_dir = pathlib.Path(tempfile.mkdtemp(prefix=prefix))
+        else:
+            temp_dir = pathlib.Path(tempfile.mkdtemp(prefix=TEMP_DIR_PREFIX))
+        log.debug(f"Created temporary directory: {temp_dir}")
+        return temp_dir
+        
+    @staticmethod
+    def ensure_temp_dir(dir_path: Optional[PathLike] = None, prefix: Optional[str] = None) -> pathlib.Path:
+        """
+        Ensure a temporary directory exists, creating it if needed.
+        If dir_path is provided, use that path; otherwise create a new temp directory.
+        
+        Args:
+            dir_path: Path to use (optional)
+            prefix: Prefix for new temp dir if dir_path is None
+            
+        Returns:
+            Path: Path to the temporary directory
+        """
+        if dir_path is None:
+            return Paths.create_temp_dir(prefix)
+            
+        path_obj = pathlib.Path(dir_path)
+        if path_obj.exists():
+            shutil.rmtree(path_obj)
+        path_obj.mkdir(parents=True, exist_ok=True)
+        return path_obj
+        
+    @staticmethod
+    def cleanup_temp_dir(temp_dir: PathLike) -> bool:
+        """
+        Remove a temporary directory and its contents.
+        
+        Args:
+            temp_dir: Path to temporary directory to remove
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            if os.path.exists(str(temp_dir)):
+                shutil.rmtree(str(temp_dir))
+                log.debug(f"Removed temporary directory: {temp_dir}")
+                return True
+            return True  # Already doesn't exist, so consider it a success
+        except Exception as e:
+            log.error(f"Failed to remove temporary directory {temp_dir}: {str(e)}")
+            return False
+            
+    @staticmethod
+    def create_github_temp_dir(owner: str, repo_name: str) -> pathlib.Path:
+        """
+        Create a temporary directory specifically for GitHub repository operations.
+        
+        Args:
+            owner: Repository owner
+            repo_name: Repository name
+            
+        Returns:
+            Path: Path to the created temporary directory
+        """
+        prefix = f"github_repo_{owner}_{repo_name}_"
+        return Paths.create_temp_dir(prefix)
+
+    @staticmethod
+    def is_binary_file(file_path: str) -> bool:
+        """Check if a file is binary.
+        
+        Args:
+            file_path (str): Path to the file
+            
+        Returns:
+            bool: True if file is binary, False otherwise
+        """
+        # Check extension first
+        _, ext = os.path.splitext(file_path.lower())
+        if ext in GITHUB_BINARY_EXTENSIONS:
+            return True
+            
+        # Check file contents if needed
+        try:
+            with open(file_path, 'rb') as f:
+                chunk = f.read(1024)
+                return b'\0' in chunk  # Binary files typically contain null bytes
+        except Exception:
+            return True  # If we can't read it, treat as binary
+
     # YouTube-specific paths
     @staticmethod
     def youtube_data_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
@@ -230,9 +331,9 @@ class Paths:
         # Import here to avoid circular import
         from oarc_crawlers.config.config import Config
         
-        # Use Config().data_dir if base_dir is not provided
+        # Use Config.get_instance().data_dir if base_dir is not provided
         if base_dir is None:
-            config = Config()  # Get the singleton instance
+            config = Config.get_instance()  # Get the singleton instance using get_instance()
             base_dir = str(config.data_dir)
             
         return Paths.ensure_path(pathlib.Path(base_dir) / YOUTUBE_DATA_DIR)

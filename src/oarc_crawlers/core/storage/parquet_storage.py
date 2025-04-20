@@ -33,12 +33,11 @@ class ParquetStorage:
         log.debug(f"Saving data to Parquet file: {file_path}")
         
         try:
-            # Validate path
+            # Use Paths directly instead of StorageUtils
             if not Paths.is_valid_path(file_path):
                 log.error(f"Invalid file path: {file_path}")
                 return False
             
-            # Create parent directories
             success, error_message = Paths.ensure_parent_dir(file_path)
             if not success:
                 log.error(f"Failed to create directory for {file_path}: {error_message}")
@@ -206,7 +205,7 @@ class ParquetStorage:
         try:
             from oarc_crawlers.config.config import Config
             if base_dir is None:
-                base_dir = Config().data_dir
+                base_dir = Config.get_instance().data_dir  # Use get_instance() method
                 
             file_path = str(Paths.github_repo_data_path(base_dir, owner, repo))
             success = ParquetStorage.save_to_parquet(data, file_path)
