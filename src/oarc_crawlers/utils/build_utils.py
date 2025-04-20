@@ -1,4 +1,12 @@
-"""Build utilities for OARC Crawlers."""
+"""
+Build utilities for OARC Crawlers.
+
+This module provides static utility methods for cleaning build artifacts,
+building the package, and publishing to PyPI or TestPyPI. It supports both
+synchronous and asynchronous operations, and handles cross-platform cleanup
+of build directories.
+"""
+
 import os
 import sys
 import subprocess
@@ -6,7 +14,15 @@ import asyncio
 
 
 class BuildUtils:
-    """Build utilities for OARC Crawlers."""
+    """
+    Static utility methods for building, cleaning, and publishing OARC Crawlers.
+
+    This class provides methods to:
+      - Clean build artifacts (dist, build, egg-info)
+      - Build the package using PEP 517 build backend
+      - Publish the package to PyPI or TestPyPI using Twine (supports async)
+    All methods are cross-platform and handle errors gracefully.
+    """
     
 
     @staticmethod

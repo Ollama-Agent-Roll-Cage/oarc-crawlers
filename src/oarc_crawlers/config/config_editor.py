@@ -9,39 +9,49 @@ import configparser
 from pathlib import Path
 from typing import Any, Dict
 
-from click import clear, echo, style
 import questionary
+from click import clear, echo, style
+
+from oarc_decorators import singleton
 
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.config.config_manager import ConfigManager
-from oarc_crawlers.config.config_validators import NumberValidator, PathValidator
-from oarc_crawlers.decorators.singleton import singleton
+from oarc_crawlers.config.config_validators import NumberValidator
 from oarc_crawlers.utils.const import CONFIG_SECTION, DEFAULT_CONFIG_FILENAME
 from oarc_crawlers.utils.paths import Paths
 
-
+# global class
 @singleton
 class ConfigEditor:
     """Interactive UI for editing OARC Crawlers configuration."""
     
-    def __init__(self):
-        """Initialize the configuration editor."""
-        # Initialize with ConfigManager class directly using singleton instantiation
-        self.manager = ConfigManager()
-        self.current_config = self.manager.get_current_config()
-        self.config_details = self.manager.get_config_details()
+    # high class
+    _current_config = None
+    _config_details = None
     
-    def is_config_changed(self) -> bool:
+    @classmethod
+    def _ensure_initialized(cls):
+        """Ensure that the class variables are initialized."""
+        # low class
+        if cls._current_config is None:
+            cls._current_config = ConfigManager.get_current_config()
+            cls._config_details = ConfigManager.get_config_details()
+    
+    @classmethod
+    def is_config_changed(cls) -> bool:
         """Check if the current config differs from saved/default config."""
+        cls._ensure_initialized()
         orig_config = Config()
-        for key, value in self.current_config.items():
+        for key, value in cls._current_config.items():
             orig_value = orig_config.get(key)
             if str(value) != str(orig_value):
                 return True
         return False
     
-    def main_menu(self) -> None:
+    @classmethod
+    def main_menu(cls) -> None:
         """Display the main configuration menu."""
+        cls._ensure_initialized()
         echo(style("\nOARC Crawlers Configuration Editor", fg='green', bold=True))
         
         action = questionary.select(
@@ -61,33 +71,35 @@ class ConfigEditor:
             
         match action:
             case "Edit configuration settings":
-                self.edit_settings()
+                cls.edit_settings()
             case "Save current configuration":
-                self.save_changes(self.current_config)
+                cls.save_changes(cls._current_config)
             case "Reset to defaults":
-                if self.confirm_reset():
-                    self.reset_to_defaults()
+                if cls.confirm_reset():
+                    cls.reset_to_defaults()
                     echo(style("All settings reset to defaults.", fg='green'))
-                    self.main_menu()
+                    cls.main_menu()
             case "Show current configuration":
-                self.manager.display_config_info()
-                self.main_menu()
+                ConfigManager.display_config_info()
+                cls.main_menu()
             case "Exit":
-                if self.is_config_changed():
+                if cls.is_config_changed():
                     save = questionary.confirm(
                         'You have unsaved changes. Save before exiting?',
                         default=True
                     ).ask()
                     if save:
-                        self.save_changes(self.current_config)
+                        cls.save_changes(cls._current_config)
                 return
     
-    def edit_settings(self) -> None:
+    @classmethod
+    def edit_settings(cls) -> None:
         """Present a menu to select which setting to edit."""
+        cls._ensure_initialized()
         choices = []
-        for key in self.current_config.keys():
-            description = self.config_details.get(key, {}).get("description", "")
-            choices.append(f"{key}: {self.current_config[key]} - {description}")
+        for key in cls._current_config.keys():
+            description = cls._config_details.get(key, {}).get("description", "")
+            choices.append(f"{key}: {cls._current_config[key]} - {description}")
         
         choices.append(questionary.Separator())
         choices.append("Back to main menu")
@@ -98,42 +110,44 @@ class ConfigEditor:
         ).ask()
         
         if not setting or setting == "Back to main menu":
-            self.main_menu()
+            cls.main_menu()
             return
             
         key = setting.split(":")[0].strip()
-        self.edit_setting(key)
-        self.edit_settings()
+        cls.edit_setting(key)
+        cls.edit_settings()
     
-    def edit_setting(self, key: str) -> None:
+    @classmethod
+    def edit_setting(cls, key: str) -> None:
         """Edit a specific setting using appropriate input type."""
-        setting_type = self.config_details.get(key, {}).get("type", "string")
-        description = self.config_details.get(key, {}).get("description", "")
-        help_text = self.config_details.get(key, {}).get("help", "")
+        cls._ensure_initialized()
+        setting_type = cls._config_details.get(key, {}).get("type", "string")
+        description = cls._config_details.get(key, {}).get("description", "")
+        help_text = cls._config_details.get(key, {}).get("help", "")
         
         message = f"Enter {key} ({description})"
         if help_text:
             message += f"\n{help_text}"
         
         if setting_type == "select":
-            options = self.config_details.get(key, {}).get("options", [])
+            options = cls._config_details.get(key, {}).get("options", [])
             value = questionary.select(
                 message,
                 choices=options,
-                default=self.current_config[key]
+                default=cls._current_config[key]
             ).ask()
         elif setting_type == "int":
-            value_range = self.config_details.get(key, {}).get("range", (0, 100))
+            value_range = cls._config_details.get(key, {}).get("range", (0, 100))
             value = questionary.text(
                 message,
-                default=str(self.current_config[key]),
+                default=str(cls._current_config[key]),
                 validate=lambda text: NumberValidator().validate(text, min_val=value_range[0], max_val=value_range[1])
             ).ask()
             value = int(value)
         elif setting_type == "path":
             value = questionary.path(
                 message,
-                default=str(self.current_config[key])
+                default=str(cls._current_config[key])
             ).ask()
             
             if value:
@@ -153,32 +167,36 @@ class ConfigEditor:
         else:  # string or other
             value = questionary.text(
                 message,
-                default=str(self.current_config[key])
+                default=str(cls._current_config[key])
             ).ask()
         
         if value is not None:
-            self.current_config[key] = value
+            cls._current_config[key] = value
     
-    def confirm_reset(self) -> bool:
+    @staticmethod
+    def confirm_reset() -> bool:
         """Confirm if user wants to reset to defaults."""
         return questionary.confirm(
             'Reset all settings to defaults?',
             default=False
         ).ask()
     
-    def reset_to_defaults(self) -> None:
+    @classmethod
+    def reset_to_defaults(cls) -> None:
         """Reset all values to their defaults."""
+        cls._ensure_initialized()
         config = Config()
         for key, value in config.DEFAULTS.items():
             if hasattr(value, "__str__"):
-                self.current_config[key] = str(value)
+                cls._current_config[key] = str(value)
             else:
-                self.current_config[key] = value
+                cls._current_config[key] = value
     
-    def save_changes(self, edited_values: Dict[str, Any]) -> bool:
+    @classmethod
+    def save_changes(cls, edited_values: Dict[str, Any]) -> bool:
         """Save changes to configuration file."""
         # Find or create config file
-        config_file = self.manager.find_config_file()
+        config_file = ConfigManager.find_config_file()
         if not config_file:
             config_file = Paths.ensure_config_dir() / DEFAULT_CONFIG_FILENAME
         
@@ -208,18 +226,48 @@ class ConfigEditor:
             ).ask()
             
             if set_env:
-                self.manager.update_env_vars(edited_values)
+                ConfigManager.update_env_vars(edited_values)
             
             return True
         except Exception as e:
             echo(style(f"Error saving config: {e}", fg='red'))
             return False
     
-    def run(self) -> None:
-        """Run the interactive configuration editor."""
+    @classmethod
+    def load_config_file(cls, config_file: str = None) -> None:
+        """
+        Load a specific configuration file.
+        
+        Args:
+            config_file (str, optional): Path to the config file to load
+        """
+        if config_file:
+            # Load the specified config file
+            Config.load_from_file(config_file)
+            
+            # Refresh the current config after loading
+            cls._current_config = ConfigManager.get_current_config()
+            
+            echo(style(f"Loaded configuration from: {config_file}", fg='green'))
+
+    @classmethod
+    def run(cls, config_file: str = None) -> None:
+        """
+        Run the interactive configuration editor.
+        
+        Args:
+            config_file (str, optional): Path to a specific config file to edit
+        """
         try:
+            # Initialize class variables
+            cls._ensure_initialized()
+            
+            # Load specific config file if provided
+            if config_file:
+                cls.load_config_file(config_file)
+                
             clear()
-            self.main_menu()
+            cls.main_menu()
         except KeyboardInterrupt:
             echo(style("\nOperation cancelled by user.", fg='yellow'))
         finally:

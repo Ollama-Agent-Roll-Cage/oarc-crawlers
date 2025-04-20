@@ -1,82 +1,102 @@
 """
 YouTube Crawler Module
 
-This module defines the YTCrawler class, which provides advanced tools for downloading and processing YouTube videos, playlists, captions, and live chat data.
+The `YTCrawler` class provides robust, high-level tools for downloading, extracting, and archiving YouTube content for research and analytics.
 
 Features:
-- Download individual videos or entire playlists in various formats and resolutions.
-- Extract and save video metadata and captions in multiple languages.
-- Search YouTube for videos and save search results.
-- Fetch and archive live stream chat messages.
-- Store all data and metadata in structured Parquet files for efficient querying.
+- Download individual videos or entire playlists in configurable formats and resolutions.
+- Extract and persist detailed video metadata and multilingual captions (subtitles).
+- Perform YouTube searches and archive search results for reproducible analysis.
+- Retrieve and archive live chat messages from streams and premieres.
+- Store all content and metadata in efficient Parquet files for scalable, structured analysis.
 
-Dependencies: pytube, pytchat, moviepy (for audio conversion), and ParquetStorage.
+Dependencies:
+- pytube: Video, playlist, and metadata extraction.
+- pytchat: Live chat message retrieval.
+- moviepy: Audio extraction and conversion (optional, for mp3 support).
+- ParquetStorage: Structured data storage in Parquet format.
 
-Author: @Borcherdingl, RawsonK
-Date: 2025-04-18
+Designed for: Automated, reproducible YouTube data collection pipelines and research workflows.
+
+Authors: @Borcherdingl, RawsonK
+Last updated: 2025-04-18
 """
-from typing import Dict, List, Optional
+
+import os
 from datetime import datetime, UTC
-from pathlib import Path
+from typing import Dict, List, Optional
 
+import pytube
 from pytube import YouTube, Playlist, Search
+import pytchat
 
-from ..storage.parquet_storage import ParquetStorage
-from oarc_crawlers.config.config import Config
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.utils.paths import Paths
-from oarc_crawlers.utils.errors import (
+from oarc_log import log
+from oarc_decorators import (
+    OarcError,
+    DataExtractionError,
     NetworkError,
     ResourceNotFoundError,
-    DownloadError,
-    DataExtractionError
 )
 
-class YTCrawler:
-    """Class for downloading and processing YouTube videos."""
-    
-    def __init__(self, data_dir: Optional[str] = None):
-        """Initialize the YouTube Downloader.
-        
-        Args:
-            data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
-        """
-        # Use the global config if no data_dir provided
-        if data_dir is None:
-            data_dir = str(Config().data_dir)
-        self.data_dir = data_dir
-        # Use the Paths utility for standardized path handling
-        self.youtube_data_dir = Paths.youtube_data_dir(self.data_dir)
-        log.debug(f"Initialized YTDownloader with data directory: {self.data_dir}")
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
+from oarc_crawlers.utils.crawler_utils import CrawlerUtils
+from oarc_crawlers.utils.paths import Paths
+from oarc_crawlers.utils.const import YOUTUBE_VIDEO_URL_FORMAT
 
-    async def download_video(self, url: str, format: str = "mp4", 
+
+class YTCrawler:
+    """
+    YTCrawler: Comprehensive YouTube content crawler and archiver.
+
+    Overview:
+    Provides high-level, automated tools for downloading, extracting, and archiving YouTube content for research, analytics, and reproducibility.
+
+    Core Features:
+    - Download individual videos or entire playlists in configurable formats and resolutions.
+    - Extract and persist rich video metadata and multilingual captions (subtitles).
+    - Perform YouTube searches and archive search results for reproducible analysis.
+    - Retrieve and archive live chat messages from streams and premieres.
+    - Store all content and metadata in efficient Parquet files for scalable, structured analysis.
+
+    Usage Scenarios:
+    - Automated, reproducible YouTube data collection pipelines.
+    - Academic research and large-scale video analytics.
+    - Archival and monitoring of YouTube content and interactions.
+
+    All methods are designed for robustness, scalability, and integration into research workflows.
+    """
+
+    @classmethod
+    async def download_video(cls, url: str, video_format: str = "mp4", 
                            resolution: str = "highest", output_path: Optional[str] = None,
-                           filename: Optional[str] = None, extract_audio: bool = False) -> Dict:
-        """Download a YouTube video with specified parameters.
-        
+                           filename: Optional[str] = None, extract_audio: bool = False,
+                           data_dir: Optional[str] = None) -> Dict:
+        """
+        Download a YouTube video with configurable options.
+
         Args:
-            url (str): YouTube video URL
-            format (str): Video format (mp4, webm, etc.)
-            resolution (str): Video resolution ("highest", "lowest", or specific like "720p")
-            output_path (str, optional): Directory to save the video
-            filename (str, optional): Custom filename for the downloaded video
-            extract_audio (bool): Whether to extract audio only
-            
+            url (str): The YouTube video URL.
+            video_format (str): Desired file format (e.g., "mp4", "webm", "mp3").
+            resolution (str): Video resolution ("highest", "lowest", or specific like "720p").
+            output_path (str, optional): Directory to save the downloaded file.
+            filename (str, optional): Custom filename for the output file.
+            extract_audio (bool): If True, download audio only (optionally convert to mp3).
+            data_dir (str, optional): Base directory for data storage and metadata.
+
         Returns:
-            dict: Information about the downloaded video
-            
+            dict: Metadata and file information about the downloaded video.
+
         Raises:
-            ResourceNotFoundError: If the video URL is invalid
-            NetworkError: If connection to YouTube fails
-            DownloadError: If video download fails
+            ResourceNotFoundError: If the video URL is invalid or unavailable.
+            NetworkError: If unable to connect to YouTube.
+            CrawlerError: For download or conversion failures.
         """
         # Create default output path if not specified
         if output_path is None:
-            output_path = str(self.youtube_data_dir / "videos")
-            os.makedirs(output_path, exist_ok=True)
+            output_path = str(Paths.youtube_videos_dir(data_dir))
         
         log.debug(f"Starting download of YouTube video: {url}")
-        log.debug(f"Format: {format}, Resolution: {resolution}, Extract audio: {extract_audio}")
+        log.debug(f"Format: {video_format}, Resolution: {resolution}, Extract audio: {extract_audio}")
         
         # Create YouTube object
         try:
@@ -88,7 +108,7 @@ class YTCrawler:
         except Exception as e:
             raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
-        video_info = self._extract_video_info(youtube)
+        video_info = cls._extract_video_info(youtube)
         log.debug(f"Successfully extracted metadata for video: {video_info['title']}")
         
         # Get appropriate stream based on parameters
@@ -101,12 +121,12 @@ class YTCrawler:
             log.debug(f"Downloaded audio to: {file_path}")
             
             # Convert to mp3 if requested
-            if format.lower() == "mp3":
+            if video_format.lower() == "mp3":
                 try:
                     from moviepy import AudioFileClip
                 except ImportError:
                     log.debug("moviepy not installed, cannot convert to mp3")
-                    raise DownloadError("moviepy package is required for mp3 conversion")
+                    raise OarcError("moviepy package is required for mp3 conversion")
                 
                 mp3_path = os.path.splitext(file_path)[0] + ".mp3"
                 log.debug(f"Converting audio to mp3: {mp3_path}")
@@ -120,29 +140,29 @@ class YTCrawler:
         else:
             # Select the appropriate video stream
             if resolution == "highest":
-                if format.lower() == "mp4":
+                if video_format.lower() == "mp4":
                     stream = youtube.streams.filter(
-                        progressive=True, file_extension=format).order_by('resolution').desc().first()
+                        progressive=True, file_extension=video_format).order_by('resolution').desc().first()
                 else:
                     stream = youtube.streams.filter(
-                        file_extension=format).order_by('resolution').desc().first()
+                        file_extension=video_format).order_by('resolution').desc().first()
             elif resolution == "lowest":
                 stream = youtube.streams.filter(
-                    file_extension=format).order_by('resolution').asc().first()
+                    file_extension=video_format).order_by('resolution').asc().first()
             else:
                 # Try to get the specific resolution
                 stream = youtube.streams.filter(
-                    res=resolution, file_extension=format).first()
+                    res=resolution, file_extension=video_format).first()
                 
                 # Fall back to highest if specified resolution not available
                 if not stream:
                     log.debug(f"Resolution {resolution} not available, using highest available")
                     stream = youtube.streams.filter(
-                        file_extension=format).order_by('resolution').desc().first()
+                        file_extension=video_format).order_by('resolution').desc().first()
             
             # Check if a stream was found
             if not stream:
-                raise ResourceNotFoundError(f"No suitable stream found for {url} with format {format}")
+                raise ResourceNotFoundError(f"No suitable stream found for {url} with format {video_format}")
             
             log.debug(f"Selected stream: {stream.resolution}, {stream.mime_type}")
             
@@ -159,30 +179,32 @@ class YTCrawler:
         })
         
         # Save metadata to Parquet
-        metadata_path = self._generate_metadata_path(youtube.video_id)
+        metadata_path = str(Paths.youtube_metadata_path(data_dir, youtube.video_id))
         log.debug(f"Saving metadata to: {metadata_path}")
         ParquetStorage.save_to_parquet(video_info, metadata_path)
         
         return video_info
 
-    def _extract_video_info(self, youtube: YouTube) -> Dict:
-        """Extract metadata information from a YouTube object.
-        
+    @classmethod
+    def _extract_video_info(cls, youtube: YouTube) -> Dict:
+        """
+        Extract detailed metadata from a pytube YouTube object.
+
         Args:
-            youtube (YouTube): pytube YouTube object
-            
+            youtube (YouTube): A pytube YouTube object representing the video.
+
         Returns:
-            dict: Video metadata
-            
+            dict: Dictionary containing extracted video metadata fields.
+
         Raises:
-            DataExtractionError: If metadata extraction fails
+            DataExtractionError: If metadata extraction fails.
         """
         log.debug(f"Extracting metadata for video ID: {youtube.video_id}")
         
         video_info = {
             'title': youtube.title,
             'video_id': youtube.video_id,
-            'url': f"https://www.youtube.com/watch?v={youtube.video_id}",
+            'url': YOUTUBE_VIDEO_URL_FORMAT.format(video_id=youtube.video_id),
             'author': youtube.author,
             'channel_url': youtube.channel_url,
             'description': youtube.description,
@@ -198,40 +220,30 @@ class YTCrawler:
         log.debug(f"Successfully extracted metadata for: {video_info['title']}")
         return video_info
 
-    def _generate_metadata_path(self, video_id: str) -> str:
-        """Generate a file path for storing video metadata.
-        
-        Args:
-            video_id (str): YouTube video ID
-            
-        Returns:
-            str: Path to metadata file
+    @classmethod
+    async def download_playlist(cls, playlist_url: str, format: str = "mp4", 
+                              max_videos: int = 10, output_path: Optional[str] = None,
+                              data_dir: Optional[str] = None) -> Dict:
         """
-        metadata_dir = self.youtube_data_dir / "metadata"
-        metadata_dir.mkdir(exist_ok=True)
-        return str(metadata_dir / f"{video_id}.parquet")
+        Download and archive videos from a YouTube playlist.
 
-    async def download_playlist(self, playlist_url: str, format: str = "mp4", 
-                              max_videos: int = 10, output_path: Optional[str] = None) -> Dict:
-        """Download videos from a YouTube playlist.
-        
         Args:
-            playlist_url (str): YouTube playlist URL
-            format (str): Video format (mp4, webm, etc.)
-            max_videos (int): Maximum number of videos to download
-            output_path (str, optional): Directory to save the videos
-            
+            playlist_url (str): The URL of the YouTube playlist to download.
+            format (str): Desired video format (e.g., "mp4", "webm").
+            max_videos (int): Maximum number of videos to download from the playlist.
+            output_path (str, optional): Directory to save downloaded videos. Defaults to a standard playlists directory.
+            data_dir (str, optional): Base directory for storing data and metadata.
+
         Returns:
-            dict: Information about the downloaded playlist
-            
+            dict: Metadata and file information about the downloaded playlist and its videos.
+
         Raises:
-            ResourceNotFoundError: If the playlist URL is invalid
-            NetworkError: If connection to YouTube fails
-            DownloadError: If video downloads fail
+            ResourceNotFoundError: If the playlist URL is invalid or contains no videos.
+            NetworkError: If unable to connect to YouTube.
+            DownloadError: If any video download fails.
         """
         if output_path is None:
-            output_path = str(self.youtube_data_dir / "playlists")
-            os.makedirs(output_path, exist_ok=True)
+            output_path = str(Paths.youtube_playlists_dir(data_dir))
         
         log.debug(f"Starting download of YouTube playlist: {playlist_url}")
         log.debug(f"Format: {format}, Max videos: {max_videos}")
@@ -257,7 +269,7 @@ class YTCrawler:
         
         log.debug(f"Found playlist: {playlist_info['title']} with {playlist_info['total_videos']} videos")
         
-        safe_title = re.sub(r'[^\w\s-]', '', playlist.title).strip().replace(' ', '_')
+        safe_title = Paths.sanitize_filename(playlist.title)
         playlist_dir = os.path.join(output_path, f"{safe_title}_{playlist.playlist_id}")
         os.makedirs(playlist_dir, exist_ok=True)
         log.debug(f"Created playlist directory: {playlist_dir}")
@@ -268,7 +280,12 @@ class YTCrawler:
                 
             log.debug(f"Downloading video {i+1}/{min(max_videos, len(playlist.video_urls))}: {video_url}")
             try:
-                video_info = await self.download_video(video_url, format=format, output_path=playlist_dir)
+                video_info = await cls.download_video(
+                    url=video_url, 
+                    video_format=format, 
+                    output_path=playlist_dir,
+                    data_dir=data_dir
+                )
                 playlist_info['videos'].append(video_info)
                 log.debug(f"Successfully downloaded: {video_info.get('title', 'Unknown')}")
             except Exception as e:
@@ -282,21 +299,24 @@ class YTCrawler:
         
         return playlist_info
 
-    async def extract_captions(self, url: str, languages: List[str] = ['en']) -> Dict:
-        """Extract captions/subtitles from a YouTube video.
-        
+    @classmethod
+    async def extract_captions(cls, url: str, languages: List[str] = ['en'],
+                             data_dir: Optional[str] = None) -> Dict:
+        """
+        Extract captions (subtitles) from a YouTube video in one or more languages.
+
         Args:
-            url (str): YouTube video URL
-            languages (list): List of language codes to extract 
-                             (e.g., ['en', 'es', 'fr'])
-            
+            url (str): The YouTube video URL.
+            languages (list): List of language codes to extract captions for (e.g., ['en', 'es', 'fr']).
+            data_dir (str, optional): Base directory for saving captions and metadata.
+
         Returns:
-            dict: Captions data
-            
+            dict: Dictionary containing extracted captions and related metadata.
+
         Raises:
-            ResourceNotFoundError: If the video URL is invalid or no captions are available
-            NetworkError: If connection to YouTube fails
-            DataExtractionError: If caption extraction fails
+            ResourceNotFoundError: If the video URL is invalid or no captions are available.
+            NetworkError: If unable to connect to YouTube.
+            DataExtractionError: If caption extraction fails.
         """
         log.debug(f"Extracting captions for video: {url}")
         log.debug(f"Requested languages: {languages}")
@@ -310,7 +330,7 @@ class YTCrawler:
         except Exception as e:
             raise NetworkError(f"Error connecting to YouTube: {str(e)}")
         
-        video_info = self._extract_video_info(youtube)
+        video_info = cls._extract_video_info(youtube)
         
         captions_data = {
             'video_id': youtube.video_id,
@@ -341,8 +361,7 @@ class YTCrawler:
                 captions_data['captions'][caption.code] = caption.generate_srt_captions()
                 log.debug(f"Used {caption.code} captions as fallback for English")
         
-        captions_dir = self.youtube_data_dir / "captions"
-        captions_dir.mkdir(exist_ok=True)
+        captions_dir = Paths.youtube_captions_dir(data_dir)
         log.debug(f"Saving captions to directory: {captions_dir}")
         
         for lang_code, content in captions_data['captions'].items():
@@ -358,19 +377,23 @@ class YTCrawler:
         
         return captions_data
 
-    async def search_videos(self, query: str, limit: int = 10) -> Dict:
-        """Search for YouTube videos using a query.
-        
+    @classmethod
+    async def search_videos(cls, query: str, limit: int = 10,
+                          data_dir: Optional[str] = None) -> Dict:
+        """
+        Perform a YouTube video search and archive the results.
+
         Args:
-            query (str): Search query
-            limit (int): Maximum number of results
-            
+            query (str): The search query string.
+            limit (int): Maximum number of video results to return.
+            data_dir (str, optional): Base directory for saving search results and metadata.
+
         Returns:
-            dict: Search results
-            
+            dict: Dictionary containing search metadata and a list of found videos.
+
         Raises:
-            NetworkError: If connection to YouTube fails
-            DataExtractionError: If search fails
+            NetworkError: If unable to connect to YouTube.
+            DataExtractionError: If no results are found or extraction fails.
         """
         log.debug(f"Searching YouTube for: {query} (limit: {limit})")
         
@@ -385,7 +408,7 @@ class YTCrawler:
                 video_info = {
                     'title': video.title,
                     'video_id': video.video_id,
-                    'url': f"https://www.youtube.com/watch?v={video.video_id}",
+                    'url': YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video.video_id),
                     'thumbnail_url': video.thumbnail_url,
                     'author': video.author,
                     'publish_date': video.publish_date.isoformat() if video.publish_date else None,
@@ -408,46 +431,46 @@ class YTCrawler:
             'results': videos
         }
         
-        search_dir = self.youtube_data_dir / "searches"
-        search_dir.mkdir(exist_ok=True)
-        safe_query = re.sub(r'[^\w\s-]', '', query).strip().replace(' ', '_')
-        metadata_path = search_dir / f"{safe_query}_{int(datetime.now().timestamp())}.parquet"
+        search_dir = Paths.youtube_search_dir(data_dir)
+        safe_query = Paths.sanitize_filename(query)
+        metadata_path = Paths.timestamped_path(search_dir, safe_query, "parquet")
         log.debug(f"Saving search results to: {metadata_path}")
         ParquetStorage.save_to_parquet(search_data, str(metadata_path))
         
         return search_data
 
-    async def fetch_stream_chat(self, video_id: str, max_messages: int = 1000, 
-                              save_to_file: bool = True, duration: int = None) -> Dict:
-        """Fetch chat messages from a YouTube live stream.
-        
+    @classmethod
+    async def fetch_stream_chat(cls, video_id: str, max_messages: int = 1000, 
+                              save_to_file: bool = True, duration: Optional[int] = None,
+                              data_dir: Optional[str] = None) -> Dict:
+        """
+        Retrieve and archive live chat messages from a YouTube live stream or premiere.
+
         Args:
-            video_id (str): YouTube video ID or URL
-            max_messages (int): Maximum number of messages to collect
-            save_to_file (bool): Whether to save messages to a file
-            duration (int): How long to collect messages in seconds (None for unlimited)
-            
+            video_id (str): YouTube video ID or full URL.
+            max_messages (int): Maximum number of chat messages to collect.
+            save_to_file (bool): If True, save collected messages to a text file.
+            duration (int, optional): Maximum duration (in seconds) to collect messages; None for unlimited.
+            data_dir (str, optional): Base directory for saving chat data and metadata.
+
         Returns:
-            dict: Information about collected chat messages
-            
+            dict: Metadata and details about the collected chat messages.
+
         Raises:
-            ResourceNotFoundError: If the video ID is invalid or chat is not active
-            NetworkError: If connection to YouTube fails
-            DataExtractionError: If chat extraction fails
+            ResourceNotFoundError: If the video ID/URL is invalid or chat is not active.
+            NetworkError: If unable to connect to YouTube.
+            DataExtractionError: If chat extraction fails.
         """
         log.debug(f"Fetching chat for video ID/URL: {video_id}")
         log.debug(f"Settings: max_messages={max_messages}, duration={duration or 'unlimited'}")
         
-        if "youtube.com" in video_id or "youtu.be" in video_id:
-            if "youtube.com/watch" in video_id:
-                match = re.search(r'v=([^&]+)', video_id)
-                if not match:
-                    raise ResourceNotFoundError(f"Invalid YouTube URL: {video_id}")
-                video_id = match.group(1)
-            elif "youtu.be/" in video_id:
-                video_id = video_id.split("youtu.be/")[1]
+        # Extract video ID if a URL was provided
+        try:
+            video_id = CrawlerUtils.extract_youtube_id(video_id)
+        except ValueError as e:
+            raise ResourceNotFoundError(str(e))
         
-        log.debug(f"Extracted video ID: {video_id}")
+        log.debug(f"Using video ID: {video_id}")
         
         try:
             chat = pytchat.create(video_id=video_id)
@@ -464,7 +487,7 @@ class YTCrawler:
         
         chat_data = {
             "video_id": video_id,
-            "url": f"https://www.youtube.com/watch?v={video_id}",
+            "url": YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id),
             "timestamp": datetime.now(UTC).isoformat(),
             "messages": [],
             "message_count": 0
@@ -507,16 +530,15 @@ class YTCrawler:
         log.debug(f"Collected {chat_data['message_count']} chat messages")
         
         if chat_data["message_count"] > 0:
-            chat_dir = self.youtube_data_dir / "chats"
-            chat_dir.mkdir(exist_ok=True)
+            chat_dir = Paths.youtube_chats_dir(data_dir)
             
-            parquet_path = str(chat_dir / f"{video_id}_{int(datetime.now().timestamp())}.parquet")
+            parquet_path = str(Paths.timestamped_path(chat_dir, video_id, "parquet"))
             log.debug(f"Saving chat data to Parquet: {parquet_path}")
             ParquetStorage.save_to_parquet(chat_data, parquet_path)
             chat_data["parquet_path"] = parquet_path
             
             if save_to_file:
-                txt_path = str(chat_dir / f"{video_id}_{int(datetime.now().timestamp())}.txt")
+                txt_path = str(Paths.timestamped_path(chat_dir, video_id, "txt"))
                 log.debug(f"Saving chat messages to text file: {txt_path}")
                 
                 with open(txt_path, 'w', encoding='utf-8') as f:

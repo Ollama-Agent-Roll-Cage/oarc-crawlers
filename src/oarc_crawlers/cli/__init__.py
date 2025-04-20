@@ -7,9 +7,10 @@ for OARC Crawlers.
 
 import click
 
+from oarc_log import enable_debug_logging
+
 from oarc_crawlers.cli.help_texts import MAIN_HELP, ARGS_VERBOSE_HELP, ARGS_CONFIG_HELP
 from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.utils.log import enable_debug_logging
 from oarc_crawlers.cli.cmd import (
     arxiv,
     build,

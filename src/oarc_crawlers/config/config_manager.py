@@ -16,17 +16,18 @@ from typing import Any, Dict, Optional, Tuple
 import click
 from click import echo, style
 
+from oarc_decorators import singleton
+
+from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.config.config import Config
-from oarc_crawlers.decorators.singleton import singleton
 from oarc_crawlers.utils.const import (
     CONFIG_KEY_DATA_DIR,
     CONFIG_KEY_LOG_LEVEL,
     CONFIG_KEY_MAX_RETRIES,
     CONFIG_KEY_TIMEOUT,
     CONFIG_KEY_USER_AGENT,
-    CONFIG_SECTION
+    CONFIG_SECTION,
 )
-from oarc_crawlers.utils.paths import Paths
 
 
 @singleton
@@ -341,9 +342,14 @@ class ConfigManager:
 
 
     @classmethod
-    def interactive_edit_config(cls) -> None:
+    def run_config_editor(cls, config_file: str = None) -> None:
         """
-        Launch an interactive UI to edit configuration settings using PyInquirer.
+        Launch an interactive UI to edit configuration settings.
+        
+        Args:
+            config_file (str, optional): Path to a specific config file to edit.
+                                        If None, uses the default config file.
         """
         from oarc_crawlers.config.config_editor import ConfigEditor
-        ConfigEditor.run()
+        editor = ConfigEditor()
+        editor.run(config_file)

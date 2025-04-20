@@ -14,8 +14,10 @@ DDG_GROUP_HELP = "DuckDuckGo search operations for finding information online."
 BUILD_GROUP_HELP = "Build operations for package management."
 PUBLISH_GROUP_HELP = "Publish operations for distributing packages."
 DATA_GROUP_HELP = "Data management operations for viewing and manipulating data files."
+CONFIG_GROUP_HELP = "Manage configuration settings for OARC Crawlers."
 
 # Command option descriptions
+ARGS_HELP = "Show this help message and exit."
 ARGS_VERBOSE_HELP = "Enable verbose output and debug logging"
 ARGS_CONFIG_HELP = "Path to custom configuration file"
 ARGS_URL_HELP = "URL to process"
@@ -71,7 +73,7 @@ Options:
   --version             Show the version and exit.
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this message and exit.
+  --help                {ARGS_HELP}
 
 Commands:
   arxiv                 {ARXIV_GROUP_HELP}
@@ -100,7 +102,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers build package
@@ -121,7 +123,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers publish pypi
@@ -146,12 +148,12 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=example
-  oarc-crawlers youtube search --query "python tutorials"
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=example --config ~/.oarc/config.ini
+  oarc-crawlers yt download --url https://youtube.com/watch?v=example
+  oarc-crawlers yt search --query "python tutorials"
+  oarc-crawlers yt download --url https://youtube.com/watch?v=example --config ~/.oarc/config.ini
 
 """
 
@@ -169,7 +171,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers gh clone --url https://github.com/username/repo
@@ -192,7 +194,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers arxiv download --id 2310.12123
@@ -215,7 +217,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers web crawl --url https://example.com
@@ -238,7 +240,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers ddg text --query "quantum computing"
@@ -260,7 +262,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers mcp run
@@ -281,7 +283,7 @@ Commands:
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
   --config TEXT         {ARGS_CONFIG_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Examples:
   oarc-crawlers data view data/sources/example.parquet
@@ -301,7 +303,7 @@ Arguments:
 
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
-  --help                Show this help message and exit.
+  --help                {ARGS_HELP}
 
 Description:
   This command launches an interactive menu-based interface for:
@@ -325,7 +327,7 @@ YOUTUBE_DOWNLOAD_HELP = f"""
 Download a YouTube video with specified parameters.
 
 USAGE:
-  oarc-crawlers youtube download [OPTIONS]
+  oarc-crawlers yt download [OPTIONS]
 
 Options:
   --url TEXT                  {ARGS_URL_HELP} [required]
@@ -337,13 +339,13 @@ Options:
   --filename TEXT             {ARGS_FILENAME_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --format mp3 --extract-audio
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --resolution 720p --output-path ./videos
-  oarc-crawlers youtube download --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
+  oarc-crawlers yt download --url https://youtube.com/watch?v=dQw4w9WgXcQ
+  oarc-crawlers yt download --url https://youtube.com/watch?v=dQw4w9WgXcQ --format mp3 --extract-audio
+  oarc-crawlers yt download --url https://youtube.com/watch?v=dQw4w9WgXcQ --resolution 720p --output-path ./videos
+  oarc-crawlers yt download --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
 
 """
 
@@ -360,13 +362,13 @@ Options:
   --output-path TEXT          {ARGS_OUTPUT_PATH_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ
-  oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --max-videos 5
-  oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --format mp4 --output-path ./playlists
-  oarc-crawlers youtube playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --config ~/.oarc/config.ini
+  oarc-crawlers yt playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ
+  oarc-crawlers yt playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --max-videos 5
+  oarc-crawlers yt playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --format mp4 --output-path ./playlists
+  oarc-crawlers yt playlist --url https://youtube.com/playlist?list=PLzH6n4zXuckquVnQ0KlMDxyXxiSO2DXOQ --config ~/.oarc/config.ini
 
 """
 
@@ -381,12 +383,12 @@ Options:
   --languages TEXT            {ARGS_LANGUAGES_HELP} [default: en]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ
-  oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --languages "en,es,fr"
-  oarc-crawlers youtube captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
+  oarc-crawlers yt captions --url https://youtube.com/watch?v=dQw4w9WgXcQ
+  oarc-crawlers yt captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --languages "en,es,fr"
+  oarc-crawlers yt captions --url https://youtube.com/watch?v=dQw4w9WgXcQ --config ~/.oarc/config.ini
 
 """
 
@@ -401,12 +403,12 @@ Options:
   --limit INTEGER             {ARGS_LIMIT_HELP} [default: 10]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube search --query "python tutorials"
-  oarc-crawlers youtube search --query "cooking recipes" --limit 20
-  oarc-crawlers youtube search --query "python tutorials" --config ~/.oarc/config.ini
+  oarc-crawlers yt search --query "python tutorials"
+  oarc-crawlers yt search --query "cooking recipes" --limit 20
+  oarc-crawlers yt search --query "python tutorials" --config ~/.oarc/config.ini
 
 """
 
@@ -414,7 +416,7 @@ YOUTUBE_CHAT_HELP = f"""
 Fetch chat messages from a YouTube live stream or premiere.
 
 USAGE:
-  oarc-crawlers youtube chat [OPTIONS]
+  oarc-crawlers yt chat [OPTIONS]
 
 Options:
   --video-id TEXT             {ARGS_VIDEO_ID_HELP} [required]
@@ -422,12 +424,12 @@ Options:
   --duration INTEGER          {ARGS_DURATION_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
-  oarc-crawlers youtube chat --video-id dQw4w9WgXcQ
-  oarc-crawlers youtube chat --video-id dQw4w9WgXcQ --max-messages 500 --duration 300
-  oarc-crawlers youtube chat --video-id dQw4w9WgXcQ --config ~/.oarc/config.ini
+  oarc-crawlers yt chat --video-id dQw4w9WgXcQ
+  oarc-crawlers yt chat --video-id dQw4w9WgXcQ --max-messages 500 --duration 300
+  oarc-crawlers yt chat --video-id dQw4w9WgXcQ --config ~/.oarc/config.ini
 
 """
 
@@ -443,7 +445,7 @@ Options:
   --output-path TEXT          {ARGS_OUTPUT_PATH_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers gh clone --url https://github.com/username/repo
@@ -462,7 +464,7 @@ Options:
   --url TEXT                  {ARGS_REPO_URL_HELP} [required]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers gh analyze --url https://github.com/username/repo
@@ -482,7 +484,7 @@ Options:
   --language TEXT             {ARGS_LANGUAGE_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers gh find-similar --url https://github.com/username/repo --code "def hello_world():"
@@ -502,7 +504,7 @@ Options:
   --id TEXT                   {ARGS_ID_HELP} [required]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers arxiv download --id 2310.12123
@@ -522,7 +524,7 @@ Options:
   --limit INTEGER             {ARGS_LIMIT_HELP} [default: 5]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers arxiv search --query "quantum computing" --limit 10
@@ -541,7 +543,7 @@ Options:
   --id TEXT                   {ARGS_ID_HELP} [required]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers arxiv latex --id 2310.12123
@@ -562,7 +564,7 @@ Options:
   --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers web crawl --url https://example.com
@@ -581,7 +583,7 @@ Options:
   --url TEXT                  URL of documentation site [required]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers web docs --url https://docs.python.org
@@ -600,7 +602,7 @@ Options:
   --package TEXT              {ARGS_PACKAGE_HELP} [required]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers web pypi --package requests
@@ -621,7 +623,7 @@ Options:
   --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 5]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers ddg text --query "quantum computing"
@@ -641,7 +643,7 @@ Options:
   --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 10]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers ddg images --query "cute cats"
@@ -661,7 +663,7 @@ Options:
   --max-results INTEGER       {ARGS_MAX_RESULTS_HELP} [default: 20]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers ddg news --query "breaking news"
@@ -681,7 +683,7 @@ Options:
   --clean / --no-clean        {ARGS_CLEAN_HELP} [default: no-clean]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers build package
@@ -705,7 +707,7 @@ Options:
   --config-file TEXT          {ARGS_PYPI_CONFIG_FILE_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers publish pypi
@@ -728,7 +730,7 @@ Options:
   --data-dir TEXT             {ARGS_DATA_DIR_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers mcp run
@@ -747,7 +749,7 @@ Options:
   --name TEXT                 {ARGS_MCP_NAME_HELP}
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers mcp install
@@ -770,7 +772,7 @@ Options:
   --max-rows INTEGER          {ARGS_MAX_ROWS_HELP} [default: 10]
   --verbose                   {ARGS_VERBOSE_HELP}
   --config TEXT               {ARGS_CONFIG_HELP}
-  --help                      Show this help message and exit.
+  --help                      {ARGS_HELP}
 
 Examples:
   oarc-crawlers data view data/sources/example.parquet
@@ -820,3 +822,4 @@ DDG_GROUP_HELP = "DuckDuckGo search operations for finding information online."
 BUILD_GROUP_HELP = "Build operations for package management."
 PUBLISH_GROUP_HELP = "Publish operations for distributing packages."
 DATA_GROUP_HELP = "Data management operations for viewing and manipulating data files."
+CONFIG_GROUP_HELP = "Manage configuration settings for OARC Crawlers."

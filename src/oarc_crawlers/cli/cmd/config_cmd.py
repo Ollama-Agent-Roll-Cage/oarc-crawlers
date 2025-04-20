@@ -1,46 +1,38 @@
-"""Configuration management commands for OARC Crawlers."""
+"""Configuration CLI command module for OARC Crawlers.
+
+Offers commands to view, edit, and manage configuration settings for OARC Crawlers.
+Supports interactive editing and custom configuration file selection via the command line.
+"""
 
 import click
-from pathlib import Path
 
-from oarc_crawlers.cli.help_texts import CONFIG_HELP, ARGS_VERBOSE_HELP
-from oarc_crawlers.decorators import handle_error
+from oarc_log import enable_debug_logging
+from oarc_decorators import handle_error
+
+from oarc_crawlers.cli.help_texts import (
+    CONFIG_GROUP_HELP,
+    ARGS_VERBOSE_HELP,
+)
 from oarc_crawlers.config.config_manager import ConfigManager
-from oarc_crawlers.config.config_editor import ConfigEditor
-from oarc_crawlers.utils.log import enable_debug_logging
+from oarc_crawlers.utils.const import SUCCESS
 
 
-@click.command(help=CONFIG_HELP)
+@click.command(help=CONFIG_GROUP_HELP)
 @click.argument('config_file', required=False)
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @handle_error
 def config(config_file, verbose):
     """
-    Manage OARC Crawlers configuration interactively.
-    
-    CONFIG_FILE is an optional path to a specific configuration file.
-    If not provided, the default configuration file will be used or created.
-    
-    This command launches an interactive menu-based interface for:
-    • Viewing current configuration settings
-    • Editing configuration values
-    • Creating new configuration files
-    • Resetting to default values
-    • Setting environment variables
-    
+    Manage configuration settings for OARC Crawlers.
+
+    Launches an interactive configuration editor for OARC Crawlers.
+    If a config_file path is provided, that file will be edited; otherwise,
+    the default configuration file is used.
+
     Args:
-        config_file (str, optional): Path to configuration file.
-        verbose (bool): Whether to enable verbose output.
+        config_file (str, optional): Path to the configuration file to edit.
+        verbose (bool): Enables verbose output and debug logging.
     """
-    # If a specific file is provided, make sure it exists
-    if config_file:
-        config_path = Path(config_file).resolve()
-        if not config_path.exists():
-            if not click.confirm(f"Config file {config_path} doesn't exist. Create it?"):
-                return 0
-            # Use the ConfigManager class directly - singleton decorator handles instance
-            ConfigManager().create_config_file(config_path, force=True)
+    ConfigManager.run_config_editor(config_file)
     
-    # Launch the interactive editor
-    ConfigEditor().run()
-    return 0
+    return SUCCESS

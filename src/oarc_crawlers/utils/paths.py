@@ -12,7 +12,8 @@ import tempfile
 from datetime import datetime
 from typing import List, Optional, Union
 
-from oarc_crawlers.decorators.singleton import singleton
+from oarc_decorators import singleton
+
 from oarc_crawlers.utils.const import (
     ENV_DATA_DIR, ENV_HOME_DIR, DEFAULT_CONFIG_FILENAME, DATA_SUBDIR,
     CONFIG_DIR, OARC_DIR, TEMP_DIR_PREFIX, YOUTUBE_DATA_DIR, GITHUB_REPOS_DIR,
@@ -149,49 +150,71 @@ class Paths:
 
     # YouTube-specific paths
     @staticmethod
-    def youtube_data_dir(base_dir: PathLike) -> pathlib.Path:
-        """Get the YouTube data directory."""
+    def youtube_data_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
+        """
+        Get the YouTube data directory.
+        
+        Args:
+            base_dir: Base data directory. If None, uses the default from Config.
+            
+        Returns:
+            Path to the YouTube data directory
+        """
+        # Import here to avoid circular import
+        from oarc_crawlers.config.config import Config
+        
+        # Use Config().data_dir if base_dir is not provided
+        if base_dir is None:
+            config = Config()  # Get the singleton instance
+            base_dir = str(config.data_dir)
+            
         return Paths.ensure_path(pathlib.Path(base_dir) / YOUTUBE_DATA_DIR)
     
 
     @staticmethod
-    def youtube_videos_dir(base_dir: PathLike) -> pathlib.Path:
+    def youtube_videos_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """Get the YouTube videos directory."""
         return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "videos")
     
 
     @staticmethod
-    def youtube_playlists_dir(base_dir: PathLike) -> pathlib.Path:
+    def youtube_playlists_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """Get the YouTube playlists directory."""
         return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "playlists")
     
 
     @staticmethod
-    def youtube_captions_dir(base_dir: PathLike) -> pathlib.Path:
+    def youtube_captions_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """Get the YouTube captions directory."""
         return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "captions")
     
 
     @staticmethod
-    def youtube_search_dir(base_dir: PathLike) -> pathlib.Path:
+    def youtube_search_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """Get the YouTube search results directory."""
         return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "searches")
     
 
     @staticmethod
-    def youtube_metadata_dir(base_dir: PathLike) -> pathlib.Path:
+    def youtube_chats_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
+        """Get the YouTube chat messages directory."""
+        return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "chats")
+    
+
+    @staticmethod
+    def youtube_metadata_dir(base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """Get the YouTube metadata directory."""
         return Paths.ensure_path(Paths.youtube_data_dir(base_dir) / "metadata")
     
 
     @staticmethod
-    def youtube_metadata_path(base_dir: PathLike, video_id: str) -> pathlib.Path:
+    def youtube_metadata_path(video_id: str, base_dir: Optional[PathLike] = None) -> pathlib.Path:
         """
         Get the path for YouTube video metadata.
         
         Args:
-            base_dir: Base data directory
             video_id: YouTube video ID
+            base_dir: Base data directory. If None, uses the default from Config.
             
         Returns:
             Path to the metadata file

@@ -1,12 +1,13 @@
 """
-Validation classes for OARC Crawlers configuration.
+Validators for OARC Crawlers configuration editor.
 
-This module provides validators used for validating configuration inputs
-in the interactive configuration editor.
+This module defines reusable validation classes for interactive configuration input,
+ensuring user-provided values are correct and within expected constraints.
 """
 
 from prompt_toolkit.validation import ValidationError, Validator
-from oarc_crawlers.decorators.singleton import singleton
+
+from oarc_decorators import singleton
 
 
 @singleton
@@ -15,7 +16,17 @@ class NumberValidator(Validator):
 
 
     def validate(self, document, min_val=0, max_val=100):
-        """Validate that input is a number within the specified range."""
+        """
+        Validate that input is a number within the specified range.
+
+        Args:
+            document: prompt_toolkit Document object containing user input.
+            min_val (int): Minimum allowed value (inclusive).
+            max_val (int): Maximum allowed value (inclusive).
+
+        Raises:
+            ValidationError: If input is not a valid integer or out of range.
+        """
         try:
             value = int(document.text)
             if value < min_val or value > max_val:
@@ -34,8 +45,17 @@ class NumberValidator(Validator):
 class PathValidator(Validator):
     """Validator for path inputs."""
 
+
     def validate(self, document):
-        """Validate that input is a non-empty path string."""
+        """
+        Validates that the provided document contains a non-empty, plausible path string.
+
+        Args:
+            document (prompt_toolkit.document.Document): The document object containing the user input to validate.
+
+        Raises:
+            ValidationError: If the input path string is empty or contains only whitespace.
+        """
         path_str = document.text
         if not path_str.strip():
             raise ValidationError(

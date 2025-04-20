@@ -11,16 +11,12 @@ import configparser
 import pathlib
 from typing import Any, Dict, Optional
 
-from oarc_crawlers.decorators.singleton import singleton
-from oarc_crawlers.utils.log import log
+from oarc_log import log
+from oarc_decorators import singleton
+
 from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.const import (
     CONFIG_SECTION,
-    ENV_DATA_DIR,
-    ENV_LOG_LEVEL,
-    ENV_MAX_RETRIES,
-    ENV_TIMEOUT,
-    ENV_USER_AGENT,
     CONFIG_KEY_DATA_DIR,
     CONFIG_KEY_LOG_LEVEL,
     CONFIG_KEY_MAX_RETRIES,
@@ -30,15 +26,29 @@ from oarc_crawlers.utils.const import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
+    ENV_DATA_DIR,
+    ENV_LOG_LEVEL,
+    ENV_MAX_RETRIES,
+    ENV_TIMEOUT,
+    ENV_USER_AGENT,
 )
 
 @singleton
 class Config:
     """
-    Singleton configuration class for OARC Crawlers.
+    Singleton configuration manager for OARC Crawlers.
 
-    This class manages configuration settings across the application,
-    handling defaults, environment variables, and config file overrides.
+    This class centralizes all configuration logic, providing:
+      - Default values for all supported settings.
+      - Automatic overrides from environment variables.
+      - Optional overrides from configuration files (INI format).
+      - Runtime access and mutation of configuration values.
+      - Ensured type safety and path resolution for key settings.
+
+    Usage:
+        config = Config()
+        data_dir = config.data_dir
+        Config.set(CONFIG_KEY_TIMEOUT, 60)
     """
 
     # Default configuration values
@@ -58,29 +68,31 @@ class Config:
         ENV_TIMEOUT: CONFIG_KEY_TIMEOUT,
         ENV_USER_AGENT: CONFIG_KEY_USER_AGENT,
     }
-
-    # Class variable to track initialization state
-    _initialized = False
     
     # Storage for config values
     _config: Dict[str, Any] = {}
     
 
     def __init__(self):
-        """Initialize the configuration singleton instance."""
-        # Ensure configuration is initialized
-        if not self.__class__._initialized:
-            self.__class__.initialize()
+        """Initialize configuration if not already done."""
+        # Let the singleton decorator handle instance management
+        # Initialize only if this is a fresh instance (first time)
+        if not hasattr(self, '_init_done'):
+            self.initialize()
+            self._init_done = True
+    
     
     @classmethod
     def initialize(cls) -> None:
-        """Initialize configuration with defaults, environment overrides, and config file."""
-        if cls._initialized:
-            return
-            
-        # Set flag first to prevent recursion
-        cls._initialized = True
-        
+        """
+        Initialize configuration with defaults, environment overrides, and config file.
+
+        This method sets up the configuration in the following order:
+            1. Loads default values.
+            2. Applies environment variable overrides if present.
+            3. Loads and applies configuration from a config file if found.
+            4. Ensures the data directory is a resolved Path object.
+        """
         # Start with defaults
         cls._config = {}
         cls._config.update(cls.DEFAULTS)
@@ -97,6 +109,7 @@ class Config:
         cls._config[CONFIG_KEY_DATA_DIR] = pathlib.Path(cls._config[CONFIG_KEY_DATA_DIR]).resolve()
 
         log.debug(f"Initialized Config with: {cls._config}")
+
 
     @classmethod
     def _parse_value(cls, value: str, default: Any) -> Any:
@@ -128,11 +141,16 @@ class Config:
 
     @classmethod
     def _load_from_config_file(cls, config_file: Optional[str] = None) -> None:
-        """Load configuration from an INI file.
-        
+        """
+        Load configuration settings from an INI file.
+
+        If a specific config_file path is provided and exists, load configuration from that file.
+        Otherwise, search standard locations (as defined by Paths.get_default_config_locations())
+        and load the first config file found.
+
         Args:
             config_file: Optional path to a config file. If not provided,
-                         searches in default locations.
+                 searches in default locations.
         """
         parser = configparser.ConfigParser()
 
@@ -155,7 +173,18 @@ class Config:
 
     @classmethod
     def _update_from_config_section(cls, section):
-        """Update config from a configparser section."""
+        """
+        update configuration from a configparser section.
+
+        Updates the class configuration dictionary from a given configparser section.
+        Iterates over all default configuration keys, and if a key is present in the provided
+        section, parses its value and updates the internal configuration. Ensures that the
+        value for the data directory key is always stored as a resolved pathlib.Path object.
+        Args:
+            section (configparser.SectionProxy or dict): The configuration section containing key-value pairs to update.
+        Side Effects:
+            Modifies the class-level _config dictionary with updated values from the section.
+        """
         for key in cls.DEFAULTS.keys():
             if key in section:
                 value_str = section[key]
@@ -194,7 +223,7 @@ class Config:
             return value
             
         # Ensure configuration is initialized
-        if not cls._initialized:
+        if not hasattr(cls, '_config'):
             cls.initialize()
             
         # Load the specified config file

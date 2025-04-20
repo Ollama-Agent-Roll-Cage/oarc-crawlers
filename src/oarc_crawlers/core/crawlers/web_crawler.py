@@ -7,17 +7,23 @@ and general web content.
 Author: @BorcherdingL, RawsonK
 Date: 4/18/2025
 """
+
 from datetime import datetime, UTC
 from pathlib import Path
+import re
 
-from ..storage.parquet_storage import ParquetStorage
-from oarc_crawlers.config.config import Config
-from oarc_crawlers.utils.log import log
-from oarc_crawlers.utils.paths import Paths
-from oarc_crawlers.utils.errors import (
+from bs4 import BeautifulSoup
+import aiohttp
+
+from oarc_decorators import (
     ResourceNotFoundError,
     DataExtractionError
 )
+from oarc_log import log
+
+from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
+from oarc_crawlers.config.config import Config
+from oarc_crawlers.utils.paths import Paths
 
 class WebCrawler:
     """Class for crawling web pages and extracting content."""

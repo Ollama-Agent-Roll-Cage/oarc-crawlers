@@ -65,3 +65,28 @@ DEFAULT_HEADERS = {
 # URLs
 PYPI_PACKAGE_URL = "https://pypi.org/project/{package}/"
 PYPI_JSON_URL = "https://pypi.org/pypi/{package}/json"
+
+# YouTube URL formats
+YOUTUBE_VIDEO_URL_FORMAT = "https://www.youtube.com/watch?v={video_id}"
+YOUTUBE_CHANNEL_URL_FORMAT = "https://www.youtube.com/channel/{channel_id}"
+
+# DuckDuckGo API constants
+DDG_BASE_URL = "https://api.duckduckgo.com/"
+DDG_API_PARAMS = "format=json&pretty=1"
+DDG_IMAGES_PARAMS = "iax=images&ia=images"
+DDG_NEWS_PARAMS = "ia=news"
+
+# DuckDuckGo result headers
+DDG_TEXT_SEARCH_HEADER = "# DuckDuckGo Search Results"
+DDG_IMAGE_SEARCH_HEADER = "# DuckDuckGo Image Search Results"
+DDG_NEWS_SEARCH_HEADER = "# DuckDuckGo News Search Results"
+
+# ArXiv API constants
+ARXIV_API_BASE_URL = "http://export.arxiv.org/api/query"
+ARXIV_SOURCE_URL_FORMAT = "https://arxiv.org/e-print/{arxiv_id}"
+ARXIV_ABS_URL_FORMAT = "https://arxiv.org/abs/{arxiv_id}"
+ARXIV_PDF_URL_FORMAT = "https://arxiv.org/pdf/{arxiv_id}.pdf"
+ARXIV_NAMESPACES = {
+    'atom': 'http://www.w3.org/2005/Atom',
+    'arxiv': 'http://arxiv.org/schemas/atom'
+}
