@@ -8,14 +8,13 @@ version = "0.1.5"
 description = "OARC's dynamic webcrawler module collection"
 readme = "README.md"
 requires-python = ">=3.10,<3.12"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
 authors = [
     {name = "OARC Team"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

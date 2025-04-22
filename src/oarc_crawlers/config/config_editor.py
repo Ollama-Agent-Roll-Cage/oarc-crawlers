@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import questionary
-from click import clear, echo, style
+from click import clear, echo, style, secho, pause
 
 from oarc_utils.decorators import singleton
 
@@ -65,6 +65,7 @@ class ConfigEditor:
                 "Save current configuration",
                 "Reset to defaults",
                 "Show current configuration",
+                "Load configuration from file",
                 questionary.Separator(),
                 "Exit"
             ]
@@ -84,7 +85,10 @@ class ConfigEditor:
                     echo(style("All settings reset to defaults.", fg='green'))
                     cls.main_menu()
             case "Show current configuration":
-                ConfigManager.display_config_info()
+                cls.show_current_config()
+                # Main menu will be called from show_current_config after key press
+            case "Load configuration from file":
+                cls.load_configuration()
                 cls.main_menu()
             case "Exit":
                 if cls.is_config_changed():
@@ -118,51 +122,98 @@ class ConfigEditor:
             cls.main_menu()
             return
             
-        key = setting.split(":")[0].strip()
-        cls.edit_setting(key)
+        cls._edit_setting(setting)
         cls.edit_settings()
     
 
     @classmethod
-    def edit_setting(cls, key: str) -> None:
-        """Edit a specific setting using appropriate input type."""
-        cls._ensure_initialized()
-        setting_type = cls._config_details.get(key, {}).get("type", "string")
-        description = cls._config_details.get(key, {}).get("description", "")
-        help_text = cls._config_details.get(key, {}).get("help", "")
-        
-        message = f"Enter {key} ({description})"
-        if help_text:
-            message += f"\n{help_text}"
-        
-        if setting_type == "select":
-            options = cls._config_details.get(key, {}).get("options", [])
-            value = questionary.select(
-                message,
-                choices=options,
-                default=cls._current_config[key]
-            ).ask()
-        elif setting_type == "int":
-            value_range = cls._config_details.get(key, {}).get("range", (0, 100))
-            value = questionary.text(
-                message,
-                default=str(cls._current_config[key]),
-                validate=lambda text: NumberValidator().validate(text, min_val=value_range[0], max_val=value_range[1])
-            ).ask()
-            value = int(value)
-        elif setting_type == "path":
-            value = questionary.path(
-                message,
-                default=str(cls._current_config[key])
-            ).ask()
+    def _edit_setting(cls, setting: str) -> None:
+        """Edit a specific setting."""
+        if not setting:
+            echo(style("No setting selected", fg='red'))
+            return
+
+        try:
+            key = setting.split(":")[0].strip()
+            # Extract the current value and description
+            current_value = cls._current_config.get(key)
             
-            if value:
+            # Get the description part after the dash if it exists
+            description = ""
+            if " - " in setting:
+                description = setting.split(" - ")[1].strip()
+            
+            # Handle different setting types
+            setting_type = cls._config_details.get(key, {}).get("type", "string")
+            message = f"Enter {key}"
+            if description:
+                message += f" ({description})"
+            
+            # Convert the current value to string to avoid None issues
+            current_value_str = str(current_value) if current_value is not None else ""
+            
+            if setting_type == "select":
+                options = cls._config_details.get(key, {}).get("options", [])
+                value = questionary.select(
+                    message,
+                    choices=options,
+                    default=current_value_str
+                ).ask()
+            elif setting_type == "int":
+                value_range = cls._config_details.get(key, {}).get("range", (0, 100))
+                
+                # Create a safer validator function that properly handles validation results
+                def safe_validator(text):
+                    try:
+                        # Check if the input can be converted to an integer
+                        value = int(text)
+                        min_val, max_val = value_range
+                        
+                        # Validate range manually instead of relying on the validator class
+                        if value < min_val:
+                            return f"Value must be at least {min_val}"
+                        if value > max_val:
+                            return f"Value must be at most {max_val}"
+                            
+                        # If we get here, the validation is successful
+                        return True
+                    except ValueError:
+                        return "Please enter a valid number"
+                    except Exception as e:
+                        return str(e)
+                
+                value = questionary.text(
+                    message,
+                    default=current_value_str,
+                    validate=safe_validator
+                ).ask()
+                
+                # Handle the case where ask() returns None (e.g., user cancels)
+                if value is None:
+                    return
+                    
+                value = int(value)
+            elif setting_type == "path":
+                value = questionary.path(
+                    message,
+                    default=current_value_str
+                ).ask()
+                
+                # Handle the case where ask() returns None
+                if value is None:
+                    return
+                    
                 path = Path(value).expanduser().resolve()
                 if not path.exists():
                     create = questionary.confirm(
                         f"Directory {path} doesn't exist. Create it?",
                         default=True
                     ).ask()
+                    
+                    # Handle the case where ask() returns None
+                    if create is None:
+                        return
+                        
                     if create:
                         try:
                             path.mkdir(parents=True, exist_ok=True)
@@ -170,14 +221,17 @@ class ConfigEditor:
                         except Exception as e:
                             echo(style(f"Error creating directory: {e}", fg='red'))
                 value = str(path)
-        else:  # string or other
-            value = questionary.text(
-                message,
-                default=str(cls._current_config[key])
-            ).ask()
-        
-        if value is not None:
-            cls._current_config[key] = value
+            else:  # string or other
+                value = questionary.text(
+                    message,
+                    default=current_value_str
+                ).ask()
+            
+            # Only update the value if we got a non-None response
+            if value is not None:
+                cls._current_config[key] = value
+        except Exception as e:
+            echo(style(f"Error editing setting: {str(e)}", fg='red'))
     
 
     @staticmethod
@@ -260,6 +314,65 @@ class ConfigEditor:
             
             echo(style(f"Loaded configuration from: {config_file}", fg='green'))
 
+
+    @classmethod
+    def show_current_config(cls):
+        """Display the current configuration values in a formatted table."""
+        config = cls._current_config
+        if not config:
+            echo("No configuration settings found.")
+            return
+        
+        secho("Current configuration:", fg="cyan")
+        secho("──────────────────────────────────────────────────", fg="cyan")
+        
+        for i, (key, value) in enumerate(config.items()):
+            description = cls._config_details.get(key, {}).get("description", "")
+            source = cls._config_details.get(key, {}).get("source", "unknown")
+            
+            # Print key and value on the same line
+            secho(f"{key}: ", fg="green", nl=False)
+            echo(f"{value}")
+            echo(f"  Source: {source}")
+            echo(f"  Description: {description}")
+            
+            # Add a separator line only between items, not after the last one
+            if i < len(config) - 1:
+                echo("")
+        
+        # Wait for user to press a key
+        echo("\n")
+        pause(info=style('Press any key to continue...', fg='yellow'))
+        clear()  # Clear the screen before returning to main menu
+        cls.main_menu()
+
+    @classmethod
+    def load_configuration(cls) -> None:
+        """
+        Load a configuration file from a user-specified path.
+        """
+        # Ask for file path
+        file_path = questionary.path(
+            "Enter path to configuration file:",
+            only_directories=False
+        ).ask()
+        
+        # Handle cancellation
+        if not file_path:
+            return
+            
+        # Check if file exists
+        path = Path(file_path).expanduser().resolve()
+        if not path.exists():
+            echo(style(f"Error: File '{path}' does not exist.", fg='red'))
+            return
+        
+        try:
+            # Load the config file
+            cls.load_config_file(str(path))
+            echo(style(f"Configuration loaded from: {path}", fg='green'))
+        except Exception as e:
+            echo(style(f"Error loading configuration: {str(e)}", fg='red'))
 
     @classmethod
     def run(cls, config_file: str = None) -> None:

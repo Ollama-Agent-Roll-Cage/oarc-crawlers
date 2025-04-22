@@ -14,10 +14,6 @@ from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
 from oarc_crawlers.utils.const import SUCCESS, PYPI_PACKAGE_URL
 from oarc_crawlers.cli.help_texts import (
-    WEB_GROUP_HELP,
-    WEB_CRAWL_HELP,
-    WEB_DOCS_HELP,
-    WEB_PYPI_HELP,
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
     ARGS_URL_HELP,
@@ -25,21 +21,67 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_PACKAGE_HELP,
 )
 
-@click.group(help=WEB_GROUP_HELP)
+@click.group()
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def web(verbose, config):
-    """Group of web crawler commands for extracting content from websites."""
+    """Group of web crawler commands for extracting content from websites.
+
+    This group provides commands to crawl and extract content from websites,
+    documentation pages, and PyPI packages.
+
+    Examples:
+
+      Crawl a webpage and extract its content:
+
+        $ oarc-crawlers web crawl --url https://example.com
+
+      Crawl a documentation site:
+
+        $ oarc-crawlers web docs --url https://docs.example.com
+
+      Extract information about a PyPI package:
+
+        $ oarc-crawlers web pypi --package requests
+    """
     pass
 
 
-@web.command(help=WEB_CRAWL_HELP)
+@web.command()
 @click.option('--url', required=True, help=ARGS_URL_HELP)
 @click.option('--output-file', help=ARGS_OUTPUT_FILE_HELP)
 @asyncio_run
 @handle_error
 async def crawl(url, output_file):
-    """Crawl and extract content from a webpage."""
+    """Crawl and extract content from a webpage.
+
+    Downloads the HTML content from the specified URL, extracts meaningful text content
+    from it, and either displays the content in the console or saves it to a file.
+
+    Examples:
+
+      Crawl a webpage and print to console:
+
+        $ oarc-crawlers web crawl --url https://example.com
+
+      Crawl a webpage and save to a file:
+
+        $ oarc-crawlers web crawl --url https://example.com --output-file content.txt
+
+      Crawl with verbose logging:
+
+        $ oarc-crawlers web crawl --url https://example.com --verbose
+
+    Args:
+        url (str): The URL of the webpage to crawl.
+        output_file (str, optional): Path to save the extracted content.
+
+    Returns:
+        int: SUCCESS constant if the crawl completes successfully.
+
+    Raises:
+        ResourceNotFoundError: If the URL cannot be accessed.
+    """
     crawler = WebCrawler()
     
     click.echo(f"Crawling webpage: {url}")
@@ -64,12 +106,40 @@ async def crawl(url, output_file):
     return SUCCESS
 
 
-@web.command(help=WEB_DOCS_HELP)
+@web.command()
 @click.option('--url', required=True, help=ARGS_URL_HELP)
 @asyncio_run
 @handle_error
 async def docs(url):
-    """Crawl and extract content from a documentation site."""
+    """Crawl and extract content from a documentation site.
+
+    Specializes in extracting structured content from documentation websites.
+    This command handles navigation through multiple pages and organizing the
+    documentation hierarchy.
+
+    Examples:
+
+      Extract content from a documentation site:
+
+        $ oarc-crawlers web docs --url https://docs.example.com
+
+      Extract with verbose logging:
+
+        $ oarc-crawlers web docs --url https://docs.example.com --verbose
+
+      Extract using custom configuration:
+
+        $ oarc-crawlers web docs --url https://docs.example.com --config custom_config.ini
+
+    Args:
+        url (str): The URL of the documentation site to crawl.
+
+    Returns:
+        int: SUCCESS constant if extraction completes successfully.
+
+    Raises:
+        DataExtractionError: If content extraction fails.
+    """
     crawler = WebCrawler()
     
     click.echo(f"Crawling documentation site: {url}")
@@ -84,12 +154,40 @@ async def docs(url):
     return SUCCESS
 
 
-@web.command(help=WEB_PYPI_HELP)
+@web.command()
 @click.option('--package', required=True, help=ARGS_PACKAGE_HELP)
 @asyncio_run
 @handle_error
 async def pypi(package):
-    """Extract and display information about a PyPI package."""
+    """Extract and display information about a PyPI package.
+
+    Retrieves metadata and documentation for the specified PyPI package,
+    displaying details such as version, author, dependencies, and description.
+
+    Examples:
+
+      Extract information about the 'requests' package:
+
+        $ oarc-crawlers web pypi --package requests
+
+      Extract information with verbose output:
+
+        $ oarc-crawlers web pypi --package pandas --verbose
+
+      Extract using custom configuration:
+
+        $ oarc-crawlers web pypi --package numpy --config custom_config.ini
+
+    Args:
+        package (str): The name of the PyPI package to extract information from.
+
+    Returns:
+        int: SUCCESS constant if extraction completes successfully.
+
+    Raises:
+        ResourceNotFoundError: If the package cannot be found.
+        DataExtractionError: If metadata extraction fails.
+    """
     crawler = WebCrawler()
     
     click.echo(f"Fetching PyPI information for: {package}")
