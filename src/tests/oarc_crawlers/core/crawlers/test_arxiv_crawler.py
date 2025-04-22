@@ -1,8 +1,6 @@
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 import tempfile
-from pathlib import Path
-import xml.etree.ElementTree as ET
 import io
 import tarfile
 

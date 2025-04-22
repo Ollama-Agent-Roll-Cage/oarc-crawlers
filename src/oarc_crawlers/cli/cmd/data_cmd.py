@@ -8,42 +8,56 @@ import click
 import pandas as pd
 
 from oarc_log import enable_debug_logging
-from oarc_decorators import handle_error, ResourceNotFoundError
+from oarc_utils.decorators import handle_error
+from oarc_utils.errors import ResourceNotFoundError
 
+from oarc_crawlers.utils.const import SUCCESS, FAILURE
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.storage import ParquetStorage
 from oarc_crawlers.cli.help_texts import (
-    DATA_GROUP_HELP,
-    DATA_VIEW_HELP,
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
     ARGS_MAX_ROWS_HELP,
 )
-from oarc_crawlers.utils.const import SUCCESS, FAILURE
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.storage import ParquetStorage
 
-
-@click.group(help=DATA_GROUP_HELP)
+@click.group()
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def data(verbose, config):
-    """
-    Group of data management CLI commands for OARC Crawlers.
+    """Data management operations for viewing and manipulating data files.
 
     This group provides commands to inspect, view, and manage data files,
     such as Parquet file inspection and manipulation.
 
     Use --help with subcommands for more details.
+
+    Examples:
+
+      View the first 10 rows of a parquet file:
+
+        $ oarc-crawlers data view data/results.parquet
+
+      View the first 20 rows of a parquet file:
+
+        $ oarc-crawlers data view data/results.parquet --max-rows 20
+
+      View parquet file with detailed logging enabled:
+
+        $ oarc-crawlers data view data/results.parquet --verbose
+
+      View parquet file using a custom configuration:
+
+        $ oarc-crawlers data view data/results.parquet --config custom_config.ini
     """
     pass
 
 
-@data.command(help=DATA_VIEW_HELP)
+@data.command()
 @click.argument('file_path', type=click.Path(exists=True))
 @click.option('--max-rows', default=10, type=int, help=ARGS_MAX_ROWS_HELP)
 @handle_error
 def view(file_path, max_rows):
-    """
-    View contents of a Parquet file.
+    """View contents of a Parquet file.
 
     Loads the specified Parquet file, displays its shape, schema, and a sample of rows.
 

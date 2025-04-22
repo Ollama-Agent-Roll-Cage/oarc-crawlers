@@ -17,10 +17,10 @@ from fastmcp import FastMCP
 from aiohttp.client_exceptions import ClientError
 
 from oarc_log import log
-from oarc_decorators import (
-    singleton,
+from oarc_utils.decorators import singleton
+from oarc_utils.errors import (
     MCPError,
-    TransportError,
+    TransportError
 )
 
 from oarc_crawlers.core import (

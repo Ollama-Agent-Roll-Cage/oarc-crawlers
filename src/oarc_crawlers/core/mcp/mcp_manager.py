@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from fastmcp import FastMCP, Client
 
 from oarc_log import log
-from oarc_decorators import MCPError
+from oarc_utils.errors import MCPError
 
 from oarc_crawlers.utils.mcp_utils import MCPUtils
 

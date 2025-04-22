@@ -11,17 +11,10 @@ Intended for use via the OARC Crawlers command-line interface.
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    ResourceNotFoundError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import ResourceNotFoundError
 
 from oarc_crawlers.cli.help_texts import (
-    ARXIV_GROUP_HELP,
-    ARXIV_DOWNLOAD_HELP,
-    ARXIV_SEARCH_HELP,
-    ARXIV_LATEX_HELP,
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
     ARGS_ID_HELP,
@@ -33,12 +26,11 @@ from oarc_crawlers.core.crawlers.arxiv_crawler import ArxivCrawler
 from oarc_crawlers.utils.const import SUCCESS, ERROR
 
 
-@click.group(help=ARXIV_GROUP_HELP)
+@click.group()
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def arxiv(verbose, config):
-    """
-    Group of arXiv-related CLI commands.
+    """Group of arXiv-related CLI commands.
 
     This group provides commands to interact with arXiv papers, including:
       • Downloading LaTeX sources
@@ -46,21 +38,48 @@ def arxiv(verbose, config):
       • Extracting LaTeX content
 
     Use --help with subcommands for more details.
+
+    Examples:
+
+      Download LaTeX source for a paper:
+
+        $ oarc-crawlers arxiv download --id 2304.12749
+
+      Search for papers on quantum computing:
+
+        $ oarc-crawlers arxiv search --query "quantum computing" --limit 5
+
+      Extract LaTeX content from a paper:
+
+        $ oarc-crawlers arxiv latex --id 2304.12749
     """
     pass
 
 
-@arxiv.command(help=ARXIV_DOWNLOAD_HELP)
+@arxiv.command()
 @click.option('--id', required=True, help=ARGS_ID_HELP)
 @asyncio_run
 @handle_error
 async def download(id):
-    """
-    Download LaTeX source files for an arXiv paper.
+    """Download LaTeX source files for an arXiv paper.
 
     Downloads the LaTeX source files for the specified arXiv paper ID.
     Displays a summary of the downloaded files. Shows up to 10 files by default,
     or all files if debug logging is enabled.
+
+    Examples:
+
+      Download source for a paper using its ID:
+
+        $ oarc-crawlers arxiv download --id 2304.12749
+
+      Download with verbose logging:
+
+        $ oarc-crawlers arxiv download --id 2304.12749 --verbose
+
+      Download using custom configuration:
+
+        $ oarc-crawlers arxiv download --id 2304.12749 --config custom_config.ini
 
     Args:
         id (str): The arXiv paper identifier.
@@ -102,17 +121,34 @@ async def download(id):
     return SUCCESS
 
 
-@arxiv.command(help=ARXIV_SEARCH_HELP)
+@arxiv.command()
 @click.option('--query', required=True, help=ARGS_QUERY_HELP)
 @click.option('--limit', default=5, type=int, help=ARGS_LIMIT_HELP)
 @asyncio_run
 @handle_error
 async def search(query, limit):
-    """
-    Search for papers on arXiv.
+    """Search for papers on arXiv.
 
     Performs a search using the provided query string and displays a summary
     of the top matching papers (up to the specified limit).
+
+    Examples:
+
+      Search for papers on quantum computing:
+
+        $ oarc-crawlers arxiv search --query "quantum computing"
+
+      Search with a custom limit:
+
+        $ oarc-crawlers arxiv search --query "machine learning" --limit 10
+
+      Search with quotes in query:
+
+        $ oarc-crawlers arxiv search --query '"deep learning"'
+
+      Search with verbose output:
+
+        $ oarc-crawlers arxiv search --query "robotics" --verbose
 
     Args:
         query (str): The search query for arXiv.
@@ -150,16 +186,29 @@ async def search(query, limit):
     return SUCCESS
     
 
-@arxiv.command(help=ARXIV_LATEX_HELP)
+@arxiv.command()
 @click.option('--id', required=True, help=ARGS_ID_HELP)
 @asyncio_run
 @handle_error
 async def latex(id):
-    """
-    Download and extract LaTeX content from an arXiv paper.
+    """Download and extract LaTeX content from an arXiv paper.
 
     Retrieves the LaTeX source for the specified arXiv paper ID,
     extracts the main LaTeX content, and displays summary information.
+
+    Examples:
+
+      Extract LaTeX from a paper:
+
+        $ oarc-crawlers arxiv latex --id 2304.12749
+
+      Extract LaTeX with verbose output:
+
+        $ oarc-crawlers arxiv latex --id 2304.12749 --verbose
+
+      Extract LaTeX using custom configuration:
+
+        $ oarc-crawlers arxiv latex --id 2304.12749 --config custom_config.ini
 
     Args:
         id (str): The arXiv paper identifier.

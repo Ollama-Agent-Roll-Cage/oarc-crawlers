@@ -12,7 +12,7 @@ import pathlib
 from typing import Any, Dict, Optional
 
 from oarc_log import log
-from oarc_decorators import singleton
+from oarc_utils.decorators import singleton
 
 from oarc_crawlers.utils.paths import Paths
 from oarc_crawlers.utils.const import (
@@ -39,16 +39,19 @@ class Config:
     Singleton configuration manager for OARC Crawlers.
 
     This class centralizes all configuration logic, providing:
-      - Default values for all supported settings.
-      - Automatic overrides from environment variables.
-      - Optional overrides from configuration files (INI format).
-      - Runtime access and mutation of configuration values.
-      - Ensured type safety and path resolution for key settings.
+      - Default values for all supported settings
+      - Automatic overrides from environment variables
+      - Optional overrides from configuration files (INI format)
+      - Runtime access and mutation of configuration values
+      - Ensured type safety and path resolution for key settings
 
-    Usage:
-        config = Config()
-        data_dir = config.data_dir
-        Config.set(CONFIG_KEY_TIMEOUT, 60)
+    Examples:
+      Get configuration value:
+        $ config = Config()
+        $ data_dir = config.data_dir
+      
+      Set configuration value:
+        $ Config.set(CONFIG_KEY_TIMEOUT, 60)
     """
 
     # Default configuration values
@@ -174,14 +177,16 @@ class Config:
     @classmethod
     def _update_from_config_section(cls, section):
         """
-        update configuration from a configparser section.
+        Update configuration from a configparser section.
 
         Updates the class configuration dictionary from a given configparser section.
         Iterates over all default configuration keys, and if a key is present in the provided
         section, parses its value and updates the internal configuration. Ensures that the
         value for the data directory key is always stored as a resolved pathlib.Path object.
+        
         Args:
             section (configparser.SectionProxy or dict): The configuration section containing key-value pairs to update.
+            
         Side Effects:
             Modifies the class-level _config dictionary with updated values from the section.
         """
@@ -196,7 +201,8 @@ class Config:
 
     @classmethod
     def load_from_file(cls, config_file: str) -> None:
-        """Load configuration from a specific file.
+        """
+        Load configuration from a specific file.
         
         Args:
             config_file: Path to the config file to load.
@@ -206,7 +212,8 @@ class Config:
 
     @classmethod
     def apply_config_file(cls, ctx=None, param=None, value=None) -> Any:
-        """Load configuration from a file if specified.
+        """
+        Load configuration from a file if specified.
         
         This method can be used both directly and as a Click callback for the --config option.
         
@@ -239,7 +246,7 @@ class Config:
     @property
     def data_dir(self) -> pathlib.Path:
         """Get the configured data directory."""
-        return self.__class__._config[CONFIG_KEY_DATA_DIR]
+        return self._config[CONFIG_KEY_DATA_DIR]
 
     @classmethod
     def ensure_data_dir(cls) -> pathlib.Path:
@@ -254,22 +261,22 @@ class Config:
     @property
     def log_level(self) -> str:
         """Get the configured log level."""
-        return self.__class__._config[CONFIG_KEY_LOG_LEVEL]
+        return self._config[CONFIG_KEY_LOG_LEVEL]
 
     @property
     def max_retries(self) -> int:
         """Get the configured max retries for network operations."""
-        return self.__class__._config[CONFIG_KEY_MAX_RETRIES]
+        return self._config[CONFIG_KEY_MAX_RETRIES]
 
     @property
     def timeout(self) -> int:
         """Get the configured timeout for network operations."""
-        return self.__class__._config[CONFIG_KEY_TIMEOUT]
+        return self._config[CONFIG_KEY_TIMEOUT]
 
     @property
     def user_agent(self) -> str:
         """Get the configured user agent string."""
-        return self.__class__._config[CONFIG_KEY_USER_AGENT]
+        return self._config[CONFIG_KEY_USER_AGENT]
 
     @classmethod
     def get(cls, key: str, default: Any = None) -> Any:
@@ -283,7 +290,7 @@ class Config:
         Returns:
             The configuration value, or default if not found
         """
-        return cls.__class__._config.get(key, default)
+        return cls._config.get(key, default)
 
     @classmethod
     def set(cls, key: str, value: Any) -> None:

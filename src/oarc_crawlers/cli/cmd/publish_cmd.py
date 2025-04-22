@@ -7,16 +7,13 @@ Supports optional build steps, flexible credential management, and .pypirc confi
 import click
 
 from oarc_log import log, enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    BuildError, 
-    PublishError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import BuildError, PublishError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.utils.build_utils import BuildUtils
+from oarc_crawlers.utils.const import SUCCESS
 from oarc_crawlers.cli.help_texts import (
-    PUBLISH_GROUP_HELP,
-    PUBLISH_PYPI_HELP,
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
     ARGS_TEST_HELP,
@@ -25,25 +22,35 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_PYPI_PASSWORD_HELP,
     ARGS_PYPI_CONFIG_FILE_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.utils.build_utils import BuildUtils
-from oarc_crawlers.utils.const import SUCCESS
 
-
-@click.group(help=PUBLISH_GROUP_HELP)
+@click.group()
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def publish(verbose, config):
-    """CLI group for building and publishing OARC Crawlers packages to PyPI or TestPyPI.
+    """Group of commands for building and publishing OARC Crawlers packages.
 
     This group provides commands to streamline the build and release process, 
     including support for credential management, .pypirc configuration, and 
     publishing to both official and test repositories.
+
+    Examples:
+
+      Publish to PyPI:
+
+        $ oarc-crawlers publish pypi
+
+      Publish to TestPyPI:
+
+        $ oarc-crawlers publish pypi --test
+
+      Publish without rebuilding:
+
+        $ oarc-crawlers publish pypi --no-build
     """
     pass
 
 
-@publish.command(help=PUBLISH_PYPI_HELP)
+@publish.command()
 @click.option('--test', is_flag=True, help=ARGS_TEST_HELP)
 @click.option('--build/--no-build', default=True, help=ARGS_BUILD_HELP)
 @click.option('--username', help=ARGS_PYPI_USERNAME_HELP)
@@ -52,11 +59,32 @@ def publish(verbose, config):
 @asyncio_run
 @handle_error
 async def pypi(test, build, username, password, config_file):
-    """
-    Publish the OARC Crawlers package to PyPI or TestPyPI.
+    """Publish the OARC Crawlers package to PyPI or TestPyPI.
 
     Optionally builds the package before uploading to the selected repository.
     Supports flexible credential management via command-line options or a .pypirc config file.
+
+    Examples:
+
+      Publish to PyPI with default settings:
+
+        $ oarc-crawlers publish pypi
+
+      Publish to TestPyPI:
+
+        $ oarc-crawlers publish pypi --test
+
+      Publish with explicit credentials:
+
+        $ oarc-crawlers publish pypi --username myuser --password mypass
+
+      Publish using custom .pypirc:
+
+        $ oarc-crawlers publish pypi --config-file ~/.custom-pypirc
+
+      Publish without rebuilding:
+
+        $ oarc-crawlers publish pypi --no-build
 
     Args:
         test (bool): If True, publish to TestPyPI; otherwise, publish to PyPI.

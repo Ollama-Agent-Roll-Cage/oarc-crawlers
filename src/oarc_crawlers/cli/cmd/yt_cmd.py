@@ -7,19 +7,13 @@ searching for videos, and fetching live chat messages from streams or premieres.
 import click
 
 from oarc_log import enable_debug_logging
-from oarc_decorators import (
-    asyncio_run, 
-    handle_error, 
-    OarcError,
-)
+from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.errors import OARCError
 
+from oarc_crawlers.config.config import apply_config_file
+from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
+from oarc_crawlers.utils.const import SUCCESS, ERROR
 from oarc_crawlers.cli.help_texts import (
-    YOUTUBE_GROUP_HELP,
-    YOUTUBE_DOWNLOAD_HELP,
-    YOUTUBE_PLAYLIST_HELP,
-    YOUTUBE_CAPTIONS_HELP,
-    YOUTUBE_SEARCH_HELP,
-    YOUTUBE_CHAT_HELP,
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
     ARGS_VIDEO_URL_HELP,
@@ -37,22 +31,38 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_MAX_MESSAGES_HELP,
     ARGS_DURATION_HELP,
 )
-from oarc_crawlers.config.config import apply_config_file
-from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
-from oarc_crawlers.utils.const import SUCCESS, ERROR
 
 
-
-
-@click.group(help=YOUTUBE_GROUP_HELP)
+@click.group()
 @click.option('--verbose', is_flag=True, help=ARGS_VERBOSE_HELP, callback=enable_debug_logging)
 @click.option('--config', help=ARGS_CONFIG_HELP, callback=apply_config_file)
 def yt(verbose, config):
-    """Group of YouTube CLI commands for downloading videos, extracting captions, searching, and fetching chat."""
+    """Group of YouTube CLI commands for video operations.
+
+    This group provides commands to interact with YouTube content, including:
+      • Downloading videos and playlists
+      • Extracting captions and subtitles
+      • Searching for videos
+      • Fetching chat messages from live streams
+
+    Examples:
+
+      Download a video:
+
+        $ oarc-crawlers yt download --url https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+      Download a playlist:
+
+        $ oarc-crawlers yt playlist --url https://www.youtube.com/playlist?list=PLexample
+
+      Extract captions:
+
+        $ oarc-crawlers yt captions --url https://www.youtube.com/watch?v=dQw4w9WgXcQ
+    """
     pass
 
 
-@yt.command(help=YOUTUBE_DOWNLOAD_HELP)
+@yt.command()
 @click.option('--url', required=True, help=ARGS_VIDEO_URL_HELP)
 @click.option('--video-format', default='mp4', help=ARGS_FORMAT_HELP)
 @click.option('--resolution', default='highest', help=ARGS_RESOLUTION_HELP)
@@ -62,19 +72,28 @@ def yt(verbose, config):
 @asyncio_run
 @handle_error
 async def download(url, video_format, resolution, extract_audio, output_path, filename):
-    """
-    Download a YouTube video with specified parameters.
-    Args:
-        url (str): The URL of the YouTube video to download.
-        video_format (str): The desired format of the downloaded file (e.g., 'mp4', 'mp3').
-        resolution (str): The desired video resolution (e.g., '720p', '1080p'). Ignored if extracting audio.
-        extract_audio (bool): Whether to extract audio only from the video.
-        output_path (str): The directory where the downloaded file will be saved.
-        filename (str): The name to use for the saved file.
-    Raises:
-        DownloadError: If an error occurs during the download process.
-    Returns:
-        int: SUCCESS constant indicating the operation completed successfully.
+    """Download a YouTube video with specified parameters.
+
+    Downloads a video from YouTube with customizable format, resolution, and output options.
+    Can optionally extract audio only from the video.
+
+    Examples:
+
+        Download a video with default settings:
+
+            $ oarc-crawlers yt download --url https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+        Download with specific resolution:
+
+            $ oarc-crawlers yt download --url https://www.youtube.com/watch?v=dQw4w9WgXcQ --resolution 720p
+
+        Extract audio only:
+
+            $ oarc-crawlers yt download --url https://www.youtube.com/watch?v=dQw4w9WgXcQ --extract-audio
+
+        Download to specific location with custom filename:
+
+            $ oarc-crawlers yt download --url https://www.youtube.com/watch?v=dQw4w9WgXcQ --output-path /downloads --filename video.mp4
     """
     crawler = YTCrawler()
     result = await crawler.download_video(
@@ -84,7 +103,7 @@ async def download(url, video_format, resolution, extract_audio, output_path, fi
     )
     
     if 'error' in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
         
     click.secho(f"✓ Downloaded: {result.get('title')}", fg='green')
     click.echo(f"File: {result.get('file_path')}")
@@ -92,7 +111,7 @@ async def download(url, video_format, resolution, extract_audio, output_path, fi
     return SUCCESS
 
 
-@yt.command(help=YOUTUBE_PLAYLIST_HELP)
+@yt.command()
 @click.option('--url', required=True, help=ARGS_PLAYLIST_URL_HELP)
 @click.option('--format', default='mp4', help=ARGS_FORMAT_HELP)
 @click.option('--max-videos', default=10, type=int, help=ARGS_MAX_VIDEOS_HELP)
@@ -100,20 +119,28 @@ async def download(url, video_format, resolution, extract_audio, output_path, fi
 @asyncio_run
 @handle_error
 async def playlist(url, format, max_videos, output_path):
-    """
-    Download videos from a YouTube playlist.
-    Args:
-        url (str): The URL of the YouTube playlist to download.
-        format (str): The desired video format (e.g., 'mp4', 'webm').
-        max_videos (int): The maximum number of videos to download from the playlist.
-        output_path (str): The directory path where downloaded videos will be saved.
-    Raises:
-        DownloadError: If an error occurs during the download process.
-    Returns:
-        int: SUCCESS constant indicating successful completion.
-    Side Effects:
-        - Displays a progress bar and status messages in the CLI.
-        - Prints details of each downloaded video, including errors if any.
+    """Download videos from a YouTube playlist.
+
+    Downloads multiple videos from a YouTube playlist up to a specified maximum.
+    Shows progress during download and provides a summary of results.
+
+    Examples:
+
+      Download a playlist with default settings (10 videos max):
+
+        $ oarc-crawlers yt playlist --url https://www.youtube.com/playlist?list=PLexample
+
+      Download more videos:
+
+        $ oarc-crawlers yt playlist --url https://www.youtube.com/playlist?list=PLexample --max-videos 20
+
+      Download in specific format:
+
+        $ oarc-crawlers yt playlist --url https://www.youtube.com/playlist?list=PLexample --format webm
+
+      Save to specific directory:
+
+        $ oarc-crawlers yt playlist --url https://www.youtube.com/playlist?list=PLexample --output-path /downloads/playlists
     """
     crawler = YTCrawler()
     
@@ -127,7 +154,7 @@ async def playlist(url, format, max_videos, output_path):
         )
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     video_count = len(result.get('videos', []))
     click.secho(f"✓ Downloaded {video_count} videos from playlist: {result.get('title')}", fg='green')
@@ -142,21 +169,30 @@ async def playlist(url, format, max_videos, output_path):
     return SUCCESS
 
 
-@yt.command(help=YOUTUBE_CAPTIONS_HELP)
+@yt.command()
 @click.option('--url', required=True, help=ARGS_VIDEO_URL_HELP)
 @click.option('--languages', default='en', help=ARGS_LANGUAGES_HELP)
 @asyncio_run
 @handle_error
 async def captions(url, languages):
-    """
-    Extract captions/subtitles from a YouTube video for specified languages.
-    Args:
-        url (str): The URL of the YouTube video to extract captions from.
-        languages (str): Comma-separated list of language codes (e.g., 'en,es,fr') for which to extract captions.
-    Raises:
-        CrawlError: If an error occurs during caption extraction.
-    Returns:
-        int: SUCCESS (typically 0) if captions are extracted successfully, otherwise 0 if no captions are found.
+    """Extract captions/subtitles from a YouTube video for specified languages.
+
+    Extracts available subtitles or closed captions from a YouTube video for the
+    specified languages. Supports multiple language extraction by providing a comma-separated list.
+
+    Examples:
+
+      Extract English captions:
+
+        $ oarc-crawlers yt captions --url https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+      Extract captions in multiple languages:
+
+        $ oarc-crawlers yt captions --url https://www.youtube.com/watch?v=dQw4w9WgXcQ --languages en,es,fr
+
+      Extract with verbose logging:
+
+        $ oarc-crawlers yt captions --url https://www.youtube.com/watch?v=dQw4w9WgXcQ --verbose
     """
     crawler = YTCrawler()
     
@@ -166,7 +202,7 @@ async def captions(url, languages):
     result = await crawler.extract_captions(url=url, languages=lang_list)
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     caption_langs = list(result.get('captions', {}).keys())
     if not caption_langs:
@@ -182,23 +218,34 @@ async def captions(url, languages):
     return SUCCESS
 
 
-@yt.command(help=YOUTUBE_SEARCH_HELP)
+@yt.command()
 @click.option('--query', required=True, help=ARGS_QUERY_HELP)
 @click.option('--limit', default=10, type=int, help=ARGS_LIMIT_HELP)
 @asyncio_run
 @handle_error
 async def search(query, limit):
-    """
-    Search for YouTube videos based on a query string.
-    Args:
-        query (str): The search query to use for finding YouTube videos.
-        limit (int): The maximum number of videos to retrieve.
-    Returns:
-        int: SUCCESS constant indicating the operation completed successfully.
-    Raises:
-        CrawlError: If an error occurs during the search process.
-    Side Effects:
-        Prints search progress and results to the console using click.
+    """Search for YouTube videos based on a query string.
+
+    Performs a search on YouTube and displays the top matching videos up to the
+    specified limit. Shows details including title, author, duration, and views.
+
+    Examples:
+
+      Search for videos about Python programming:
+
+        $ oarc-crawlers yt search --query "Python programming"
+
+      Limit search results to 5 videos:
+
+        $ oarc-crawlers yt search --query "machine learning" --limit 5
+
+      Search for exact phrase:
+
+        $ oarc-crawlers yt search --query '"artificial intelligence"'
+
+      Search with verbose logging:
+
+        $ oarc-crawlers yt search --query "data science" --verbose
     """
     crawler = YTCrawler()
     
@@ -206,7 +253,7 @@ async def search(query, limit):
     result = await crawler.search_videos(query=query, limit=limit)
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     click.secho(f"✓ Found {result.get('result_count', 0)} videos", fg='green')
     
@@ -227,26 +274,35 @@ async def search(query, limit):
     return SUCCESS
 
 
-@yt.command(help=YOUTUBE_CHAT_HELP)
+@yt.command()
 @click.option('--video-id', required=True, help=ARGS_VIDEO_ID_HELP)
 @click.option('--max-messages', default=1000, type=int, help=ARGS_MAX_MESSAGES_HELP)
 @click.option('--duration', type=int, help=ARGS_DURATION_HELP)
 @asyncio_run
 @handle_error
 async def chat(video_id, max_messages, duration):
-    """
-    Fetch chat messages from a YouTube live stream or premiere.
-    Args:
-        video_id (str): The YouTube video ID to fetch chat messages from.
-        max_messages (int): The maximum number of chat messages to retrieve.
-        duration (int): The duration (in seconds) to fetch chat messages for.
-    Returns:
-        int: SUCCESS constant indicating successful completion.
-    Raises:
-        CrawlError: If an error occurs during chat message retrieval.
-    Side Effects:
-        - Saves chat messages to a text file and/or Parquet file if specified.
-        - Outputs status and file paths to the console.
+    """Fetch chat messages from a YouTube live stream or premiere.
+
+    Collects chat messages from a YouTube live stream or premiere, with options
+    to control the maximum number of messages and duration of collection.
+
+    Examples:
+
+      Collect chat messages from a live stream:
+
+        $ oarc-crawlers yt chat --video-id dQw4w9WgXcQ
+
+      Collect a maximum of 500 messages:
+
+        $ oarc-crawlers yt chat --video-id dQw4w9WgXcQ --max-messages 500
+
+      Collect messages for 5 minutes:
+
+        $ oarc-crawlers yt chat --video-id dQw4w9WgXcQ --duration 300
+
+      Collect with verbose logging:
+
+        $ oarc-crawlers yt chat --video-id dQw4w9WgXcQ --verbose
     """
     crawler = YTCrawler()
     
@@ -259,7 +315,7 @@ async def chat(video_id, max_messages, duration):
     )
     
     if ERROR in result:
-        raise OarcError(f"Error: {result['error']}")
+        raise OARCError(f"Error: {result['error']}")
     
     msg_count = result.get('message_count', 0)
     click.secho(f"✓ Collected {msg_count} chat messages", fg='green')

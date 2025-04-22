@@ -8,14 +8,13 @@ version = "0.1.5"
 description = "OARC's dynamic webcrawler module collection"
 readme = "README.md"
 requires-python = ">=3.10,<3.12"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
 authors = [
     {name = "OARC Team"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,7 +40,7 @@ dependencies = [
     "pyinstaller>=6.0.0",
     "questionary>=2.1.0",
     "oarc-log @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-log.git",
-    "oarc-decorators @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-decorators.git"
+    "oarc-utils @ git+https://github.com/Ollama-Agent-Roll-Cage/oarc-utils.git"
 ]
 
 [project.optional-dependencies]

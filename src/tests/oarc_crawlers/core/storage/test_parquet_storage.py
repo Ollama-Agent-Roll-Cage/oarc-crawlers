@@ -2,10 +2,9 @@ import os
 import tempfile
 import unittest
 import pandas as pd
-import numpy as np
-from pathlib import Path
 
 from oarc_crawlers import ParquetStorage
+from oarc_crawlers.utils.storage_utils import StorageUtils
 
 class TestParquetStorage(unittest.TestCase):
     """Test the ParquetStorage class functionality."""
@@ -105,3 +104,10 @@ class TestParquetStorage(unittest.TestCase):
         invalid_path = '/invalid/path/test.parquet'
         result = ParquetStorage.save_to_parquet(self.test_dict, invalid_path)
         self.assertFalse(result)
+    
+    def test_storage_utils_get_timestamped_path(self):
+        """Test getting a timestamped path."""
+        path = StorageUtils.get_timestamped_path(self.temp_dir.name, "test")
+        self.assertIn(self.temp_dir.name, path)
+        self.assertIn("test_", path)
+        self.assertTrue(path.endswith(".parquet"))
