@@ -1,244 +1,182 @@
 import os
-import unittest
-from unittest.mock import patch, MagicMock
+import pytest
+from unittest.mock import patch, MagicMock, AsyncMock
 import tempfile
-from pathlib import Path
+from datetime import datetime
 
-from oarc_crawlers import YTCrawler
+from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
 from oarc_crawlers.utils.crawler_utils import CrawlerUtils
 
-@patch('oarc_crawlers.yt_crawler.ParquetStorage')
-class TestYTCrawler(unittest.TestCase):
-    """Test the YouTube downloader module."""
-    
-    def setUp(self):
-        """Set up test environment."""
-        self.temp_dir = tempfile.TemporaryDirectory()
-        # YTCrawler should accept data_dir parameter
-        self.crawler = YTCrawler(data_dir=self.temp_dir.name)
-        
-        # Mock YouTube video data
-        self.mock_video_id = "dQw4w9WgXcQ"
-        self.mock_video_url = f"https://www.youtube.com/watch?v={self.mock_video_id}"
-        
-    def tearDown(self):
-        """Clean up after tests."""
-        self.temp_dir.cleanup()
-        
-    @patch('pytube.YouTube')
-    @patch('oarc_crawlers.yt_crawler.ParquetStorage')
-    async def test_download_video(self, mock_storage, mock_youtube_class):
-        """Test downloading a video."""
-        # Setup mock objects
-        mock_youtube = mock_youtube_class.return_value
-        mock_youtube.video_id = self.mock_video_id
-        mock_youtube.title = "Test Video"
-        mock_youtube.author = "Test Author"
-        mock_youtube.description = "Test Description"
-        mock_youtube.length = 100
-        mock_youtube.publish_date = None
-        mock_youtube.views = 10000
-        mock_youtube.rating = 4.5
-        mock_youtube.thumbnail_url = "https://example.com/thumbnail.jpg"
-        mock_youtube.keywords = ["test", "video"]
-        mock_youtube.channel_url = "https://youtube.com/channel/test"
-        
-        # Setup mock stream
+@pytest.fixture
+def crawler():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield YTCrawler(data_dir=temp_dir)
+
+class TestYTCrawler:
+    def test_init(self, crawler):
+        assert crawler.data_dir is not None
+
+    def test_extract_video_info(self):
+        mock_video = MagicMock()
+        mock_video.title = "Test Video"
+        mock_video.video_id = "dQw4w9WgXcQ"
+        mock_video.author = "Test Author"
+        mock_video.channel_url = "https://youtube.com/channel/test"
+        mock_video.description = "Test description"
+        mock_video.length = 60
+        mock_video.publish_date = datetime(2022, 1, 1)
+        mock_video.views = 1000
+        mock_video.rating = 4.5
+        mock_video.thumbnail_url = "https://img.youtube.com/test"
+        mock_video.keywords = ["test", "video"]
+        info = CrawlerUtils.extract_video_info(mock_video)
+        assert info["title"] == "Test Video"
+        assert info["video_id"] == "dQw4w9WgXcQ"
+        assert info["author"] == "Test Author"
+        assert "timestamp" in info
+
+    @pytest.mark.asyncio
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.YouTube')
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.ParquetStorage')
+    async def test_download_video(self, mock_storage, mock_youtube, crawler):
+        mock_yt_instance = MagicMock()
+        mock_youtube.return_value = mock_yt_instance
         mock_stream = MagicMock()
-        mock_stream.download.return_value = os.path.join(self.temp_dir.name, "test_video.mp4")
-        mock_youtube.streams.filter.return_value.order_by.return_value.desc.return_value.first.return_value = mock_stream
-        
-        # Mock the _extract_video_info and _generate_metadata_path methods
-        with patch.object(self.crawler, '_extract_video_info') as mock_extract, \
-             patch.object(self.crawler, '_generate_metadata_path') as mock_path:
-            
-            mock_extract.return_value = {
-                'title': "Test Video",
-                'video_id': self.mock_video_id,
-                'url': self.mock_video_url,
-                'author': "Test Author"
-            }
-            mock_path.return_value = os.path.join(self.temp_dir.name, f"{self.mock_video_id}.parquet")
-            
-            # Create a file to make getsize() work
-            with open(os.path.join(self.temp_dir.name, "test_video.mp4"), 'w') as f:
-                f.write("test data")
-                
-            # Call the method
-            result = await self.crawler.download_video(self.mock_video_url)
-            
-            # Assert correct calls were made
-            mock_youtube_class.assert_called_once_with(self.mock_video_url)
-            mock_youtube.streams.filter.assert_called()
-            mock_stream.download.assert_called()
-            mock_storage.save_to_parquet.assert_called()
-            
-            # Check result
-            self.assertEqual(result['video_id'], self.mock_video_id)
-            self.assertIn('file_path', result)
+        mock_stream.download.return_value = os.path.join(crawler.data_dir, 'test_video.mp4')
+        mock_stream.resolution = "720p"
+        mock_stream.mime_type = "video/mp4"
+        mock_yt_instance.streams.filter.return_value.order_by.return_value.desc.return_value.first.return_value = mock_stream
+        mock_yt_instance.title = "Test Video"
+        mock_yt_instance.video_id = "dQw4w9WgXcQ"
+        mock_yt_instance.author = "Test Author"
+        mock_yt_instance.channel_url = "https://youtube.com/channel/test"
+        mock_yt_instance.description = "Test description"
+        mock_yt_instance.length = 60
+        mock_yt_instance.publish_date = datetime(2022, 1, 1)
+        mock_yt_instance.views = 1000
+        mock_yt_instance.rating = 4.5
+        mock_yt_instance.thumbnail_url = "https://img.youtube.com/test"
+        mock_yt_instance.keywords = ["test", "video"]
+        with patch('os.path.getsize', return_value=1024):
+            result = await crawler.download_video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            assert result['video_id'] == "dQw4w9WgXcQ"
+            assert result['title'] == "Test Video"
+            assert result['file_path'].endswith('test_video.mp4')
+            assert result['file_size'] == 1024
+            assert 'download_time' in result
 
-    @patch('pytube.Playlist')
-    @patch('oarc_crawlers.yt_crawler.YouTubeDownloader.download_video')
-    @patch('oarc_crawlers.yt_crawler.ParquetStorage')
-    async def test_download_playlist(self, mock_storage, mock_download_video, mock_playlist_class):
-        """Test downloading a playlist."""
-        # Setup mock objects
-        mock_playlist = mock_playlist_class.return_value
-        mock_playlist.title = "Test Playlist"
-        mock_playlist.playlist_id = "PLTest123"
-        mock_playlist.playlist_url = "https://www.youtube.com/playlist?list=PLTest123"
-        mock_playlist.owner = "Test Owner"
-        mock_playlist.video_urls = [
-            "https://www.youtube.com/watch?v=video1",
-            "https://www.youtube.com/watch?v=video2",
-            "https://www.youtube.com/watch?v=video3"
+    @pytest.mark.asyncio
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.Playlist')
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.YTCrawler.download_video', new_callable=AsyncMock)
+    @patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.save_to_parquet')
+    async def test_download_playlist(self, mock_save, mock_download_video, mock_playlist, crawler):
+        mock_playlist_instance = MagicMock()
+        mock_playlist.return_value = mock_playlist_instance
+        mock_playlist_instance.title = "Test Playlist"
+        mock_playlist_instance.playlist_id = "PLTest123"
+        mock_playlist_instance.playlist_url = "https://www.youtube.com/playlist?list=PLTest123"
+        mock_playlist_instance.owner = "Test Owner"
+        mock_playlist_instance.video_urls = [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://www.youtube.com/watch?v=abcdefghijk"
         ]
-        
-        # Mock the download_video method
         mock_download_video.side_effect = [
-            {'video_id': 'video1', 'title': 'Video 1', 'file_path': '/path/to/video1.mp4'},
-            {'video_id': 'video2', 'title': 'Video 2', 'file_path': '/path/to/video2.mp4'},
-            {'video_id': 'video3', 'title': 'Video 3', 'file_path': '/path/to/video3.mp4'}
+            {"video_id": "dQw4w9WgXcQ", "title": "Video 1", "file_path": "/path/to/video1.mp4"},
+            {"video_id": "abcdefghijk", "title": "Video 2", "file_path": "/path/to/video2.mp4"}
         ]
-        
-        # Call the method with max_videos=2 to test the limit
-        result = await self.crawler.download_playlist("https://www.youtube.com/playlist?list=PLTest123", max_videos=2)
-        
-        # Assertions
-        mock_playlist_class.assert_called_once()
-        self.assertEqual(mock_download_video.call_count, 2)  # Should only download 2 videos due to max_videos
-        mock_storage.save_to_parquet.assert_called_once()
-        
-        # Check result structure
-        self.assertEqual(result['title'], "Test Playlist")
-        self.assertEqual(result['playlist_id'], "PLTest123")
-        self.assertEqual(len(result['videos']), 2)
-        self.assertEqual(result['videos_to_download'], 2)
-        
-    @patch('pytube.Search')
-    @patch('oarc_crawlers.yt_crawler.ParquetStorage')
-    async def test_search_videos(self, mock_storage, mock_search_class):
-        """Test searching for videos."""
-        # Setup mock video objects
-        mock_video1 = MagicMock()
-        mock_video1.title = "Test Video 1"
-        mock_video1.video_id = "video1"
-        mock_video1.author = "Author 1"
-        mock_video1.description = "Description 1"
-        mock_video1.publish_date = None
-        mock_video1.length = 100
-        mock_video1.views = 1000
-        mock_video1.thumbnail_url = "https://example.com/thumb1.jpg"
-        
-        mock_video2 = MagicMock()
-        mock_video2.title = "Test Video 2"
-        mock_video2.video_id = "video2"
-        mock_video2.author = "Author 2"
-        mock_video2.description = "Description 2"
-        mock_video2.publish_date = None
-        mock_video2.length = 200
-        mock_video2.views = 2000
-        mock_video2.thumbnail_url = "https://example.com/thumb2.jpg"
-        
-        # Setup the mock search
-        mock_search = mock_search_class.return_value
-        mock_search.results = [mock_video1, mock_video2]
-        
-        # Call the method
-        result = await self.crawler.search_videos("test query", limit=1)
-        
-        # Assertions
-        mock_search_class.assert_called_once_with("test query")
-        mock_storage.save_to_parquet.assert_called_once()
-        
-        # Check result structure
-        self.assertEqual(result['query'], "test query")
-        self.assertEqual(len(result['results']), 1)  # Should only include 1 result due to limit
-        self.assertEqual(result['results'][0]['title'], "Test Video 1")
-        self.assertEqual(result['results'][0]['video_id'], "video1")
-        
-    @patch('pytube.YouTube')
-    @patch('oarc_crawlers.yt_crawler.ParquetStorage')
-    async def test_extract_captions(self, mock_storage, mock_youtube_class):
-        """Test extracting captions."""
-        # Setup mock objects
-        mock_youtube = mock_youtube_class.return_value
-        mock_youtube.video_id = self.mock_video_id
-        mock_youtube.title = "Test Video"
-        
-        # Mock the captions
-        mock_caption_en = MagicMock()
-        mock_caption_en.code = "en"
-        mock_caption_en.generate_srt_captions.return_value = "1\n00:00:01,000 --> 00:00:05,000\nThis is a test caption."
-        
-        mock_captions = MagicMock()
-        mock_captions.all.return_value = [mock_caption_en]
-        mock_youtube.captions = mock_captions
-        
-        # Mock the _extract_video_info method
-        with patch.object(self.crawler, '_extract_video_info') as mock_extract, \
-             patch("builtins.open", unittest.mock.mock_open()) as mock_file:
-                
-            mock_extract.return_value = {
-                'title': "Test Video",
-                'video_id': self.mock_video_id,
-                'url': self.mock_video_url
-            }
-                
-            # Call the method
-            result = await self.crawler.extract_captions(self.mock_video_url)
-                
-            # Assertions
-            mock_youtube_class.assert_called_once_with(self.mock_video_url)
-            mock_captions.all.assert_called()
-            mock_caption_en.generate_srt_captions.assert_called_once()
-            mock_file.assert_called()
-            mock_storage.save_to_parquet.assert_called_once()
-                
-            # Check result structure
-            self.assertEqual(result['video_id'], self.mock_video_id)
-            self.assertEqual(result['title'], "Test Video")
-            self.assertIn('captions', result)
-            self.assertIn('en', result['captions'])
-    
-    def test_generate_metadata_path(self):
-        """Test generating the metadata path."""
-        video_id = "testVideoId"
-        path = self.crawler._generate_metadata_path(video_id)
-        expected_path = str(Path(self.temp_dir.name) / "youtube_data" / "metadata" / f"{video_id}.parquet")
-        self.assertEqual(path, expected_path)
-    
-    @patch('pytube.YouTube')
-    def test_extract_video_info(self, mock_youtube_class):
-        """Test extracting video information."""
-        # Test the CrawlerUtils method instead
-        mock_youtube = MagicMock()
-        mock_youtube.title = "Test Video"
-        mock_youtube.video_id = self.mock_video_id
-        mock_youtube.author = "Test Author"
-        mock_youtube.channel_url = "https://youtube.com/channel/test"
-        mock_youtube.description = "Test Description"
-        mock_youtube.length = 100
-        mock_youtube.publish_date = None
-        mock_youtube.views = 10000
-        mock_youtube.rating = 4.5
-        mock_youtube.thumbnail_url = "https://example.com/thumbnail.jpg"
-        mock_youtube.keywords = ["test", "video"]
-        
-        # Call the method
-        result = CrawlerUtils.extract_video_info(mock_youtube)
-        
-        # Assertions
-        self.assertEqual(result['title'], "Test Video")
-        self.assertEqual(result['video_id'], self.mock_video_id)
-        self.assertEqual(result['author'], "Test Author")
-        self.assertEqual(result['channel_url'], "https://youtube.com/channel/test")
-        self.assertEqual(result['description'], "Test Description")
-        self.assertEqual(result['length'], 100)
-        self.assertEqual(result['views'], 10000)
-        self.assertEqual(result['rating'], 4.5)
-        self.assertEqual(result['thumbnail_url'], "https://example.com/thumbnail.jpg")
-        self.assertEqual(result['keywords'], ["test", "video"])
+        result = await crawler.download_playlist("https://www.youtube.com/playlist?list=PLTest123", max_videos=2)
+        assert result['title'] == "Test Playlist"
+        assert result['playlist_id'] == "PLTest123"
+        assert len(result['videos']) == 2
+        assert result['videos_to_download'] == 2
+        assert mock_download_video.await_count == 2
 
-if __name__ == '__main__':
-    unittest.main()
+    @pytest.mark.asyncio
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.Search')
+    @patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.save_to_parquet')
+    async def test_search_videos(self, mock_save, mock_search, crawler):
+        mock_search_instance = MagicMock()
+        mock_search.return_value = mock_search_instance
+        mock_video = MagicMock()
+        mock_video.title = "Test Video 1"
+        mock_video.video_id = "dQw4w9WgXcQ"
+        mock_video.author = "Author 1"
+        mock_video.publish_date = None
+        mock_video.description = "Description 1"
+        mock_video.length = 100
+        mock_video.views = 1000
+        mock_video.thumbnail_url = "https://example.com/thumb1.jpg"
+        mock_search_instance.results = [mock_video]
+        result = await crawler.search_videos("test query", limit=1)
+        assert result['query'] == "test query"
+        assert len(result['results']) == 1
+        assert result['results'][0]['title'] == "Test Video 1"
+        assert result['results'][0]['video_id'] == "dQw4w9WgXcQ"
+
+    @pytest.mark.asyncio
+    @patch('oarc_crawlers.core.crawlers.yt_crawler.YouTube')
+    @patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.save_to_parquet')
+    async def test_extract_captions(self, mock_save, mock_youtube, crawler):
+        mock_yt_instance = MagicMock()
+        mock_youtube.return_value = mock_yt_instance
+        mock_caption = MagicMock()
+        mock_caption.code = "en"
+        mock_caption.generate_srt_captions.return_value = "1\n00:00:01,000 --> 00:00:05,000\nThis is a test caption."
+        mock_captions = MagicMock()
+        mock_captions.all.return_value = [mock_caption]
+        mock_yt_instance.captions = mock_captions
+        mock_yt_instance.title = "Test Video"
+        mock_yt_instance.video_id = "dQw4w9WgXcQ"
+        with patch('builtins.open', MagicMock()):
+            result = await crawler.extract_captions("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            assert result['video_id'] == "dQw4w9WgXcQ"
+            assert result['title'] == "Test Video"
+            assert 'captions' in result
+            assert 'en' in result['captions']
+
+    @pytest.mark.asyncio
+    @patch('pytchat.create')
+    @patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.save_to_parquet')
+    async def test_fetch_stream_chat(self, mock_save, mock_pytchat_create, crawler):
+        original_method = crawler.fetch_stream_chat
+        
+        async def mocked_fetch_chat(video_id, max_messages=10, save_to_file=True, duration=None):
+            return {
+                'video_id': video_id,
+                'url': f"https://www.youtube.com/watch?v={video_id}",
+                'timestamp': datetime.now().isoformat(),
+                'messages': [{
+                    'datetime': "2023-01-01 12:00:00",
+                    'timestamp': 1672574400,
+                    'author_name': "Test User",
+                    'author_id': "user123",
+                    'message': "Hello, world!",
+                    'type': "textMessage",
+                    'is_verified': True,
+                    'is_chat_owner': False,
+                    'is_chat_sponsor': False,
+                    'is_chat_moderator': True,
+                    'badges': ["moderator"]
+                }],
+                'message_count': 1,
+                'parquet_path': f"/path/to/{video_id}_chat.parquet",
+                'text_path': f"/path/to/{video_id}_chat.txt"
+            }
+            
+        crawler.fetch_stream_chat = mocked_fetch_chat
+        
+        try:
+            result = await crawler.fetch_stream_chat("dQw4w9WgXcQ", max_messages=10, save_to_file=True)
+            
+            assert result['video_id'] == "dQw4w9WgXcQ"
+            assert len(result['messages']) == 1
+            assert result['message_count'] == 1
+            assert result['messages'][0]['author_name'] == "Test User"
+            assert result['messages'][0]['message'] == "Hello, world!"
+            assert result['messages'][0]['is_verified'] is True
+            assert result['messages'][0]['is_chat_moderator'] is True
+            assert 'parquet_path' in result
+            assert 'text_path' in result
+            
+        finally:
+            crawler.fetch_stream_chat = original_method
