@@ -55,6 +55,9 @@ ARGS_PYPI_PASSWORD_HELP = "PyPI password (if not using keyring)"
 ARGS_PYPI_CONFIG_FILE_HELP = "Path to PyPI config file (.pypirc)"
 ARGS_FILE_PATH_HELP = "Path to the file"
 ARGS_MAX_ROWS_HELP = "Maximum number of rows to display"
+ARGS_CATEGORY_HELP = "ArXiv category to fetch papers from"
+ARGS_IDS_HELP = "Comma-separated list of arXiv paper IDs"
+ARGS_MAX_DEPTH_HELP = "Maximum depth for citation network generation"
 
 # --- Main CLI Help ---
 # This shorter version is meant to be used as a docstring with Click's built-in help formatting
@@ -191,6 +194,12 @@ Commands:
   download              Download LaTeX source files for a paper.
   search                Search for papers on arXiv.
   latex                 Download and extract LaTeX content from a paper.
+  keywords              Extract keywords from an arXiv paper.
+  references            Extract bibliography references from an arXiv paper.
+  equations             Extract mathematical equations from an arXiv paper.
+  category              Fetch recent papers from an arXiv category.
+  batch                 Process multiple papers in batch.
+  citation-network      Generate a citation network from seed papers.
 
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
@@ -551,6 +560,122 @@ Examples:
   oarc-crawlers arxiv latex --id 1909.11065
   oarc-crawlers arxiv latex --id 2310.12123 --config ~/.oarc/config.ini
 
+"""
+
+ARXIV_KEYWORDS_HELP = f"""
+Extract keywords from an arXiv paper.
+
+USAGE:
+  oarc-crawlers arxiv keywords [OPTIONS]
+
+Options:
+  --id TEXT                   {ARGS_ID_HELP} [required]
+  --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv keywords --id 2310.12123
+  oarc-crawlers arxiv keywords --id 2310.12123 --output-file keywords.json
+  oarc-crawlers arxiv keywords --id 2310.12123 --config ~/.oarc/config.ini
+"""
+
+ARXIV_REFERENCES_HELP = f"""
+Extract bibliography references from an arXiv paper.
+
+USAGE:
+  oarc-crawlers arxiv references [OPTIONS]
+
+Options:
+  --id TEXT                   {ARGS_ID_HELP} [required]
+  --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv references --id 2310.12123
+  oarc-crawlers arxiv references --id 2310.12123 --output-file refs.json
+  oarc-crawlers arxiv references --id 2310.12123 --verbose
+"""
+
+ARXIV_EQUATIONS_HELP = f"""
+Extract mathematical equations from an arXiv paper.
+
+USAGE:
+  oarc-crawlers arxiv equations [OPTIONS]
+
+Options:
+  --id TEXT                   {ARGS_ID_HELP} [required]
+  --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv equations --id 2310.12123
+  oarc-crawlers arxiv equations --id 2310.12123 --output-file equations.json
+  oarc-crawlers arxiv equations --id 2310.12123 --verbose
+"""
+
+ARXIV_CATEGORY_HELP = f"""
+Fetch recent papers from an arXiv category.
+
+USAGE:
+  oarc-crawlers arxiv category [OPTIONS]
+
+Options:
+  --category TEXT             {ARGS_CATEGORY_HELP} [required]
+  --limit INTEGER             {ARGS_LIMIT_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv category --category cs.AI
+  oarc-crawlers arxiv category --category physics.optics --limit 50
+  oarc-crawlers arxiv category --category math.CO --verbose
+"""
+
+ARXIV_BATCH_HELP = f"""
+Process multiple papers in batch.
+
+USAGE:
+  oarc-crawlers arxiv batch [OPTIONS]
+
+Options:
+  --ids TEXT                  {ARGS_IDS_HELP} [required]
+  --keywords / --no-keywords  Extract keywords from papers
+  --references / --no-references  Extract references from papers
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv batch --ids "2304.12749,2310.06825,2401.00123"
+  oarc-crawlers arxiv batch --ids "2304.12749,2310.06825" --keywords --references
+  oarc-crawlers arxiv batch --ids "2304.12749" --keywords --verbose
+"""
+
+ARXIV_CITATION_NETWORK_HELP = f"""
+Generate a citation network from seed papers.
+
+USAGE:
+  oarc-crawlers arxiv citation-network [OPTIONS]
+
+Options:
+  --ids TEXT                  {ARGS_IDS_HELP} [required]
+  --max-depth INTEGER         {ARGS_MAX_DEPTH_HELP}
+  --output-file TEXT          {ARGS_OUTPUT_FILE_HELP}
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers arxiv citation-network --ids "2304.12749,2310.06825"
+  oarc-crawlers arxiv citation-network --ids "2304.12749" --max-depth 2
+  oarc-crawlers arxiv citation-network --ids "2304.12749" --output-file network.json
 """
 
 # Web

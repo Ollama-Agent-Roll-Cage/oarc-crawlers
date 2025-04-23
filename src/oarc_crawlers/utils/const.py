@@ -105,13 +105,23 @@ DDG_NEWS_SEARCH_HEADER = "# DuckDuckGo News Search Results"
 
 # ArXiv API constants
 ARXIV_API_BASE_URL = "http://export.arxiv.org/api/query"
+ARXIV_BASE_URL = "https://arxiv.org/"
 ARXIV_SOURCE_URL_FORMAT = "https://arxiv.org/e-print/{arxiv_id}"
 ARXIV_ABS_URL_FORMAT = "https://arxiv.org/abs/{arxiv_id}"
 ARXIV_PDF_URL_FORMAT = "https://arxiv.org/pdf/{arxiv_id}.pdf"
+ARXIV_URL_PATTERNS = ["/abs/", "/pdf/"]
 ARXIV_NAMESPACES = {
     'atom': 'http://www.w3.org/2005/Atom',
     'arxiv': 'http://arxiv.org/schemas/atom'
 }
+
+# ArXiv processing limits
+ARXIV_MAX_KEYWORDS = 10
+ARXIV_MAX_EQUATIONS = 100
+ARXIV_MAX_REFERENCES = 200
+ARXIV_CATEGORY_MAX_RESULTS = 100
+ARXIV_CITATION_MAX_DEPTH = 1
+ARXIV_BATCH_CHUNK_SIZE = 10
 
 # GitHub binary file extensions
 GITHUB_BINARY_EXTENSIONS = {
@@ -159,3 +169,6 @@ GITHUB_LANGUAGE_EXTENSIONS = {
     '.toml': 'TOML',
     '.ipynb': 'Jupyter Notebook'
 }
+
+# NLTK resources
+NLTK_RESOURCES = ['tokenizers/punkt', 'corpora/stopwords']

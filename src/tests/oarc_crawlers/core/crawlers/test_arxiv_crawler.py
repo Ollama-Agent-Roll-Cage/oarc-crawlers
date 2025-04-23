@@ -353,14 +353,11 @@ async def test_extract_references_bibtex(arxiv_setup):
         assert bibtex_entry['fields']['author'] == 'Smith, B. and Jones, C.'
 
 @pytest.mark.asyncio
-@patch('nltk.download')
-@patch('nltk.data.find')
-async def test_extract_keywords(mock_find, mock_download, arxiv_setup):
+@patch('nltk.tokenize.word_tokenize', return_value=['deep', 'learning', 'nlp', 'transformer', 'models', 'attention', 'mechanisms', 'machine', 'translation'])
+@patch('nltk.corpus.stopwords.words', return_value=['for', 'in', 'the', 'and', 'to', 'this', 'we', 'a', 'of', 'on', 'is', 'by', 'with', 'as', 'an', 'are', 'that', 'be', 'from'])
+async def test_extract_keywords(mock_stopwords, mock_word_tokenize, arxiv_setup):
     """Test extracting keywords from paper abstract."""
     fetcher = arxiv_setup['fetcher']
-    
-    # Mock NLTK data availability
-    mock_find.side_effect = [True, True]  # punkt and stopwords available
     
     paper_info = {
         'arxiv_id': '2101.12345',

@@ -7,8 +7,7 @@ including URL handling, ID extraction, and standardized file operations.
 
 import re
 from datetime import datetime, UTC
-from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 from pytube import YouTube
 
@@ -20,7 +19,7 @@ from oarc_crawlers.utils.const import (
     YOUTUBE_WATCH_PATTERN,
     YOUTUBE_SHORT_PATTERN,
     GITHUB_LANGUAGE_EXTENSIONS,
-    GITHUB_BINARY_EXTENSIONS
+    NLTK_RESOURCES
 )
 
 class CrawlerUtils:
@@ -235,6 +234,11 @@ class CrawlerUtils:
                 return YOUTUBE_VIDEO_URL_FORMAT.format(video_id=video_id)
             except IndexError:
                 raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+        
+        # If URL doesn't match any known pattern, raise exception
+        if not (YOUTUBE_WATCH_PATTERN in url or YOUTUBE_SHORT_PATTERN in url):
+            raise ResourceNotFoundError(f"Could not extract video ID from URL: {url}")
+            
         return url
         
     @staticmethod
@@ -248,3 +252,23 @@ class CrawlerUtils:
             str: Language name or 'Unknown'
         """
         return GITHUB_LANGUAGE_EXTENSIONS.get(extension.lower(), 'Unknown')
+
+    @staticmethod
+    def init_nltk():
+        """Initialize NLTK resources."""
+        try:
+            import nltk
+            for resource in NLTK_RESOURCES:
+                try:
+                    nltk.data.find(resource)
+                    log.debug(f"NLTK resource {resource} already available")
+                except LookupError:
+                    log.debug(f"Downloading NLTK resource: {resource}")
+                    resource_name = resource.split('/')[-1]
+                    nltk.download(resource_name, quiet=True)
+            
+            log.debug("NLTK resources initialized successfully")
+            return True
+        except Exception as e:
+            log.warning(f"Failed to initialize NLTK resources: {e}")
+            return False

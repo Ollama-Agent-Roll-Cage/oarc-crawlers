@@ -52,7 +52,8 @@ dev = [
     "isort>=6.0.1",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
-    "ruff>=0.0.240"
+    "pytest-cov>=6.1.1",
+    "ruff>=0.0.240",
 ]
 
 # Define command-line scripts

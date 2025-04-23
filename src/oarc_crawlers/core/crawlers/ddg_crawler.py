@@ -8,23 +8,16 @@ Author: @BorcherdingL, RawsonK
 Date: 4/20/2025
 """
 
-import json
-import urllib.parse
 from datetime import datetime, UTC
 from pathlib import Path
-from typing import Optional
-
-import aiohttp
+from typing import Optional, Dict, Any
 
 from oarc_log import log
+from oarc_utils.errors import NetworkError, DataExtractionError
 
 from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.utils.const import (
-    DDG_BASE_URL,
-    DDG_API_PARAMS,
-    DDG_IMAGES_PARAMS,
-    DDG_NEWS_PARAMS,
     DDG_TEXT_SEARCH_HEADER,
     DDG_IMAGE_SEARCH_HEADER,
     DDG_NEWS_SEARCH_HEADER,
@@ -56,7 +49,6 @@ class DDGCrawler:
         if config.user_agent:
             self.headers["User-Agent"] = config.user_agent
 
-    
     async def text_search(self, search_query, max_results=5):
         """Perform an async text search using DuckDuckGo.
         
@@ -67,52 +59,27 @@ class DDGCrawler:
         Returns:
             str: Formatted search results in markdown
         """
-        try:
-            encoded_query = urllib.parse.quote(search_query)
-            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}"
+        # Use the unified search method
+        result = await self.search(search_query, search_type="text", max_results=max_results)
+        
+        # Format the response for text search
+        formatted_results = f"{result['header']}\n\n"
+        
+        # Add results based on available data
+        if result['results']:
+            formatted_results += "## Results\n\n"
+            for item in result['results']:
+                title = item.get('title', 'No Title')
+                url = item.get('url', '#')
+                description = item.get('description', 'No Description')
+                formatted_results += f"### [{title}]({url})\n{description}\n\n"
+        else:
+            formatted_results += "No results found.\n"
             
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(url, timeout=Config.get_instance().timeout) as response:
-                    if response.status == 200:
-                        result_text = await response.text()
-                        try:
-                            results = json.loads(result_text)
-                            
-                            # Save search results to Parquet
-                            search_data = {
-                                'query': search_query,
-                                'timestamp': datetime.now(UTC).isoformat(),
-                                'raw_results': result_text
-                            }
-                            
-                            # Use path utilities to save the search data
-                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "text")
-                            ParquetStorage.save_to_parquet(search_data, file_path)
-                            
-                            # Format the response nicely for Discord
-                            formatted_results = f"{DDG_TEXT_SEARCH_HEADER}\n\n"
-                            
-                            if 'AbstractText' in results and results['AbstractText']:
-                                formatted_results += f"## Summary\n{results['AbstractText']}\n\n"
-                                
-                            if 'RelatedTopics' in results:
-                                formatted_results += "## Related Topics\n\n"
-                                count = 0
-                                for topic in results['RelatedTopics']:
-                                    if count >= max_results:
-                                        break
-                                    if 'Text' in topic and 'FirstURL' in topic:
-                                        formatted_results += f"- [{topic['Text']}]({topic['FirstURL']})\n"
-                                        count += 1
-                            
-                            return formatted_results
-                        except json.JSONDecodeError:
-                            return "Error: Could not parse the search results."
-                    else:
-                        return f"Error: Received status code {response.status} from DuckDuckGo API."
-        except Exception as e:
-            log.error(f"DuckDuckGo search error: {e}")
-            return f"An error occurred during the search: {str(e)}"
+        # Save the results to parquet storage
+        self._save_search_results(search_query, "text", result)
+        
+        return formatted_results
 
     async def image_search(self, search_query, max_results=10):
         """Perform an async image search using DuckDuckGo.
@@ -124,67 +91,29 @@ class DDGCrawler:
         Returns:
             str: Formatted image search results in markdown
         """
-        try:
-            encoded_query = urllib.parse.quote(search_query)
-            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}&{DDG_IMAGES_PARAMS}"
+        # Use the unified search method
+        result = await self.search(search_query, search_type="image", max_results=max_results)
+        
+        # Format the response for image search
+        formatted_results = f"{result['header']}\n\n"
+        
+        # Add results based on available data
+        if result['results']:
+            for item in result['results']:
+                image_url = item.get('image', item.get('thumbnail', ''))
+                source_url = item.get('url', '#')
+                source = item.get('source', 'Unknown Source')
+                title = item.get('title', 'Image')
+                
+                formatted_results += f"![{title}]({image_url})\n"
+                formatted_results += f"[Source: {source}]({source_url})\n\n"
+        else:
+            formatted_results += "No image results found.\n"
             
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(url, timeout=Config.get_instance().timeout) as response:
-                    if response.status == 200:
-                        result_text = await response.text()
-                        try:
-                            results = json.loads(result_text)
-                            
-                            # Save search results to Parquet
-                            search_data = {
-                                'query': search_query,
-                                'type': 'image',
-                                'timestamp': datetime.now(UTC).isoformat(),
-                                'raw_results': result_text
-                            }
-                            
-                            # Use path utilities to save the search data
-                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "image")
-                            ParquetStorage.save_to_parquet(search_data, file_path)
-                            
-                            # Format the response nicely
-                            formatted_results = f"{DDG_IMAGE_SEARCH_HEADER}\n\n"
-                            
-                            # Extract image results
-                            if 'Images' in results:
-                                count = 0
-                                for image in results['Images'][:max_results]:
-                                    if count >= max_results:
-                                        break
-                                    if 'Image' in image and 'Source' in image:
-                                        formatted_results += f"![{image.get('Title', 'Image')}]({image['Image']})\n"
-                                        formatted_results += f"[Source: {image.get('Source', 'Unknown')}]({image.get('URL', '#')})\n\n"
-                                        count += 1
-                            elif 'RelatedTopics' in results:
-                                formatted_results += "## Related Image Topics\n\n"
-                                count = 0
-                                for topic in results['RelatedTopics']:
-                                    if count >= max_results:
-                                        break
-                                    if 'Icon' in topic and 'URL' in topic.get('Icon', {}):
-                                        image_url = topic['Icon']['URL']
-                                        if image_url:
-                                            formatted_results += f"![{topic.get('Text', 'Image')}]({image_url})\n"
-                                            if 'FirstURL' in topic:
-                                                formatted_results += f"[Source]({topic['FirstURL']})\n\n"
-                                            count += 1
-                            
-                            if not "![" in formatted_results:
-                                formatted_results += "No image results found.\n"
-                                
-                            return formatted_results
-                        except json.JSONDecodeError:
-                            return "Error: Could not parse the image search results."
-                    else:
-                        return f"Error: Received status code {response.status} from DuckDuckGo API."
-        except Exception as e:
-            log.error(f"DuckDuckGo image search error: {e}")
-            return f"An error occurred during the image search: {str(e)}"
+        # Save the results to parquet storage
+        self._save_search_results(search_query, "image", result)
+        
+        return formatted_results
 
     async def news_search(self, search_query, max_results=20):
         """Perform an async news search using DuckDuckGo.
@@ -196,67 +125,131 @@ class DDGCrawler:
         Returns:
             str: Formatted news search results in markdown
         """
-        try:
-            encoded_query = urllib.parse.quote(search_query)
-            url = f"{DDG_BASE_URL}?q={encoded_query}&{DDG_API_PARAMS}&{DDG_NEWS_PARAMS}"
+        # Use the unified search method
+        result = await self.search(search_query, search_type="news", max_results=max_results)
+        
+        # Format the response for news search
+        formatted_results = f"{result['header']}\n\n"
+        
+        # Add results based on available data
+        if result['results']:
+            for item in result['results']:
+                title = item.get('title', 'No Title')
+                url = item.get('url', '#')
+                source = item.get('source', 'Unknown Source')
+                date = item.get('date', 'Unknown Date')
+                excerpt = item.get('excerpt', '')
+                
+                formatted_results += f"## {title}\n"
+                formatted_results += f"**Source:** {source}\n"
+                formatted_results += f"**Date:** {date}\n"
+                if excerpt:
+                    formatted_results += f"\n{excerpt}\n"
+                formatted_results += f"\n[Read more]({url})\n\n"
+        else:
+            formatted_results += "No news results found.\n"
             
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(url, timeout=Config.get_instance().timeout) as response:
-                    if response.status == 200:
-                        result_text = await response.text()
-                        try:
-                            results = json.loads(result_text)
-                            
-                            # Save search results to Parquet
-                            search_data = {
-                                'query': search_query,
-                                'type': 'news',
-                                'timestamp': datetime.now(UTC).isoformat(),
-                                'raw_results': result_text
-                            }
-                            
-                            # Use path utilities to save the search data
-                            file_path = Paths.ddg_search_data_path(self.data_dir, search_query, "news")
-                            ParquetStorage.save_to_parquet(search_data, file_path)
-                            
-                            # Format the response nicely
-                            formatted_results = f"{DDG_NEWS_SEARCH_HEADER}\n\n"
-                            
-                            # Try to extract news results
-                            if 'News' in results:
-                                count = 0
-                                for news in results['News'][:max_results]:
-                                    if count >= max_results:
-                                        break
-                                    if 'Title' in news and 'URL' in news:
-                                        formatted_results += f"## {news['Title']}\n"
-                                        if 'Source' in news:
-                                            formatted_results += f"**Source:** {news['Source']}\n"
-                                        if 'Date' in news:
-                                            formatted_results += f"**Date:** {news['Date']}\n"
-                                        if 'Excerpt' in news:
-                                            formatted_results += f"\n{news['Excerpt']}\n"
-                                        formatted_results += f"\n[Read more]({news['URL']})\n\n"
-                                        count += 1
-                            # Fallback to related topics if no news section
-                            elif 'RelatedTopics' in results:
-                                formatted_results += "## Related News Topics\n\n"
-                                count = 0
-                                for topic in results['RelatedTopics']:
-                                    if count >= max_results:
-                                        break
-                                    if 'Text' in topic and 'FirstURL' in topic:
-                                        formatted_results += f"- [{topic['Text']}]({topic['FirstURL']})\n"
-                                        count += 1
-                            
-                            if formatted_results == f"{DDG_NEWS_SEARCH_HEADER}\n\n":
-                                formatted_results += "No news results found.\n"
-                                
-                            return formatted_results
-                        except json.JSONDecodeError:
-                            return "Error: Could not parse the news search results."
-                    else:
-                        return f"Error: Received status code {response.status} from DuckDuckGo API."
+        # Save the results to parquet storage
+        self._save_search_results(search_query, "news", result)
+        
+        return formatted_results
+
+    def _save_search_results(self, query: str, search_type: str, result: Dict[str, Any]):
+        """Save search results to Parquet storage.
+        
+        Args:
+            query (str): The search query
+            search_type (str): Type of search
+            result (Dict): Search result data
+        """
+        try:
+            # Create search data for storage
+            search_data = {
+                'query': query,
+                'type': search_type,
+                'timestamp': datetime.now(UTC).isoformat(),
+                'results': result.get('results', []),
+                'result_count': len(result.get('results', [])),
+            }
+            
+            # Use path utilities to save the search data
+            file_path = Paths.ddg_search_data_path(self.data_dir, query, search_type)
+            ParquetStorage.save_to_parquet(search_data, file_path)
+            log.debug(f"Saved {search_type} search results for '{query}' to {file_path}")
         except Exception as e:
-            log.error(f"DuckDuckGo news search error: {e}")
-            return f"An error occurred during the news search: {str(e)}"
+            log.error(f"Failed to save search results: {e}")
+
+    async def search(self, query: str, search_type: str = "text", max_results: int = 10) -> Dict[str, Any]:
+        """Search DuckDuckGo using the specified query and search type.
+        
+        Args:
+            query (str): The search query
+            search_type (str): Type of search - 'text', 'image', or 'news'
+            max_results (int): Maximum number of results to return
+            
+        Returns:
+            Dict: Search results containing query info and results list
+            
+        Raises:
+            NetworkError: If connection fails
+            DataExtractionError: If no results found
+        """
+        log.debug(f"Performing {search_type} search for '{query}' with max {max_results} results")
+        
+        try:
+            # Create a client instance
+            async_ddgs = self._get_ddgs_client()
+            
+            # Set the appropriate header based on search type
+            if search_type == "text":
+                header = DDG_TEXT_SEARCH_HEADER
+            elif search_type == "image":
+                header = DDG_IMAGE_SEARCH_HEADER
+            elif search_type == "news":
+                header = DDG_NEWS_SEARCH_HEADER
+            else:
+                raise ValueError(f"Invalid search type: {search_type}")
+            
+            # Perform the appropriate search based on type
+            async with async_ddgs as ddgs:
+                if search_type == "text":
+                    results = await ddgs.text(query, max_results=max_results)
+                elif search_type == "image":
+                    results = await ddgs.images(query, max_results=max_results)
+                elif search_type == "news":
+                    results = await ddgs.news(query, max_results=max_results)
+                else:
+                    raise ValueError(f"Invalid search type: {search_type}")
+                    
+                if not results:
+                    raise DataExtractionError(f"No {search_type} results found for query: {query}")
+                    
+                return {
+                    "query": query,
+                    "search_type": search_type,
+                    "results": results,
+                    "header": header
+                }
+                
+        except Exception as e:
+            if isinstance(e, DataExtractionError):
+                raise
+            log.error(f"Error during DuckDuckGo search: {str(e)}")
+            raise NetworkError(f"Failed to search DuckDuckGo: {str(e)}")
+    
+    def _get_ddgs_client(self):
+        """Get an AsyncDDGS client.
+        
+        This method exists to make testing easier with mock objects.
+        
+        Returns:
+            An AsyncDDGS instance
+        """
+        try:
+            from duckduckgo_search import AsyncDDGS
+            return AsyncDDGS()
+        except ImportError:
+            log.warning("Could not import AsyncDDGS from duckduckgo_search.")
+            # During tests, this will be patched so this error doesn't matter
+            # For actual usage, the error will be properly raised and caught in search()
+            raise

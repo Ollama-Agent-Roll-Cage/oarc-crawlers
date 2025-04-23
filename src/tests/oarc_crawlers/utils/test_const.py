@@ -14,12 +14,14 @@ from oarc_crawlers.utils.const import (
     CONFIG_KEY_MAX_RETRIES,
     CONFIG_KEY_TIMEOUT,
     CONFIG_KEY_USER_AGENT,
+    CONFIG_KEY_GITHUB_TOKEN,
     ENV_DATA_DIR,
     ENV_LOG_LEVEL,
     ENV_MAX_RETRIES,
     ENV_TIMEOUT,
     ENV_USER_AGENT,
     ENV_HOME_DIR,
+    ENV_GITHUB_TOKEN,
     DEFAULT_CONFIG_FILENAME,
     OARC_DIR,
     CONFIG_DIR,
@@ -61,12 +63,21 @@ from oarc_crawlers.utils.const import (
     DDG_IMAGE_SEARCH_HEADER,
     DDG_NEWS_SEARCH_HEADER,
     ARXIV_API_BASE_URL,
+    ARXIV_BASE_URL,
     ARXIV_SOURCE_URL_FORMAT,
     ARXIV_ABS_URL_FORMAT,
     ARXIV_PDF_URL_FORMAT,
+    ARXIV_URL_PATTERNS,
     ARXIV_NAMESPACES,
+    ARXIV_MAX_KEYWORDS,
+    ARXIV_MAX_EQUATIONS,
+    ARXIV_MAX_REFERENCES,
+    ARXIV_CATEGORY_MAX_RESULTS,
+    ARXIV_CITATION_MAX_DEPTH,
+    ARXIV_BATCH_CHUNK_SIZE,
     GITHUB_BINARY_EXTENSIONS,
     GITHUB_LANGUAGE_EXTENSIONS,
+    NLTK_RESOURCES,
 )
 
 
@@ -93,6 +104,7 @@ def test_constants_defined():
     assert CONFIG_KEY_MAX_RETRIES == "max_retries"
     assert CONFIG_KEY_TIMEOUT == "timeout"
     assert CONFIG_KEY_USER_AGENT == "user_agent"
+    assert CONFIG_KEY_GITHUB_TOKEN == "github_token"
     
     # Environment variables
     assert ENV_DATA_DIR == "OARC_DATA_DIR"
@@ -101,6 +113,7 @@ def test_constants_defined():
     assert ENV_TIMEOUT == "OARC_TIMEOUT"
     assert ENV_USER_AGENT == "OARC_USER_AGENT"
     assert ENV_HOME_DIR == "OARC_HOME_DIR"
+    assert ENV_GITHUB_TOKEN == "OARC_GITHUB_TOKEN"
     
     # Configuration
     assert DEFAULT_CONFIG_FILENAME == "crawlers.ini"
@@ -157,9 +170,17 @@ def test_constants_defined():
     
     # ArXiv API constants
     assert ARXIV_API_BASE_URL == "http://export.arxiv.org/api/query"
+    assert ARXIV_BASE_URL == "https://arxiv.org/"
     assert ARXIV_SOURCE_URL_FORMAT == "https://arxiv.org/e-print/{arxiv_id}"
     assert ARXIV_ABS_URL_FORMAT == "https://arxiv.org/abs/{arxiv_id}"
     assert ARXIV_PDF_URL_FORMAT == "https://arxiv.org/pdf/{arxiv_id}.pdf"
+    assert ARXIV_URL_PATTERNS == ["/abs/", "/pdf/"]
+    assert ARXIV_MAX_KEYWORDS == 10
+    assert ARXIV_MAX_EQUATIONS == 100
+    assert ARXIV_MAX_REFERENCES == 200
+    assert ARXIV_CATEGORY_MAX_RESULTS == 100
+    assert ARXIV_CITATION_MAX_DEPTH == 1
+    assert ARXIV_BATCH_CHUNK_SIZE == 10
     
     # Dictionary constants
     assert isinstance(CONFIG_KEYS, dict)
@@ -170,3 +191,6 @@ def test_constants_defined():
     assert '.png' in GITHUB_BINARY_EXTENSIONS
     assert isinstance(GITHUB_LANGUAGE_EXTENSIONS, dict)
     assert GITHUB_LANGUAGE_EXTENSIONS['.py'] == 'Python'
+    assert isinstance(NLTK_RESOURCES, list)
+    assert "tokenizers/punkt" in NLTK_RESOURCES
+    assert "corpora/stopwords" in NLTK_RESOURCES
