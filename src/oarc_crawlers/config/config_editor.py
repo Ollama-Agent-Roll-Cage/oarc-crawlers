@@ -221,6 +221,13 @@ class ConfigEditor:
                         except Exception as e:
                             echo(style(f"Error creating directory: {e}", fg='red'))
                 value = str(path)
+            elif setting_type == "password":
+                # Handle password fields just like regular text fields
+                # (no special masking)
+                value = questionary.text(
+                    message,
+                    default=current_value_str
+                ).ask()
             else:  # string or other
                 value = questionary.text(
                     message,
@@ -332,7 +339,9 @@ class ConfigEditor:
             
             # Print key and value on the same line
             secho(f"{key}: ", fg="green", nl=False)
+            # No special handling for sensitive values - display all values as is
             echo(f"{value}")
+                
             echo(f"  Source: {source}")
             echo(f"  Description: {description}")
             
