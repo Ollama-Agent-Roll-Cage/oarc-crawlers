@@ -1,11 +1,11 @@
 # OARC-Crawlers Command Line Interface
 
 ```
-   ____    _    ____   ____      ____                    _               
-  / __ \  / \  |  _ \ / ___|    / ___|_ __ __ ___      _| | ___ _ __ ___ 
- / / _` |/ _ \ | |_) | |       | |   | '__/ _` \ \ /\ / / |/ _ \ '__/ __|
-| | (_| / ___ \|  _ <| |___    | |___| | | (_| |\ V  V /| |  __/ |  \__ \
- \ \__,_/_/   \_\_| \_\____|    \____|_|  \__,_| \_/\_/ |_|\___|_|  |___/
+   ____    _    ____   ____      ____               
+  / __ \  / \  |  _ \ / ___|    / ___|_ __ __ ___      _| | ___ _ __  
+ / / _` |/ _ \ | |_) | |       | |   | '__/ _` \ \ /\ / / |/ _ \ '__/ |
+| | (_| / ___ \|  _ <| |___    | |___| | | (_| |\ V  V /| |  __/ |  \ \
+ \ \__,_/_/   \_\_| \_\____|    \____|_|  \__,_| \_/\_/ |_|\___|_|  |/
   \____/                                                                  
 ```
 
@@ -148,6 +148,128 @@ oarc-crawlers arxiv latex --id 2310.12123
 oarc-crawlers arxiv latex --id 1909.11065
 ```
 
+#### `keywords`
+
+Extract keywords from an arXiv paper.
+
+```bash
+oarc-crawlers arxiv keywords --id [ARXIV_ID] [--output-file FILE]
+```
+
+**Options:**
+- `--id TEXT` - arXiv paper ID [required]
+- `--output-file TEXT` - Path to save keywords as JSON
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv keywords --id 2310.12123
+oarc-crawlers arxiv keywords --id 2310.12123 --output-file keywords.json
+```
+
+#### `references`
+
+Extract bibliography references from an arXiv paper.
+
+```bash
+oarc-crawlers arxiv references --id [ARXIV_ID] [--output-file FILE]
+```
+
+**Options:**
+- `--id TEXT` - arXiv paper ID [required]
+- `--output-file TEXT` - Path to save references as JSON
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv references --id 2310.12123
+oarc-crawlers arxiv references --id 2310.12123 --output-file refs.json
+```
+
+#### `equations`
+
+Extract mathematical equations from an arXiv paper.
+
+```bash
+oarc-crawlers arxiv equations --id [ARXIV_ID] [--output-file FILE]
+```
+
+**Options:**
+- `--id TEXT` - arXiv paper ID [required]
+- `--output-file TEXT` - Path to save equations as JSON
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv equations --id 2310.12123
+oarc-crawlers arxiv equations --id 2310.12123 --output-file equations.json
+```
+
+#### `category`
+
+Fetch recent papers from an arXiv category.
+
+```bash
+oarc-crawlers arxiv category --category [CATEGORY] [--limit N]
+```
+
+**Options:**
+- `--category TEXT` - arXiv category code (e.g., cs.AI) [required]
+- `--limit INTEGER` - Maximum number of papers to fetch [default: 20]
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv category --category cs.AI
+oarc-crawlers arxiv category --category math.CO --limit 50
+```
+
+#### `batch`
+
+Process multiple papers in batch, optionally extracting keywords and references.
+
+```bash
+oarc-crawlers arxiv batch --ids [ID1,ID2,...] [--keywords] [--references]
+```
+
+**Options:**
+- `--ids TEXT` - Comma-separated list of arXiv IDs [required]
+- `--keywords/--no-keywords` - Extract keywords from papers
+- `--references/--no-references` - Extract references from papers
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv batch --ids "2310.12123,2304.12749"
+oarc-crawlers arxiv batch --ids "2310.12123,2304.12749" --keywords --references
+```
+
+#### `citation-network`
+
+Generate a citation network from seed papers.
+
+```bash
+oarc-crawlers arxiv citation-network --ids [ID1,ID2,...] [--max-depth N] [--output-file FILE]
+```
+
+**Options:**
+- `--ids TEXT` - Comma-separated list of arXiv IDs [required]
+- `--max-depth INTEGER` - Reference depth [default: 1]
+- `--output-file TEXT` - Path to save the network as JSON
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers arxiv citation-network --ids "2310.12123,2304.12749"
+oarc-crawlers arxiv citation-network --ids "2310.12123" --max-depth 2 --output-file network.json
+```
+
 ## GitHub Commands
 
 ### Overview
@@ -162,7 +284,7 @@ GitHub commands allow you to interact with GitHub repositories.
 
 #### `clone`
 
-Clone a GitHub repository and store it locally.
+Clone a GitHub repository and store it locally (as Parquet).
 
 ```bash
 oarc-crawlers gh clone --url [REPO_URL] [OPTIONS]
@@ -170,7 +292,7 @@ oarc-crawlers gh clone --url [REPO_URL] [OPTIONS]
 
 **Options:**
 - `--url TEXT` - GitHub repository URL [required]
-- `--output-path TEXT` - Directory to save the cloned repository
+- `--output-path TEXT` - Directory to save the cloned repository (optional)
 - `--verbose` - Enable verbose output and debug logging
 - `--config PATH` - Path to custom configuration file
 
@@ -182,7 +304,7 @@ oarc-crawlers gh clone --url https://github.com/username/repo --output-path ./re
 
 #### `analyze`
 
-Analyze a GitHub repository's content.
+Analyze a GitHub repository's content and print a Markdown summary.
 
 ```bash
 oarc-crawlers gh analyze --url [REPO_URL]
@@ -209,7 +331,7 @@ oarc-crawlers gh find-similar --url [REPO_URL] --code [CODE_SNIPPET] [OPTIONS]
 **Options:**
 - `--url TEXT` - GitHub repository URL [required]
 - `--code TEXT` - Code snippet to find similar code for [required]
-- `--language TEXT` - Programming language of the code snippet
+- `--language TEXT` - Programming language of the code snippet (optional)
 - `--verbose` - Enable verbose output and debug logging
 - `--config PATH` - Path to custom configuration file
 
@@ -650,6 +772,15 @@ oarc-crawlers mcp install [OPTIONS]
 ```bash
 oarc-crawlers mcp install
 oarc-crawlers mcp install --name "OARC Tools"
+```
+
+### Programmatic Usage Example
+
+```python
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
+
+server = MCPServer(data_dir="./data", name="OARC Crawlers", port=3000)
+server.run()
 ```
 
 ## Configuration Commands

@@ -130,19 +130,6 @@ class ParquetStorage:
         return ParquetStorage.save_to_parquet(data, file_path)
 
     @staticmethod
-    def get_timestamped_path(base_dir: PathLike, name: str) -> str:
-        """Generate a timestamped path for a Parquet file.
-        
-        Args:
-            base_dir: Base directory
-            name: Base filename
-            
-        Returns:
-            str: Timestamped path with .parquet extension
-        """
-        return str(Paths.timestamped_path(base_dir, name, "parquet"))
-
-    @staticmethod
     def save_youtube_data(data: Union[Dict, List, pd.DataFrame], 
                          video_id: Optional[str] = None,
                          data_type: str = "metadata",

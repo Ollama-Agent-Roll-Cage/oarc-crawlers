@@ -26,6 +26,7 @@ from oarc_crawlers.utils.const import (
     CONFIG_KEY_MAX_RETRIES,
     CONFIG_KEY_TIMEOUT,
     CONFIG_KEY_USER_AGENT,
+    CONFIG_KEY_GITHUB_TOKEN,
     CONFIG_SECTION,
 )
 
@@ -71,6 +72,12 @@ class ConfigManager:
                 "description": "User agent string for network requests",
                 "type": "string",
                 "help": "Enter a user agent string (default: OARC-Crawlers/VERSION)"
+            },
+            CONFIG_KEY_GITHUB_TOKEN: {
+                "description": "GitHub API token for authenticated requests",
+                "type": "password",
+                "help": "Enter your GitHub personal access token (leave empty for unauthenticated access)",
+                "sensitive": True
             }
         }
 

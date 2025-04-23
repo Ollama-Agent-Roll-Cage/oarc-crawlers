@@ -1,150 +1,113 @@
-import unittest
-from unittest.mock import patch
 import tempfile
-import json
+import pytest
+from unittest.mock import patch, AsyncMock, MagicMock
 
 from oarc_crawlers import DDGCrawler
+from oarc_utils.errors import NetworkError, DataExtractionError
 
-class MockResponse:
-    def __init__(self, status, text):
-        self.status = status
-        self._text = text
-        
-    async def text(self):
-        return self._text
+# Change the patch target to the method instead of the import
+MOCK_METHOD = 'oarc_crawlers.core.crawlers.ddg_crawler.DDGCrawler._get_ddgs_client'
 
-class TestDDGCrawler(unittest.TestCase):
-    """Test the DuckDuckGo search module."""
-    
-    def setUp(self):
-        """Set up test environment."""
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.searcher = DDGCrawler(data_dir=self.temp_dir.name)
-        
-        # Mock JSON responses
-        self.mock_text_response = {
-            'AbstractText': 'This is a test summary about searching.',
-            'RelatedTopics': [
-                {'Text': 'Test Topic 1', 'FirstURL': 'https://example.com/1'},
-                {'Text': 'Test Topic 2', 'FirstURL': 'https://example.com/2'},
-                {'Text': 'Test Topic 3', 'FirstURL': 'https://example.com/3'}
-            ]
-        }
-        
-        self.mock_image_response = {
-            'Images': [
-                {'Image': 'https://example.com/img1.jpg', 'Title': 'Image 1', 'Source': 'Source 1', 'URL': 'https://example.com/1'},
-                {'Image': 'https://example.com/img2.jpg', 'Title': 'Image 2', 'Source': 'Source 2', 'URL': 'https://example.com/2'}
-            ]
-        }
-        
-        self.mock_news_response = {
-            'News': [
-                {'Title': 'News 1', 'URL': 'https://example.com/news1', 'Source': 'Source 1', 'Date': '2025-04-10', 'Excerpt': 'News excerpt 1'},
-                {'Title': 'News 2', 'URL': 'https://example.com/news2', 'Source': 'Source 2', 'Date': '2025-04-09', 'Excerpt': 'News excerpt 2'}
-            ]
-        }
-    
-    def tearDown(self):
-        """Clean up after tests."""
-        self.temp_dir.cleanup()
-    
-    @patch('aiohttp.ClientSession.get')
-    @patch('oarc_crawlers.ddg_search.ParquetStorage')
-    async def test_text_search(self, mock_storage, mock_get):
+@pytest.fixture
+def crawler():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield DDGCrawler(data_dir=temp_dir)
+
+class TestDDGCrawler:
+    """Test the DuckDuckGo search crawler module."""
+
+    @pytest.mark.asyncio
+    @patch(MOCK_METHOD)
+    async def test_text_search(self, mock_get_client, crawler):
         """Test text search functionality."""
-        # Setup mock
-        mock_resp = MockResponse(200, json.dumps(self.mock_text_response))
-        mock_get.return_value.__aenter__.return_value = mock_resp
+        # Create a mock client
+        mock_client = AsyncMock()
+        mock_context = AsyncMock()
+        mock_client.__aenter__.return_value = mock_context
+        mock_get_client.return_value = mock_client
         
-        # Call the method
-        result = await self.searcher.text_search("test query", max_results=2)
-        
-        # Assert requests were made correctly
-        mock_get.assert_called_once()
-        self.assertIn('test query', mock_get.call_args[0][0])
-        
-        # Assert storage was used
-        mock_storage.save_to_parquet.assert_called_once()
-        
-        # Check result formatting
-        self.assertIn('# DuckDuckGo Search Results', result)
-        self.assertIn('This is a test summary about searching', result)
-        self.assertIn('Test Topic 1', result)
-        self.assertIn('Test Topic 2', result)
-        # Should only include 2 results due to max_results
-        self.assertNotIn('Test Topic 3', result)
-    
-    @patch('aiohttp.ClientSession.get')
-    @patch('oarc_crawlers.ddg_search.ParquetStorage')
-    async def test_image_search(self, mock_storage, mock_get):
-        """Test image search functionality."""
-        # Setup mock
-        mock_resp = MockResponse(200, json.dumps(self.mock_image_response))
-        mock_get.return_value.__aenter__.return_value = mock_resp
-        
-        # Call the method
-        result = await self.searcher.image_search("test images", max_results=1)
-        
-        # Assert requests were made correctly
-        mock_get.assert_called_once()
-        self.assertIn('test images', mock_get.call_args[0][0])
-        self.assertIn('ia=images', mock_get.call_args[0][0])
-        
-        # Assert storage was used
-        mock_storage.save_to_parquet.assert_called_once()
-        
-        # Check result formatting
-        self.assertIn('# DuckDuckGo Image Search Results', result)
-        self.assertIn('![Image 1](https://example.com/img1.jpg)', result)
-        # Should only include 1 result due to max_results
-        self.assertNotIn('![Image 2]', result)
-    
-    @patch('aiohttp.ClientSession.get')
-    @patch('oarc_crawlers.ddg_search.ParquetStorage')
-    async def test_news_search(self, mock_storage, mock_get):
-        """Test news search functionality."""
-        # Setup mock
-        mock_resp = MockResponse(200, json.dumps(self.mock_news_response))
-        mock_get.return_value.__aenter__.return_value = mock_resp
-        
-        # Call the method
-        result = await self.searcher.news_search("test news", max_results=1)
-        
-        # Assert requests were made correctly
-        mock_get.assert_called_once()
-        self.assertIn('test news', mock_get.call_args[0][0])
-        self.assertIn('ia=news', mock_get.call_args[0][0])
-        
-        # Assert storage was used
-        mock_storage.save_to_parquet.assert_called_once()
-        
-        # Check result formatting
-        self.assertIn('# DuckDuckGo News Search Results', result)
-        self.assertIn('## News 1', result)
-        self.assertIn('**Source:** Source 1', result)
-        self.assertIn('**Date:** 2025-04-10', result)
-        self.assertIn('News excerpt 1', result)
-        # Should only include 1 result due to max_results
-        self.assertNotIn('## News 2', result)
-    
-    @patch('aiohttp.ClientSession.get')
-    async def test_error_handling(self, mock_get):
-        """Test error handling."""
-        # Test HTTP error
-        mock_get.return_value.__aenter__.return_value = MockResponse(404, "Not Found")
-        result = await self.searcher.text_search("test query")
-        self.assertIn("Error: Received status code 404", result)
-        
-        # Test JSON parsing error
-        mock_get.return_value.__aenter__.return_value = MockResponse(200, "Not JSON")
-        result = await self.searcher.text_search("test query")
-        self.assertIn("Error: Could not parse the search results", result)
-        
-        # Test exception
-        mock_get.side_effect = Exception("Test exception")
-        result = await self.searcher.text_search("test query")
-        self.assertIn("An error occurred during the search", result)
+        # Set up the mock response
+        mock_results = [
+            {"title": "Test Title", "url": "https://example.com", "description": "Test Description"}
+        ]
+        mock_context.text.return_value = mock_results
 
-if __name__ == '__main__':
-    unittest.main()
+        # Call the async method
+        result = await crawler.search("test query", search_type="text")
+
+        # Use pytest assertions
+        assert result['query'] == "test query"
+        assert len(result['results']) == 1
+        assert result['results'][0]['title'] == "Test Title"
+        mock_context.text.assert_called_once_with("test query", max_results=10)
+
+    @pytest.mark.asyncio
+    @patch(MOCK_METHOD)
+    async def test_image_search(self, mock_get_client, crawler):
+        """Test image search functionality."""
+        # Create a mock client
+        mock_client = AsyncMock()
+        mock_context = AsyncMock()
+        mock_client.__aenter__.return_value = mock_context
+        mock_get_client.return_value = mock_client
+        
+        # Set up the mock response
+        mock_results = [
+            {"title": "Test Image", "url": "https://example.com/image.jpg", "source": "Example Source"}
+        ]
+        mock_context.images.return_value = mock_results
+
+        # Call the async method
+        result = await crawler.search("test query", search_type="image", max_results=5)
+
+        # Use pytest assertions
+        assert result['query'] == "test query"
+        assert len(result['results']) == 1
+        assert result['results'][0]['title'] == "Test Image"
+        mock_context.images.assert_called_once_with("test query", max_results=5)
+
+    @pytest.mark.asyncio
+    @patch(MOCK_METHOD)
+    async def test_news_search(self, mock_get_client, crawler):
+        """Test news search functionality."""
+        # Create a mock client
+        mock_client = AsyncMock()
+        mock_context = AsyncMock()
+        mock_client.__aenter__.return_value = mock_context
+        mock_get_client.return_value = mock_client
+        
+        # Set up the mock response
+        mock_results = [
+            {"title": "Test News", "url": "https://example.com/news", "source": "News Source", "date": "2025-04-10"}
+        ]
+        mock_context.news.return_value = mock_results
+
+        # Call the async method
+        result = await crawler.search("test query", search_type="news", max_results=3)
+
+        # Use pytest assertions
+        assert result['query'] == "test query"
+        assert len(result['results']) == 1
+        assert result['results'][0]['title'] == "Test News"
+        mock_context.news.assert_called_once_with("test query", max_results=3)
+
+    @pytest.mark.asyncio
+    @patch(MOCK_METHOD)
+    async def test_error_handling(self, mock_get_client, crawler):
+        """Test error handling."""
+        # Create a mock client
+        mock_client = AsyncMock()
+        mock_context = AsyncMock()
+        mock_client.__aenter__.return_value = mock_context
+        mock_get_client.return_value = mock_client
+        
+        # Simulate network error
+        mock_context.text.side_effect = Exception("Network failed")
+        with pytest.raises(NetworkError):
+            await crawler.search("test query", search_type="text")
+
+        # Simulate no results found
+        mock_context.text.side_effect = None  # Reset side effect
+        mock_context.text.return_value = []
+        with pytest.raises(DataExtractionError):
+            await crawler.search("no results query", search_type="text")

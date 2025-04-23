@@ -8,240 +8,194 @@ This guide provides solutions to common issues you might encounter when installi
 - [Dependency Conflicts](#dependency-conflicts)
 - [Runtime Errors](#runtime-errors)
 - [Platform-Specific Issues](#platform-specific-issues)
+- [CLI & API Issues](#cli--api-issues)
+- [MCP & VS Code Integration](#mcp--vs-code-integration)
+- [Getting Help](#getting-help)
 
 ## Virtual Environment Issues
 
 ### Python venv Cleanup and Management
 
-Make sure to clean your python uv venv, as well as your base python environment.
-
-Your environment should be clean and should be similar to the following example:
+A clean Python environment is essential. Use `uv` for best results.
 
 ```bash
-# try pip list
+# List installed packages
 pip list
 
-# Heres an example
-PS M:\oarc_repos_git\oarc-crawlers> pip list
-Package       Version Editable project location
-------------- ------- -------------------------------
-oarc-crawlers 0.1.2   M:\oarc_repos_git\oarc-crawlers
-pip           25.0.1
-setuptools    78.1.0
-wheel         0.45.1
-PS M:\oarc_repos_git\oarc-crawlers> pip install uv
-Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
-Collecting uv
-  Downloading uv-0.6.14-py3-none-win_amd64.whl.metadata (11 kB)
-Downloading uv-0.6.14-py3-none-win_amd64.whl (17.6 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.6/17.6 MB 52.9 MB/s eta 0:00:00
-Installing collected packages: uv
-Successfully installed uv-0.6.14
-PS M:\oarc_repos_git\oarc-crawlers>
+# Example output (minimal, clean venv)
+# oarc-crawlers 0.1.2
+# pip           25.0.1
+# setuptools    78.1.0
+# wheel         0.45.1
 
-# Clear the virtual environment and the base environment
-
-# Make sure to do:
-conda deactivate
-
-# Then if you made a venv with "uv venv --python 3.11" you can deactivate it now:
-
-# Now deactivate
-.venv\Scripts\deactivate
-
-PS M:\oarc_repos_git\oarc-crawlers> .venv\Scripts\activate
-(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> .venv\Scripts\deactivate
-
-# If you cannot deactivate with the deactivate command try killing the terminal, also make sure you are careful when working with multiple uv virtual environments at the same time, they get confused.
-
-# Clear the uv venv made with "uv venv --python 3.11" with the following command:
-pip freeze | Select-String -Pattern "^(?!pip)" | ForEach-Object { pip uninstall -y $_.ToString().Trim() }
-
-# activate
-.venv\Scripts\activate
-
-# Run pip list
-
-(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip list      
-Package       Version Editable project location
-------------- ------- -------------------------------
-oarc-crawlers 0.1.2   M:\oarc_repos_git\oarc-crawlers # WE WANT TO REMOVE THIS
-pip           25.0.1
-setuptools    78.1.0
-uv            0.6.14
-wheel         0.45.1
-(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip uninstall oarc-crawlers
-
-# If you still find extra packages in your venv (NOT THE BASE PYTHON) then try running this again from venv:
-pip freeze | Select-String -Pattern "^(?!pip)" | ForEach-Object { pip uninstall -y $_.ToString().Trim() }
-
-# Now we remove the old oarc crawlers
-pip uninstall oarc-crawlers
-
-# Now run pip list again
-
-(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> pip list
-Package    Version
----------- -------
-pip        25.0.1
-setuptools 78.1.0
-wheel      0.45.1
-(oarc-crawlers) PS M:\oarc_repos_git\oarc-crawlers> 
-
-# install uv
+# Install uv if missing
 pip install uv
 
-# now continue with either
+# Deactivate any conda/venv
+conda deactivate || true
+.venv\Scripts\deactivate || true
 
-uv pip install oarc-crawlers
+# Remove all packages except pip/setuptools/wheel
+pip freeze | Select-String -Pattern "^(?!pip)" | ForEach-Object { pip uninstall -y $_.ToString().Trim() }
 
-# or
-
-# activate uv venv
+# Re-activate and check
 .venv\Scripts\activate
-
-# install developer package
-uv pip install -e .[dev]
-
-# Continue with your specific usage after cleaning your uv environment :)
-# hope this helps!
+pip list
 ```
 
 ### Virtual Environment Isolation Issues
 
-If you're encountering issues with package conflicts, it may be because your virtual environment isn't properly isolated from your system Python. Here's how to verify and fix:
+If you see unexpected packages or conflicts, check your Python path:
 
 ```bash
-# Check where your Python is running from
-which python  # On Unix/MacOS
-where python  # On Windows
+which python  # Unix/MacOS
+where python  # Windows
 
-# The output should point to your virtual environment
-# If not, deactivate and reactivate:
-.venv\Scripts\deactivate
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Unix/MacOS
+# Should point to your venv, not system Python.
+# If not, deactivate/reactivate or recreate the venv.
 ```
 
 ## Installation Problems
 
 ### Package Not Found Errors
 
-If you receive a "Package not found" error when installing oarc-crawlers:
-
-1. Verify your internet connection
-2. Check that you're using the latest version of uv and pip:
-   ```bash
-   pip install --upgrade pip uv
-   ```
-3. Try installing with pip directly if uv is having issues:
-   ```bash
-   pip install oarc-crawlers
-   ```
+- Check your internet connection.
+- Upgrade pip and uv:
+  ```bash
+  pip install --upgrade pip uv
+  ```
+- Try both `uv pip install oarc-crawlers` and `pip install oarc-crawlers`.
 
 ### Permission Issues
 
-If you encounter permission errors during installation:
+- **Windows:** Run PowerShell as administrator.
+- **Unix/MacOS:** Use `sudo` if needed.
 
-**Windows:**
-```bash
-# Run as administrator (PowerShell)
-Start-Process PowerShell -Verb RunAs
-```
+### Version Compatibility
 
-**Unix/MacOS:**
-```bash
-sudo pip install uv
-sudo uv pip install oarc-crawlers
-```
+- OARC-Crawlers requires Python 3.10 or 3.11.
+- Check your version:
+  ```bash
+  python --version
+  ```
+- If not 3.10/3.11, create a new venv:
+  ```bash
+  uv venv --python 3.11
+  ```
 
 ## Dependency Conflicts
 
-### Common Dependency Issues
-
-If you encounter dependency conflicts:
-
-1. Create a clean virtual environment
-2. Install packages in the correct order
-3. Use specific versions if needed:
-   ```bash
-   uv pip install oarc-crawlers==0.1.2
-   ```
-
-### Python Version Compatibility
-
-OARC-Crawlers is designed to work with Python 3.11. If you're using a different version, you may encounter compatibility issues:
-
-```bash
-# Check your Python version
-python --version
-
-# If not 3.11, create a venv with the correct version
-uv venv --python 3.11
-```
+- Always use a clean venv.
+- If you see dependency errors, try:
+  ```bash
+  uv pip install oarc-crawlers==<latest_version>
+  ```
+- Avoid mixing system and venv packages.
 
 ## Runtime Errors
 
 ### YouTube Download Issues
 
-If YouTube downloads fail:
-
-1. Check for updates to the package
-2. Verify the URL is valid and accessible
-3. Check for regional restrictions on the content
-4. Look for errors in the YouTube API response
+- Update oarc-crawlers (`uv pip install -U oarc-crawlers`).
+- Check the video URL and regional restrictions.
+- Use `--verbose` for more error details.
+- If you see "Video unavailable" or "No streams found", try a different video or check for age/content restrictions.
 
 ### Web Crawler Connection Problems
 
-If web crawling fails:
-
-1. Check your internet connection
-2. Verify the target website is online
-3. Some websites may block automated crawling
-4. Try adding a user-agent header to appear as a browser:
-   ```python
-   headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-   crawler = BSWebCrawler(data_dir="./data", headers=headers)
-   ```
+- Check your internet connection.
+- Some sites block bots; try setting a user-agent:
+  ```python
+  headers = {'User-Agent': 'Mozilla/5.0'}
+  crawler = WebCrawler(data_dir="./data", headers=headers)
+  ```
+- For SSL errors, update your Python and CA certificates.
 
 ### GitHub API Rate Limiting
 
-GitHub has API rate limits that may affect crawling:
+- Use authenticated requests if possible.
+- Wait and retry if rate-limited.
+- Cache results to avoid repeated requests.
 
-1. Use authenticated requests when possible
-2. Implement backoff strategies for retrying requests
-3. Cache results to reduce API calls
+### ArXiv/Other API Issues
+
+- If you get "Paper not found" or "API error", check the arXiv ID or query.
+- For "Too many requests", wait and retry.
 
 ## Platform-Specific Issues
 
 ### Windows
 
-Common issues on Windows:
-
-1. Path length limitations can break deep directory crawls
-2. PowerShell execution policy may prevent scripts from running
-3. File locking may prevent modifying files that are in use
+- Path length limits: keep data directories short.
+- PowerShell execution policy: run `Set-ExecutionPolicy RemoteSigned` if needed.
+- File locking: close files before re-running commands.
 
 ### MacOS
 
-Common issues on MacOS:
-
-1. SSL certificate validation issues with older Python versions
-2. Permission issues with system directories
-3. XCode command line tools may be required for some packages
+- SSL errors: update Python and run `Install Certificates.command` if needed.
+- XCode tools may be required for some dependencies.
 
 ### Linux
 
-Common issues on Linux:
+- Install build essentials (`sudo apt install build-essential`).
+- Use `uv` to avoid system package conflicts.
 
-1. Missing development libraries needed for compilation
-2. System package conflicts with Python packages
-3. Distribution-specific package management conflicts
+## CLI & API Issues
+
+### CLI Command Not Found
+
+- Ensure your venv is activated.
+- On Windows, check that `%USERPROFILE%\AppData\Roaming\Python\Scripts` is in your PATH.
+- Try `python -m oarc_crawlers` as a fallback.
+
+### CLI Usage Errors
+
+- Use `oarc-crawlers --help` and `oarc-crawlers [command] --help` for options.
+- For argument errors, check the [Cheat Sheet](CHEATSHEET.md) or [CLI.md](CLI.md).
+
+### API Import/Usage Errors
+
+- Use correct imports:
+  ```python
+  from oarc_crawlers import YTCrawler, GHCrawler, ArxivCrawler, DDGCrawler, WebCrawler
+  ```
+- All async methods must be awaited inside an `async def` function.
+- Use `asyncio.run(...)` to run top-level async code.
+
+### Data/Parquet Issues
+
+- If you see "Parquet file not found" or "cannot read file", check the path and permissions.
+- Use `oarc-crawlers data view <file>` to inspect Parquet files.
+
+## MCP & VS Code Integration
+
+### MCP Server Not Starting
+
+- Ensure port 3000 is free or specify `--port`.
+- Use `oarc-crawlers mcp run --verbose` for debug output.
+
+### VS Code Can't Connect
+
+- Check your MCP server config in VS Code settings:
+  ```json
+  {
+    "mcp.servers": [
+      { "name": "OARC Crawlers", "port": 3000, "transport": "ws" }
+    ]
+  }
+  ```
+- Make sure the MCP server is running before starting VS Code.
+
+### MCP/Agent Errors
+
+- Errors are returned as structured JSON with `error.code` and `error.message`.
+- See [VSCodeMCP.md](VSCodeMCP.md) for error code meanings.
 
 ## Getting Help
 
-If you're still experiencing issues after going through this troubleshooting guide:
-
-1. Check existing issues on our [GitHub repository](https://github.com/oarc/oarc-crawlers/issues)
-2. Submit a new issue with detailed steps to reproduce the problem
-3. Include error messages and your environment details (OS, Python version, package versions)
+- Use `--verbose` for detailed logs.
+- Check [docs/CHEATSHEET.md](CHEATSHEET.md) and [docs/Examples.md](Examples.md) for usage.
+- For API reference: see [docs/API.md](API.md).
+- For unresolved issues:
+  1. Search [GitHub Issues](https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers/issues)
+  2. Open a new issue with error details, OS, Python version, and steps to reproduce.

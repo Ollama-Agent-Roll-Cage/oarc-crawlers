@@ -135,9 +135,10 @@ if __name__ == "__main__":
         """
         tool_code = []
         for name, func in tools.items():
-            # Extract the original function definition
-            source = inspect.getsource(func.__wrapped__)
-            # Replace the first line with a decorated version
+            if hasattr(func, '__wrapped__'):
+                source = inspect.getsource(func.__wrapped__)
+            else:
+                source = inspect.getsource(func)
             lines = source.split('\n')
             first_line = lines[0]
             indentation = len(first_line) - len(first_line.lstrip())
@@ -159,7 +160,10 @@ if __name__ == "__main__":
         """
         resource_code = []
         for uri, func in resources.items():
-            source = inspect.getsource(func.__wrapped__)
+            if hasattr(func, '__wrapped__'):
+                source = inspect.getsource(func.__wrapped__)
+            else:
+                source = inspect.getsource(func)
             lines = source.split('\n')
             first_line = lines[0]
             indentation = len(first_line) - len(first_line.lstrip())
@@ -181,7 +185,10 @@ if __name__ == "__main__":
         """
         prompt_code = []
         for name, func in prompts.items():
-            source = inspect.getsource(func.__wrapped__)
+            if hasattr(func, '__wrapped__'):
+                source = inspect.getsource(func.__wrapped__)
+            else:
+                source = inspect.getsource(func)
             lines = source.split('\n')
             first_line = lines[0]
             indentation = len(first_line) - len(first_line.lstrip())

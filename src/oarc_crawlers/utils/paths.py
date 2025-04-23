@@ -178,9 +178,12 @@ class Paths:
         if os.path.isabs(str_path):
             dir_path = os.path.dirname(str_path)
             
-            # Check common invalid path patterns
-            if (dir_path.startswith('/invalid') or  # Test case path
-                (os.name == 'nt' and dir_path.startswith('/'))):  # Invalid Windows path
+            # For Windows, any path is valid unless specifically marked as invalid
+            if os.name == 'nt':
+                return '/invalid' not in dir_path.replace('\\', '/')
+                
+            # For Unix, check specific invalid paths
+            if dir_path.startswith('/invalid'):
                 return False
                 
         return True
@@ -308,13 +311,21 @@ class Paths:
         if ext in GITHUB_BINARY_EXTENSIONS:
             return True
             
-        # Check file contents if needed
-        try:
-            with open(file_path, 'rb') as f:
-                chunk = f.read(1024)
-                return b'\0' in chunk  # Binary files typically contain null bytes
-        except Exception:
-            return True  # If we can't read it, treat as binary
+        # Check file contents if needed and the file exists
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'rb') as f:
+                    chunk = f.read(1024)
+                    return b'\0' in chunk  # Binary files typically contain null bytes
+            except Exception:
+                return True  # If we can't read it, treat as binary
+        
+        # For non-existent files or paths without extensions, default to text
+        if ext == '' or ext in ('.txt', '.md', '.py', '.js', '.html', '.css', '.json'):
+            return False
+            
+        # Default for unknown types
+        return True
 
     # YouTube-specific paths
     @staticmethod
@@ -508,6 +519,37 @@ class Paths:
         """
         safe_id = Paths.sanitize_filename(arxiv_id)
         return Paths.arxiv_papers_dir(base_dir) / f"{safe_id}.parquet"
+    
+
+    @staticmethod
+    def arxiv_keywords_path(base_dir: PathLike, arxiv_id: str) -> pathlib.Path:
+        """Get path for ArXiv paper keywords."""
+        safe_id = Paths.sanitize_filename(arxiv_id)
+        return Paths.arxiv_papers_dir(base_dir) / f"{safe_id}_keywords.parquet"
+        
+    @staticmethod
+    def arxiv_references_path(base_dir: PathLike, arxiv_id: str) -> pathlib.Path:
+        """Get path for ArXiv paper references."""
+        safe_id = Paths.sanitize_filename(arxiv_id)
+        return Paths.arxiv_papers_dir(base_dir) / f"{safe_id}_references.parquet"
+        
+    @staticmethod
+    def arxiv_equations_path(base_dir: PathLike, arxiv_id: str) -> pathlib.Path:
+        """Get path for ArXiv paper equations."""
+        safe_id = Paths.sanitize_filename(arxiv_id)
+        return Paths.arxiv_papers_dir(base_dir) / f"{safe_id}_equations.parquet"
+        
+    @staticmethod
+    def arxiv_category_path(base_dir: PathLike, category: str) -> pathlib.Path:
+        """Get path for ArXiv category papers."""
+        safe_category = Paths.sanitize_filename(category)
+        timestamp = int(datetime.now().timestamp())
+        return Paths.arxiv_papers_dir(base_dir) / f"category_{safe_category}_{timestamp}.parquet"
+        
+    @staticmethod
+    def arxiv_network_path(base_dir: PathLike, timestamp: int) -> pathlib.Path:
+        """Get path for ArXiv citation network."""
+        return Paths.arxiv_papers_dir(base_dir) / f"citation_network_{timestamp}.parquet"
     
 
     # DuckDuckGo paths

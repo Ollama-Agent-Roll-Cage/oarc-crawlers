@@ -2,6 +2,8 @@
 
 This document provides detailed API reference for all components in the OARC-Crawlers system.
 
+*Note: The `core`, `utils`, and `config` modules may contain additional APIs not yet documented here.*
+
 ## Table of Contents
 - [1. Parquet Storage API](#1-parquet-storage-api)
     - [`save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`](#save_to_parquetdata-file_path)
@@ -14,13 +16,13 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [`async extract_captions(...)`](#extract_captionsurl-languagesen)
     - [`async search_videos(...)`](#search_videosquery-limit10)
 - [3. GitHub Crawler API](#3-github-crawler-api)
-    - [`__init__(data_dir: Optional[str]=None)`](#__init__data_dirnone-1)
+    - [`__init__(data_dir: Optional[str]=None, token: Optional[str]=None)`](#__init__data_dirnone-tokennone)
     - [`@staticmethod extract_repo_info_from_url(url: str) -> Tuple[str, str, str]`](#extract_repo_info_from_urlurl)
     - [`async clone_repo(repo_url: str, temp_dir: Optional[str]=None) -> Path`](#clone_reporepo_url-temp_dirnone)
     - [`async process_repo_to_dataframe(...)`](#process_repo_to_datareframerepo_path-max_file_size_kb500)
-    - [`async clone_and_store_repo(repo_url: str) -> str`](#clone_and_store_reporepo_url)
+    - [`async clone_and_store_repo(repo_url: str, branch: Optional[str]=None) -> Dict`](#clone_and_store_reporepo_url-branchnone)
     - [`async get_repo_summary(repo_url: str) -> str`](#get_repo_summaryrepo_url)
-    - [`async find_similar_code(...)`](#find_similar_coderepo_url-code_snippet)
+    - [`async find_similar_code(...)`](#find_similar_coderepo_info-code_snippet-top_n5)
     - [`async query_repo_content(...)`](#query_repo_contentrepo_url-query)
 - [4. DuckDuckGo Searcher API](#4-duckduckgo-searcher-api)
     - [`__init__(data_dir: Optional[str]=None)`](#__init__data_dirnone-2)
@@ -36,120 +38,164 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [`@staticmethod format_pypi_info(package_data: Dict) -> str`](#format_pypi_infopackage_data)
     - [`@staticmethod format_documentation(doc_data: Dict) -> str`](#format_documentationdoc_data)
     - [`async crawl_documentation_site(url: str) -> str`](#crawl_documentation_siteurl)
-- [6. ArXiv Fetcher API](#6-arxiv-fetcher-api)
+- [6. ArXiv Crawler API](#6-arxiv-crawler-api)
     - [`__init__(data_dir: Optional[str]=None)`](#__init__data_dirnone-4)
-    - [`@staticmethod extract_arxiv_id(url_or_id: str) -> str`](#extract_arxiv_idurl_or_id)
+    - [`@staticmethod extract_arxiv_id(arxiv_input: str) -> str`](#extract_arxiv_idarxiv_input)
     - [`async fetch_paper_info(arxiv_id: str) -> Dict`](#fetch_paper_infoarxiv_id)
     - [`async download_source(arxiv_id: str) -> Dict`](#download_sourcearxiv_id)
-    - [`async fetch_paper_with_latex(arxiv_id: str) -> Dict`](#fetch_paper_with_latexarxiv_id)
-    - [`@staticmethod format_paper_for_learning(paper_info: Dict) -> str`](#format_paper_for_learningpaper_info)
+    - [`async fetch_paper_with_latex(arxiv_id: str) -> Dict`](#fetch_paper_with_latexxarxiv_id)
+    - [`@staticmethod async format_paper_for_learning(paper_info: Dict) -> str`](#format_paper_for_learningpaper_info)
+    - [`async batch_fetch_papers(...)`](#batch_fetch_papersarxiv_ids-extract_keywordsfalse-extract_referencesfalse)
+    - [`async search(query: str, limit: int=5) -> Dict`](#searchquery-limit5)
+    - [`async extract_references(...)`](#extract_referencesarxiv_id_or_source_info)
+    - [`async extract_keywords(...)`](#extract_keywordsarxiv_id_or_paper_info-max_keywords10)
+    - [`async fetch_category_papers(...)`](#fetch_category_paperscategory-max_results100-sort_bysubmitteddate)
+    - [`async extract_math_equations(...)`](#extract_math_equationsarxiv_id_or_source_info)
+    - [`async generate_citation_network(...)`](#generate_citation_networkseed_papers-max_depth1)
 - [7. Model Context Protocol (MCP) Integration](#7-model-context-protocol-mcp-integration)
+    - [Server Configuration](#server-configuration)
+    - [Installation](#installation)
+    - [Available Tools](#available-tools)
+    - [Error Handling](#error-handling)
+    - [VS Code Integration](#vs-code-integration)
+    - [Programmatic Usage](#programmatic-usage)
+    - [MCP Server API](#mcp-server-api)
 
 ## 1. Parquet Storage API
+
+*Assumed Location: `oarc_crawlers.utils.parquet_storage` (or similar)*
 
 ### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
 Saves data to a Parquet file.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame
-- `file_path`: Path where the Parquet file will be saved
+- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to save.
+- `file_path`: Path where the Parquet file will be saved.
 
 **Returns:**
-- `bool`: True if successful, False otherwise
+- `bool`: True if the save operation was successful, False otherwise.
 
 **Error Handling:**
-- Raises `TypeError` if data format is not supported
-- Raises `IOError` if the directory cannot be created or accessed
+- Raises `TypeError` if the input `data` format is not supported (not Dict, List[Dict], or DataFrame).
+- Raises `IOError` or `PermissionError` if the directory cannot be created or the file cannot be written.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 data = {'name': 'Model XYZ', 'accuracy': 0.95, 'parameters': 10000000}
-success = ParquetStorage.save_to_parquet(data, 'model_metrics.parquet')
+try:
+    success = ParquetStorage.save_to_parquet(data, 'model_metrics.parquet')
+    if success:
+        print("Data saved successfully.")
+except (TypeError, IOError, PermissionError) as e:
+    print(f"Error saving data: {e}")
 ```
 
 **Implementation Notes:**
-- Automatically converts dictionaries and lists to DataFrames
-- Creates parent directories if they don't exist
-- Uses pyarrow for efficient serialization
+- Automatically converts dictionaries and lists of dictionaries into Pandas DataFrames before saving.
+- Ensures parent directories for `file_path` exist, creating them if necessary.
+- Utilizes the `pyarrow` library as the backend for efficient Parquet serialization.
 
 ### `load_from_parquet(file_path: str) -> Optional[pd.DataFrame]`
-Loads data from a Parquet file.
+Loads data from a Parquet file into a Pandas DataFrame.
 
 **Parameters:**
-- `file_path`: Path to the Parquet file
+- `file_path`: Path to the Parquet file to load.
 
 **Returns:**
-- `DataFrame`: Pandas DataFrame containing the loaded data, or None if failed
+- `Optional[pd.DataFrame]`: A Pandas DataFrame containing the loaded data, or `None` if the file doesn't exist, is corrupted, or cannot be read.
 
 **Error Handling:**
-- Returns `None` if file doesn't exist or can't be read
-- Logs error details instead of raising exceptions
+- Returns `None` and logs an error if the file specified by `file_path` does not exist or cannot be read (e.g., due to permissions or corruption). It avoids raising exceptions directly to allow for graceful handling in calling code.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 df = ParquetStorage.load_from_parquet('model_metrics.parquet')
 if df is not None:
+    print(f"Loaded {len(df)} records.")
     print(f"Model name: {df['name'].iloc[0]}, Accuracy: {df['accuracy'].iloc[0]}")
+else:
+    print("Failed to load data from Parquet file.")
 ```
 
 ### `append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
-Appends data to an existing Parquet file (creates new file if it doesn't exist).
+Appends data to an existing Parquet file. If the file does not exist, it creates a new one.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame
-- `file_path`: Path to the Parquet file
+- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to append.
+- `file_path`: Path to the Parquet file.
 
 **Returns:**
-- `bool`: True if successful, False otherwise
+- `bool`: True if the append operation was successful, False otherwise.
 
 **Error Handling:**
-- Raises `TypeError` if data format is not supported
-- Creates a new file if the specified file doesn't exist
+- Raises `TypeError` if the input `data` format is not supported.
+- Creates a new file if `file_path` does not exist, behaving like `save_to_parquet`.
+- Raises `IOError` or `PermissionError` if the file cannot be read or written.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 new_data = {'name': 'Model ABC', 'accuracy': 0.97, 'parameters': 15000000}
-success = ParquetStorage.append_to_parquet(new_data, 'model_metrics.parquet')
+try:
+    success = ParquetStorage.append_to_parquet(new_data, 'model_metrics.parquet')
+    if success:
+        print("Data appended successfully.")
+except (TypeError, IOError, PermissionError) as e:
+    print(f"Error appending data: {e}")
+
 ```
 
 **Implementation Notes:**
-- Handles schema mismatches by using common fields
-- For new files, behaves identically to save_to_parquet()
+- Reads the existing Parquet file (if it exists).
+- Converts the input `data` to a DataFrame.
+- Concatenates the existing DataFrame with the new DataFrame.
+- Writes the combined DataFrame back to the Parquet file, overwriting the original.
+- Handles potential schema mismatches between the existing data and the new data by aligning columns; missing columns in either DataFrame will be filled with null values.
 
 ## 2. YouTube Downloader API
 
+*Assumed Location: `oarc_crawlers.yt_crawler`*
+
 ### `__init__(data_dir: Optional[str]=None)`
-Initializes the YouTube Downloader.
+Initializes the YouTube Downloader instance.
 
 **Parameters:**
-- `data_dir`: Directory to store data (optional)
+- `data_dir` (`Optional[str]`, default=`None`): The base directory where downloaded videos, metadata, and captions should be stored. If `None`, a default location might be used (e.g., within the user's data directory).
 
 **Example:**
 ```python
-downloader = YouTubeDownloader(data_dir='./my_data')
+# Assuming YouTubeDownloader is imported
+downloader = YouTubeDownloader(data_dir='./youtube_output')
 ```
 
 ### `async download_video(url: str, format: str="mp4", resolution: str="highest", output_path: Optional[str]=None, filename: Optional[str]=None, extract_audio: bool=False) -> Dict`
-Downloads a YouTube video.
+Downloads a single YouTube video based on the provided URL and options.
 
 **Parameters:**
-- `url`: YouTube video URL
-- `format`: Video format (mp4, webm, etc.)
-- `resolution`: Video resolution ("highest", "lowest", or specific like "720p")
-- `output_path`: Directory to save the video (optional)
-- `filename`: Custom filename for the downloaded video (optional)
-- `extract_audio`: Whether to extract audio only (boolean)
+- `url` (`str`): The URL of the YouTube video to download.
+- `format` (`str`, default=`"mp4"`): The desired video container format (e.g., "mp4", "webm"). If `extract_audio` is True, this might influence the audio format (e.g., "mp3", "m4a").
+- `resolution` (`str`, default=`"highest"`): The desired video resolution. Can be specific (e.g., "1080p", "720p") or relative ("highest", "lowest").
+- `output_path` (`Optional[str]`, default=`None`): A specific directory to save this video. If `None`, it defaults to a subdirectory within the `data_dir` provided during initialization.
+- `filename` (`Optional[str]`, default=`None`): A custom filename (without extension) for the downloaded file. If `None`, a filename is generated based on the video title or ID.
+- `extract_audio` (`bool`, default=`False`): If True, only the audio track will be downloaded and saved (potentially in a format like mp3 or m4a).
 
 **Returns:**
-- `dict`: Information about the downloaded video
+- `Dict`: A dictionary containing information about the download operation, including:
+    - `file_path` (`str`): The full path to the downloaded file (video or audio).
+    - `metadata` (`Dict`): Extracted metadata about the video (title, author, duration, etc.).
+    - `status` (`str`): "success" or "failed".
+    - `error` (`Optional[str]`): An error message if the download failed.
 
 **Error Handling:**
-- Raises `ConnectionError` if the YouTube URL is unavailable
-- Raises `ValueError` if the specified resolution or format is unavailable
-- Returns error information in the result dictionary if download fails
+- Raises `ConnectionError` if the YouTube URL is invalid or unreachable.
+- Raises `ValueError` if the requested `format` or `resolution` is unavailable for the video.
+- Returns a dictionary with `status: "failed"` and an `error` message for download failures (e.g., network issues during download, filesystem errors).
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def download_hd_video():
     result = await downloader.download_video(
         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -157,130 +203,164 @@ async def download_hd_video():
         output_path="./videos",
         filename="my_video"
     )
-    if 'error' in result:
+    if result['status'] == 'failed':
         print(f"Download failed: {result['error']}")
     else:
         print(f"Downloaded to: {result['file_path']}")
+        # Metadata is also saved to a corresponding Parquet file
     return result
 ```
 
 **Implementation Notes:**
-- Uses pytube library for downloading
-- Creates output directory if it doesn't exist
-- Stores metadata in Parquet format alongside video file
+- Uses the `pytube` library (or a similar alternative) for interacting with YouTube.
+- Automatically creates the `output_path` directory if it doesn't exist.
+- Saves extracted video metadata (title, author, duration, views, etc.) to a separate Parquet file alongside the downloaded video/audio file, using `ParquetStorage`.
 
 ### `async download_playlist(playlist_url: str, format: str="mp4", max_videos: int=10, output_path: Optional[str]=None) -> Dict`
-Downloads videos from a YouTube playlist.
+Downloads multiple videos from a YouTube playlist.
 
 **Parameters:**
-- `playlist_url`: YouTube playlist URL
-- `format`: Video format (mp4, webm, etc.)
-- `max_videos`: Maximum number of videos to download
-- `output_path`: Directory to save the videos (optional)
+- `playlist_url` (`str`): The URL of the YouTube playlist.
+- `format` (`str`, default=`"mp4"`): The desired video format for all videos in the playlist.
+- `max_videos` (`int`, default=`10`): The maximum number of videos to download from the playlist. Downloads typically start from the beginning of the playlist.
+- `output_path` (`Optional[str]`, default=`None`): A specific directory to save the playlist videos. If `None`, defaults to a subdirectory within `data_dir`, often named after the playlist title or ID.
 
 **Returns:**
-- `dict`: Information about the downloaded playlist
+- `Dict`: A summary dictionary of the playlist download operation, including:
+    - `playlist_title` (`str`): The title of the playlist.
+    - `total_videos_in_playlist` (`int`): Total number of videos available in the playlist.
+    - `requested_videos` (`int`): Number of videos requested (`max_videos`).
+    - `success_count` (`int`): Number of videos successfully downloaded.
+    - `failed_count` (`int`): Number of videos that failed to download.
+    - `results` (`List[Dict]`): A list containing the result dictionaries for each individual video download attempt (similar to the return value of `download_video`).
+    - `metadata_path` (`str`): Path to the Parquet file containing playlist metadata.
 
 **Error Handling:**
-- Raises `ConnectionError` if the playlist URL is unavailable
-- Skips failed videos and continues with the next one
-- Returns detailed error for each failed video in the result
+- Raises `ConnectionError` if the `playlist_url` is invalid or unreachable.
+- Individual video download errors are handled within the loop: failed videos are skipped, and the process continues with the next video.
+- Detailed errors for each failed video are included in the `results` list within the returned dictionary.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def download_playlist_example():
     result = await downloader.download_playlist(
         playlist_url="https://www.youtube.com/playlist?list=PLQVvvaa0QuDdttJXlLtAJxJetJcqmqlQq",
-        max_videos=5
+        max_videos=5,
+        output_path="./python_tutorials"
     )
-    print(f"Successfully downloaded {result['success_count']} of {result['total_count']} videos")
+    print(f"Playlist: {result['playlist_title']}")
+    print(f"Successfully downloaded {result['success_count']} of {result['requested_videos']} requested videos.")
+    if result['failed_count'] > 0:
+        print(f"Failed to download {result['failed_count']} videos.")
+        # Optionally iterate through result['results'] for details on failures
     return result
 ```
 
 **Implementation Notes:**
-- Processes videos in sequence to avoid rate limiting
-- Creates a separate subdirectory for each playlist
-- Saves playlist metadata including title, author, and video count
+- Uses `pytube.Playlist` (or similar) to fetch playlist information and video URLs.
+- Processes videos sequentially or with limited concurrency to avoid potential rate limiting by YouTube.
+- Creates a dedicated subdirectory for the playlist within the specified `output_path` or default `data_dir`.
+- Saves overall playlist metadata (title, author, total video count) and individual video metadata to Parquet files using `ParquetStorage`.
 
 ### `async extract_captions(url: str, languages: List[str]=['en']) -> Dict`
-Extracts captions/subtitles from a YouTube video.
+Extracts available captions (subtitles) for a given YouTube video.
 
 **Parameters:**
-- `url`: YouTube video URL
-- `languages`: List of language codes to extract (e.g., ['en', 'es', 'fr'])
+- `url` (`str`): The URL of the YouTube video.
+- `languages` (`List[str]`, default=`['en']`): A list of preferred language codes (e.g., 'en', 'es', 'fr', 'de') for captions. The function will attempt to fetch captions for these languages if available.
 
 **Returns:**
-- `dict`: Captions data
+- `Dict`: A dictionary containing the extracted captions and metadata:
+    - `video_url` (`str`): The input video URL.
+    - `available_languages` (`List[str]`): List of all language codes for which captions are available.
+    - `captions` (`Dict[str, str]`): A dictionary where keys are the language codes of the successfully extracted captions (from the requested `languages` list) and values are the caption text content.
+    - `srt_files` (`Dict[str, str]`): A dictionary mapping language codes to the file paths where the corresponding SRT caption files were saved.
+    - `parquet_path` (`str`): Path to the Parquet file where caption data is stored.
 
 **Error Handling:**
-- Returns empty captions dict if no captions available
-- Silently skips unavailable language tracks
+- Returns a dictionary with an empty `captions` dict if the video has no captions or if none of the requested `languages` are available.
+- Silently skips requested languages for which caption tracks are not found.
+- Handles errors during the fetching process gracefully.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def get_multilingual_captions():
-    captions = await downloader.extract_captions(
+    result = await downloader.extract_captions(
         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         languages=['en', 'es', 'fr', 'de']
     )
-    if len(captions['captions']) == 0:
-        print("No captions found for this video")
+    if not result['captions']:
+        print(f"No captions found for requested languages. Available: {result['available_languages']}")
     else:
-        print(f"Found captions in languages: {list(captions['captions'].keys())}")
-    return captions
+        print(f"Found captions in languages: {list(result['captions'].keys())}")
+        # Access English captions: result['captions'].get('en')
+        # SRT file path: result['srt_files'].get('en')
+    return result
 ```
 
 **Implementation Notes:**
-- Saves captions in both SRT and text format
-- Converts timestamps to readable format
-- Stores captions data in Parquet format for later analysis
+- Uses `pytube`'s caption capabilities.
+- Saves extracted captions in both raw SRT format (to a file) and as processed text content.
+- Stores the caption data (language, text, potentially timestamps) in a Parquet file using `ParquetStorage` for easier analysis.
+- The text format typically concatenates caption lines, possibly removing timestamps.
 
 ### `async search_videos(query: str, limit: int=10) -> Dict`
-Searches for YouTube videos using a query.
+Performs a search on YouTube using the provided query string.
 
 **Parameters:**
-- `query`: Search query
-- `limit`: Maximum number of results
+- `query` (`str`): The search term or phrase.
+- `limit` (`int`, default=`10`): The maximum number of search results to retrieve.
 
 **Returns:**
-- `dict`: Search results
+- `Dict`: A dictionary containing the search results:
+    - `query` (`str`): The original search query.
+    - `results` (`List[Dict]`): A list of dictionaries, each representing a video found. Each video dictionary includes keys like `title`, `url`, `channel`, `views`, `duration`, `publish_date`, `description`.
+    - `status` (`str`): "success" or "failed".
+    - `error` (`Optional[str]`): An error message if the search failed.
+    - `parquet_path` (`str`): Path to the Parquet file where search results are stored.
 
 **Error Handling:**
-- Returns empty results list if search fails
-- Handles YouTube API errors gracefully
+- Returns a dictionary with `status: "failed"` and an `error` message if the search API call fails (e.g., network error, API quota exceeded).
+- Handles potential errors from the underlying search library gracefully.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def search_educational_videos():
-    results = await downloader.search_videos(
-        query="python programming tutorial for beginners",
+    results_data = await downloader.search_videos(
+        query="python asynchronous programming tutorial",
         limit=15
     )
-    if 'error' in results:
-        print(f"Search failed: {results['error']}")
+    if results_data['status'] == 'failed':
+        print(f"Search failed: {results_data['error']}")
     else:
-        print(f"Found {len(results['results'])} videos")
-        for video in results['results']:
-            print(f"- {video['title']} (views: {video['views']})")
-    return results
+        print(f"Found {len(results_data['results'])} videos for query: '{results_data['query']}'")
+        for video in results_data['results']:
+            print(f"- {video['title']} by {video['channel']} ({video['views']} views)")
+        # Results are also saved to results_data['parquet_path']
+    return results_data
 ```
 
 **Implementation Notes:**
-- Uses YouTube Data API for more reliable results
-- Filters out inappropriate content
-- Includes video metadata such as view count, likes, and description
+- May use the official YouTube Data API (requires API key setup and manages quotas) or libraries like `youtube-search-python` that might scrape results (potentially less reliable or subject to breaking changes).
+- Filters results to exclude irrelevant content like channels or playlists if only videos are desired.
+- Extracts key metadata for each video result.
+- Stores the structured search results in a Parquet file using `ParquetStorage`.
 
 ## 3. GitHub Crawler API
 
-### `__init__(data_dir: Optional[str]=None)`
+### `__init__(data_dir: Optional[str]=None, token: Optional[str]=None)`
 Initializes the GitHub Crawler.
 
 **Parameters:**
 - `data_dir`: Directory to store data (optional)
+- `token`: GitHub API token (optional, for higher rate limits)
 
 **Example:**
 ```python
-crawler = GitHubCrawler(data_dir='./github_data')
+crawler = GHCrawler(data_dir='./github_data')
 ```
 
 ### `@staticmethod extract_repo_info_from_url(url: str) -> Tuple[str, str, str]`
@@ -298,7 +378,7 @@ Extracts repository owner, name, and branch from GitHub URL.
 
 **Example:**
 ```python
-owner, repo_name, branch = GitHubCrawler.extract_repo_info_from_url(
+owner, repo_name, branch = GHCrawler.extract_repo_info_from_url(
     "https://github.com/pytorch/pytorch/tree/master"
 )
 print(f"Owner: {owner}, Repo: {repo_name}, Branch: {branch}")
@@ -367,42 +447,28 @@ async def process_repo_example():
 - Extracts metadata like file size, line count, and path
 - Skips `.git` directories during processing
 
-### `async clone_and_store_repo(repo_url: str) -> str`
-Clones a GitHub repository and stores its data in Parquet format.
+### `async clone_and_store_repo(repo_url: str, branch: Optional[str]=None) -> Dict`
+Clones a GitHub repository (using Git if available, else API) and stores its data in Parquet format.
 
 **Parameters:**
 - `repo_url`: GitHub repository URL
+- `branch`: Branch to use (optional)
 
 **Returns:**
-- `str`: Path to the Parquet file containing repository data
+- `Dict`: Metadata including `"data_path"` (Parquet file), `"owner"`, `"repo"`, `"branch"`, `"num_files"`, `"size_kb"`, `"method"` ("git" or "api"), etc.
 
 **Error Handling:**
-- Handles cloning errors and returns error information
-- Creates data directory if it doesn't exist
+- Raises exceptions for network, authentication, or data extraction errors.
 
 **Example:**
 ```python
 async def store_repo_example():
-    parquet_path = await crawler.clone_and_store_repo(
-        "https://github.com/pytorch/pytorch"
-    )
-    print(f"Repository data stored at {parquet_path}")
-    
-    # Load the data
-    repo_data = ParquetStorage.load_from_parquet(parquet_path)
-    python_files = repo_data[repo_data['language'] == 'Python']
-    print(f"Repository contains {len(python_files)} Python files")
-    return parquet_path
+    result = await crawler.clone_and_store_repo("https://github.com/pytorch/pytorch")
+    print(f"Repository data stored at {result['data_path']}")
 ```
 
-**Implementation Notes:**
-- Uses temporary directory for cloning
-- Filters out binary files larger than 500KB by default
-- Saves repository structure to allow reconstruction
-- Stores file content and metadata as separate columns
-
 ### `async get_repo_summary(repo_url: str) -> str`
-Gets a summary of the repository.
+Gets a summary of the repository (Markdown).
 
 **Parameters:**
 - `repo_url`: GitHub repository URL
@@ -412,55 +478,40 @@ Gets a summary of the repository.
 
 **Error Handling:**
 - Returns error message if repository cannot be processed
-- Handles timeouts and connection issues gracefully
 
 **Example:**
 ```python
 async def summary_example():
-    summary = await crawler.get_repo_summary(
-        "https://github.com/pytorch/pytorch"
-    )
+    summary = await crawler.get_repo_summary("https://github.com/pytorch/pytorch")
     print(summary)
-    return summary
 ```
 
-**Implementation Notes:**
-- Analyzes language distribution
-- Summarizes directory structure
-- Identifies key files like README, LICENSE, etc.
-- Creates a formatted markdown summary for easy reading
-
-### `async find_similar_code(repo_url: str, code_snippet: str) -> str`
+### `async find_similar_code(repo_info: Union[str, Tuple[str, str]], code_snippet: str, top_n: int=5) -> List[Dict]`
 Finds similar code in the repository.
 
 **Parameters:**
-- `repo_url`: GitHub repository URL
+- `repo_info`: Repository URL or (owner, repo) tuple
 - `code_snippet`: Code snippet to find similar code for
+- `top_n`: Maximum number of results to return
 
 **Returns:**
-- `str`: Similar code findings formatted as markdown
+- `List[Dict]`: Each dict contains `"file_path"`, `"language"`, `"similarity"`, `"content"`, `"line_start"`
 
 **Error Handling:**
-- Returns empty results if no similar code found
-- Handles language detection errors
+- Returns empty list if no similar code found
 
 **Example:**
 ```python
 async def find_similar_code_example():
     code = "def calculate_mean(values):\n    return sum(values) / len(values)"
     similar = await crawler.find_similar_code(
-        repo_url="https://github.com/pytorch/pytorch",
-        code_snippet=code
+        repo_info="https://github.com/pytorch/pytorch",
+        code_snippet=code,
+        top_n=3
     )
-    print(similar)
-    return similar
+    for match in similar:
+        print(match)
 ```
-
-**Implementation Notes:**
-- Uses fuzzy matching algorithm for code similarity
-- Prioritizes matches by similarity score
-- Includes file path and line numbers for each match
-- Formats results as markdown with syntax highlighting
 
 ### `async query_repo_content(repo_url: str, query: str) -> str`
 Queries repository content using natural language.
@@ -503,7 +554,7 @@ Initializes the DuckDuckGo Searcher.
 
 **Example:**
 ```python
-searcher = DuckDuckGoSearcher(data_dir='./search_data')
+searcher = DDGCrawler(data_dir='./search_data')
 ```
 
 ### `async text_search(search_query: str, max_results: int=5) -> str`
@@ -514,34 +565,27 @@ Performs a text search using DuckDuckGo.
 - `max_results`: Maximum number of results to return
 
 **Returns:**
-- `str`: Formatted search results in markdown
+- `str`: Markdown-formatted search results
 
 **Error Handling:**
-- Returns error explanation if search fails
-- Handles network timeouts gracefully
+- Raises `NetworkError` or `DataExtractionError` on failure (should be caught by user)
+- Returns markdown string with "No results found." if no results
 
 **Example:**
 ```python
 async def text_search_example():
-    results = await searcher.text_search(
-        search_query="python asynchronous programming",
-        max_results=10
-    )
-    print(results)
-    
-    # Also store the results programmatically
-    result_dict = await searcher.text_search_to_dict(
-        search_query="python asynchronous programming",
-        max_results=10
-    )
-    return results
+    try:
+        results = await searcher.text_search(
+            search_query="python asynchronous programming",
+            max_results=10
+        )
+        print(results)
+    except Exception as e:
+        print(f"Error: {e}")
 ```
 
 **Implementation Notes:**
-- Uses DuckDuckGo's HTML API for privacy
-- Automatically saves search results to Parquet file
-- Includes title, description, and URL for each result
-- Formats results in readable markdown format
+- Results are also saved to Parquet files in the configured data directory.
 
 ### `async image_search(search_query: str, max_results: int=10) -> str`
 Performs an image search using DuckDuckGo.
@@ -551,28 +595,23 @@ Performs an image search using DuckDuckGo.
 - `max_results`: Maximum number of results to return
 
 **Returns:**
-- `str`: Formatted image search results in markdown
+- `str`: Markdown-formatted image search results
 
 **Error Handling:**
-- Skips images that fail to download
-- Returns partial results if some images failed
+- Raises `NetworkError` or `DataExtractionError` on failure
 
 **Example:**
 ```python
 async def image_search_example():
-    results = await searcher.image_search(
-        search_query="neural network visualization",
-        max_results=15
-    )
-    print(results)
-    return results
+    try:
+        results = await searcher.image_search(
+            search_query="neural network visualization",
+            max_results=15
+        )
+        print(results)
+    except Exception as e:
+        print(f"Error: {e}")
 ```
-
-**Implementation Notes:**
-- Includes image URLs, thumbnails, and source pages
-- Embeds image thumbnails in markdown output
-- Respects content filtering settings
-- Avoids storing inappropriate content
 
 ### `async news_search(search_query: str, max_results: int=20) -> str`
 Performs a news search using DuckDuckGo.
@@ -582,37 +621,27 @@ Performs a news search using DuckDuckGo.
 - `max_results`: Maximum number of results to return
 
 **Returns:**
-- `str`: Formatted news search results in markdown
+- `str`: Markdown-formatted news search results
 
 **Error Handling:**
-- Returns empty results if no news found
-- Handles API rate limiting automatically
+- Raises `NetworkError` or `DataExtractionError` on failure
 
 **Example:**
 ```python
 async def news_search_example():
-    results = await searcher.news_search(
-        search_query="artificial intelligence breakthroughs",
-        max_results=12
-    )
-    print(results)
-    
-    # Extract information programmatically
-    articles = await searcher.news_search_to_dict(
-        search_query="artificial intelligence breakthroughs",
-        max_results=12
-    )
-    for article in articles['results']:
-        print(f"- {article['title']} ({article['date']})")
-    
-    return results
+    try:
+        results = await searcher.news_search(
+            search_query="artificial intelligence breakthroughs",
+            max_results=12
+        )
+        print(results)
+    except Exception as e:
+        print(f"Error: {e}")
 ```
 
 **Implementation Notes:**
-- Includes publication date, source, and summary
-- Sorts results by relevance and recency
-- Saves full article metadata to Parquet format
-- Provides both human-readable and machine-readable outputs
+- All search methods save results to Parquet files for later analysis.
+- All methods return markdown-formatted strings for direct printing.
 
 ## 5. BeautifulSoup Web Crawler API
 
@@ -841,187 +870,293 @@ async def crawl_docs_example():
 - Follows relevant links for more complete documentation
 - Creates self-contained markdown document
 
-## 6. ArXiv Fetcher API
+## 6. ArXiv Crawler API
+
+*Location: `oarc_crawlers.core.crawlers.arxiv_crawler`*
 
 ### `__init__(data_dir: Optional[str]=None)`
-Initializes the ArXiv Fetcher.
+Initializes the ArXivCrawler instance.
 
 **Parameters:**
-- `data_dir`: Directory to store data (optional)
+- `data_dir` (`Optional[str]`, default=`None`): Directory to store all arXiv data. If not provided, uses the default data directory.
 
 **Example:**
 ```python
-fetcher = ArxivFetcher(data_dir='./arxiv_data')
+crawler = ArxivCrawler(data_dir='./arxiv_data')
 ```
 
-### `@staticmethod extract_arxiv_id(url_or_id: str) -> str`
-Extracts arXiv ID from a URL or direct ID string.
+---
+
+### `@staticmethod extract_arxiv_id(arxiv_input: str) -> str`
+Extracts a normalized arXiv ID from a URL or direct ID string.
 
 **Parameters:**
-- `url_or_id`: URL or ID string
+- `arxiv_input` (`str`): An arXiv URL or ID string.
 
 **Returns:**
-- `str`: ArXiv ID
+- `str`: The extracted arXiv ID.
 
 **Error Handling:**
-- Raises `ValueError` if ID cannot be extracted
-- Validates ID format before returning
+- Raises `ValueError` if the input is invalid or cannot be parsed as an arXiv ID.
 
 **Example:**
 ```python
-arxiv_id = ArxivFetcher.extract_arxiv_id("https://arxiv.org/abs/2103.13630")
-print(f"Extracted ID: {arxiv_id}")  # Outputs: Extracted ID: 2103.13630
-
-# Also works with direct IDs
-arxiv_id = ArxivFetcher.extract_arxiv_id("2103.13630")
-print(f"Extracted ID: {arxiv_id}")  # Outputs: Extracted ID: 2103.13630
+arxiv_id = ArxivCrawler.extract_arxiv_id("https://arxiv.org/abs/2103.13630")
+# arxiv_id == "2103.13630"
 ```
 
 **Implementation Notes:**
-- Supports multiple arXiv URL formats
-- Handles both new and old arXiv ID formats
-- Strips version numbers if present (e.g., v1, v2)
-- Normalizes ID format for consistency
+- Supports both new and old arXiv ID formats.
+- Handles URLs with `/abs/`, `/pdf/`, and strips `.pdf` extensions.
+- Validates ID format.
+
+---
 
 ### `async fetch_paper_info(arxiv_id: str) -> Dict`
-Fetches paper metadata from arXiv API.
+Fetches paper metadata from the arXiv API and stores it as Parquet.
 
 **Parameters:**
-- `arxiv_id`: ArXiv ID
+- `arxiv_id` (`str`): arXiv ID or URL.
 
 **Returns:**
-- `dict`: Paper metadata
+- `dict`: Paper metadata, including title, authors, abstract, published date, categories, links, and optional fields.
 
 **Error Handling:**
-- Raises `ConnectionError` if cannot connect to arXiv API
-- Raises `ValueError` if API response cannot be parsed
-- Returns error information if paper not found
+- Returns a dict with an `'error'` key if the paper is not found or the API fails.
 
 **Example:**
 ```python
-async def fetch_paper_example():
-    paper_info = await fetcher.fetch_paper_info("2103.13630")
-    print(f"Title: {paper_info['title']}")
-    print(f"Authors: {', '.join(paper_info['authors'])}")
-    print(f"Categories: {', '.join(paper_info['categories'])}")
-    print(f"Abstract: {paper_info['abstract'][:200]}...")
-    return paper_info
+info = await crawler.fetch_paper_info("2103.13630")
+print(info['title'])
 ```
 
 **Implementation Notes:**
-- Uses arXiv's official API
-- Respects rate limiting requirements
-- Extracts comprehensive metadata including:
-  - Title, authors, abstract, categories
-  - Publication/revision dates
-  - DOI and journal references
-  - Download links
+- Uses the `arxiv` Python package.
+- Stores metadata in a per-paper Parquet file and appends to an "all papers" Parquet.
+
+---
 
 ### `async download_source(arxiv_id: str) -> Dict`
-Downloads the LaTeX source files for a paper.
+Downloads and extracts the LaTeX source files for a paper.
 
 **Parameters:**
-- `arxiv_id`: ArXiv ID of the paper
+- `arxiv_id` (`str`): arXiv ID or URL.
 
 **Returns:**
-- `dict`: Dictionary containing source information and content
+- `dict`: Contains `arxiv_id`, `timestamp`, `latex_content` (concatenated .tex files), and `source_files` (dict of all files).
 
 **Error Handling:**
-- Returns error details if source cannot be downloaded
-- Handles corrupted or invalid tar files
-- Creates storage directory if it doesn't exist
+- Returns a dict with an `'error'` key if download or extraction fails.
 
 **Example:**
 ```python
-async def download_source_example():
-    source_info = await fetcher.download_source("2103.13630")
-    print(f"Source files downloaded to: {source_info['path']}")
-    print(f"Number of files: {len(source_info['source_files'])}")
-    
-    # Print main TeX file content (if available)
-    if source_info['main_tex_file'] and source_info['latex_content']:
-        print(f"Main TeX file: {source_info['main_tex_file']}")
-        print(f"Content preview: {source_info['latex_content'][:200]}...")
-        
-    return source_info
+source = await crawler.download_source("2103.13630")
+print(source['latex_content'][:200])
 ```
 
 **Implementation Notes:**
-- Downloads .tar.gz source archive from arXiv
-- Extracts all files to dedicated directory
-- Identifies main LaTeX file automatically
-- Organizes figures, bibliography, and supplementary files
-- Saves extracted content to Parquet for analysis
+- Downloads the .tar.gz source archive from arXiv.
+- Extracts all files, reads .tex files, and concatenates their content.
+- Handles both tar archives and single-file sources.
+- Saves results as Parquet.
+
+---
 
 ### `async fetch_paper_with_latex(arxiv_id: str) -> Dict`
-Fetches both paper metadata and LaTeX source.
+Fetches both paper metadata and LaTeX source, combining them.
 
 **Parameters:**
-- `arxiv_id`: ArXiv ID or URL
+- `arxiv_id` (`str`): arXiv ID or URL.
 
 **Returns:**
-- `dict`: Combined paper metadata and source information
+- `dict`: Combined metadata and LaTeX content.
 
 **Error Handling:**
-- Handles partial success (metadata without source)
-- Logs detailed error information for troubleshooting
+- Returns a dict with an `'error'` key if either step fails.
 
 **Example:**
 ```python
-async def fetch_paper_with_latex_example():
-    complete_info = await fetcher.fetch_paper_with_latex("2103.13630")
-    print(f"Title: {complete_info['title']}")
-    print(f"Has LaTeX: {len(complete_info['latex_content']) > 0}")
-    
-    # Save the complete information for later use
-    ParquetStorage.save_to_parquet(
-        {k: v for k, v in complete_info.items() if k != 'source_files'},  # Exclude binary file data
-        f"./data/papers/{complete_info['arxiv_id']}_complete.parquet"
-    )
-    
-    return complete_info
+combined = await crawler.fetch_paper_with_latex("2103.13630")
+print(combined['title'], len(combined['latex_content']))
 ```
 
 **Implementation Notes:**
-- Concurrently fetches metadata and source
-- Combines results into unified structure
-- Formats LaTeX content for readability
-- Preserves original document structure
-- Extracts mathematical formulas for analysis
+- Saves combined data as Parquet.
 
-### `@staticmethod format_paper_for_learning(paper_info: Dict) -> str`
-Formats paper information for learning.
+---
+
+### `@staticmethod async format_paper_for_learning(paper_info: Dict) -> str`
+Formats paper metadata as a markdown summary for learning.
 
 **Parameters:**
-- `paper_info`: Paper information dictionary
+- `paper_info` (`dict`): Paper metadata.
 
 **Returns:**
-- `str`: Formatted markdown text
+- `str`: Markdown-formatted summary.
 
 **Error Handling:**
-- Handles missing information gracefully
-- Returns partial content if some fields are missing
+- Handles missing fields gracefully.
 
 **Example:**
 ```python
-async def format_paper_example():
-    paper_info = await fetcher.fetch_paper_info("2103.13630")
-    formatted = ArxivFetcher.format_paper_for_learning(paper_info)
-    
-    # Save to file for reference
-    with open(f"{paper_info['arxiv_id']}_summary.md", "w", encoding="utf-8") as f:
-        f.write(formatted)
-        
-    print(f"Paper summary saved to {paper_info['arxiv_id']}_summary.md")
-    return formatted
+summary = await ArxivCrawler.format_paper_for_learning(info)
+print(summary)
+```
+
+---
+
+### `async batch_fetch_papers(arxiv_ids: List[str], extract_keywords=False, extract_references=False) -> Dict`
+Fetches multiple papers in batch, optionally extracting keywords and references.
+
+**Parameters:**
+- `arxiv_ids` (`List[str]`): List of arXiv IDs or URLs.
+- `extract_keywords` (`bool`): Extract keywords from each paper.
+- `extract_references` (`bool`): Extract references from each paper.
+
+**Returns:**
+- `dict`: Contains lists of papers, keywords, references, and errors.
+
+**Error Handling:**
+- Errors for individual papers are collected in the `'errors'` list.
+
+**Example:**
+```python
+results = await crawler.batch_fetch_papers(["2103.13630", "2201.00001"], extract_keywords=True)
+```
+
+---
+
+### `async search(query: str, limit: int=5) -> Dict`
+Searches arXiv for papers matching a query.
+
+**Parameters:**
+- `query` (`str`): Search query.
+- `limit` (`int`): Max number of results.
+
+**Returns:**
+- `dict`: Search results and metadata.
+
+**Error Handling:**
+- Returns a dict with an `'error'` key if the search fails.
+
+**Example:**
+```python
+results = await crawler.search("transformer language model", limit=3)
+```
+
+---
+
+### `async extract_references(arxiv_id_or_source_info: Union[str, dict]) -> Dict`
+Extracts bibliography references from a paper's LaTeX source.
+
+**Parameters:**
+- `arxiv_id_or_source_info` (`str` or `dict`): arXiv ID or source info dict.
+
+**Returns:**
+- `dict`: Contains extracted references.
+
+**Error Handling:**
+- Returns a dict with an `'error'` key if extraction fails.
+
+**Example:**
+```python
+refs = await crawler.extract_references("2103.13630")
 ```
 
 **Implementation Notes:**
-- Creates structured markdown document
-- Formats abstract with proper paragraph breaks
-- Lists authors with affiliations when available
-- Includes clickable links to paper and references
-- Highlights key mathematical formulas
+- Supports both `\bibitem` and BibTeX entries.
+
+---
+
+### `async extract_keywords(arxiv_id_or_paper_info: Union[str, dict], max_keywords=10) -> Dict`
+Extracts keywords from the abstract and title using NLP.
+
+**Parameters:**
+- `arxiv_id_or_paper_info` (`str` or `dict`): arXiv ID or paper info dict.
+- `max_keywords` (`int`): Max number of keywords.
+
+**Returns:**
+- `dict`: Contains extracted keywords.
+
+**Error Handling:**
+- Returns a dict with an `'error'` key if extraction fails.
+
+**Example:**
+```python
+keywords = await crawler.extract_keywords("2103.13630")
+```
+
+**Implementation Notes:**
+- Uses NLTK for tokenization and stopword removal.
+- Combines unigrams, bigrams, and trigrams.
+
+---
+
+### `async fetch_category_papers(category: str, max_results: int=100, sort_by: str='submittedDate') -> Dict`
+Fetches papers from a specific arXiv category.
+
+**Parameters:**
+- `category` (`str`): arXiv category (e.g., 'cs.AI').
+- `max_results` (`int`): Max number of papers.
+- `sort_by` (`str`): Sort criterion.
+
+**Returns:**
+- `dict`: Papers and metadata.
+
+**Error Handling:**
+- Returns a dict with an `'error'` key if fetching fails.
+
+**Example:**
+```python
+cat_papers = await crawler.fetch_category_papers("cs.CL", max_results=10)
+```
+
+---
+
+### `async extract_math_equations(arxiv_id_or_source_info: Union[str, dict]) -> Dict`
+Extracts mathematical equations from LaTeX source.
+
+**Parameters:**
+- `arxiv_id_or_source_info` (`str` or `dict`): arXiv ID or source info dict.
+
+**Returns:**
+- `dict`: Inline and display equations.
+
+**Error Handling:**
+- Returns a dict with an `'error'` key if extraction fails.
+
+**Example:**
+```python
+eqs = await crawler.extract_math_equations("2103.13630")
+```
+
+---
+
+### `async generate_citation_network(seed_papers: List[str], max_depth: int=1) -> Dict`
+Generates a citation network from seed papers.
+
+**Parameters:**
+- `seed_papers` (`List[str]`): List of arXiv IDs.
+- `max_depth` (`int`): Reference depth.
+
+**Returns:**
+- `dict`: Citation network with nodes and edges.
+
+**Error Handling:**
+- Skips papers with errors; logs errors internally.
+
+**Example:**
+```python
+network = await crawler.generate_citation_network(["2103.13630"], max_depth=2)
+```
+
+---
+
+**General Implementation Notes:**
+- All methods are coroutine functions (`async def`).
+- All data is stored in Parquet format using the `ParquetStorage` API.
+- Handles errors gracefully, returning error info in the result dict.
+- Designed for programmatic/script usage, not CLI.
 
 ## 7. Model Context Protocol (MCP) Integration
 
@@ -1134,30 +1269,86 @@ Example VS Code configuration:
 ### Programmatic Usage
 
 ```python
-from oarc_crawlers import OARCCrawlersMCP
+# This example demonstrates starting the server programmatically.
+# Ensure you have the necessary dependencies installed.
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
 
-# Initialize server
-mcp = OARCCrawlersMCP(
-    data_dir="./data",
-    name="OARC Crawlers",
-    port=3000
+# Initialize server with desired configuration
+server = MCPServer(
+    data_dir="./mcp_data",
+    name="OARC Crawlers (Programmatic)",
+    port=3001,
+    transport="ws"
 )
 
-# Start server
-mcp.run()
+# Start the server (this will typically run indefinitely)
+try:
+    print(f"Starting MCP server '{server.name}' on {server.transport}://localhost:{server.port}...")
+    server.run()
+except KeyboardInterrupt:
+    print("\nServer stopped.")
+except Exception as e:
+    print(f"Server error: {e}")
+
 ```
 
-For custom configuration:
+### MCP Server API
+
+#### `MCPServer(data_dir: str = "./data", name: str = "OARC Crawlers", port: int = 3000, transport: str = "ws")`
+Initializes the MCP server.
+
+**Parameters:**
+- `data_dir`: Directory for persistent data storage.
+- `name`: Name of the MCP server (for VS Code integration).
+- `port`: Port to run the server on (default: 3000).
+- `transport`: Transport protocol, e.g., `"ws"` (WebSocket) or `"sse"`.
+
+**Example:**
 ```python
-mcp = OARCCrawlersMCP()
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
 
-# Configure VS Code integration
-mcp.mcp.configure_vscode(
-    server_name="Custom OARC Server",
-    port=4000,
-    supports_streaming=True
+server = MCPServer(
+    data_dir="./data",
+    name="OARC Crawlers",
+    port=3000,
+
+server = MCPServer(
+    data_dir="./data",
+    name="OARC Crawlers",
+    port=3000,
+    transport="ws"
 )
+server.run()
+```
 
-# Start with custom transport
-mcp.run(transport="ws", port=4000)
+#### `run()`
+Starts the MCP server and begins listening for requests.
+
+**Example:**
+```python
+server = MCPServer()
+server.run()
+```
+
+#### `configure_vscode(server_name: str, port: int, supports_streaming: bool = True)`
+Configures VS Code integration for the MCP server.
+
+**Parameters:**
+- `server_name`: Name to display in VS Code.
+- `port`: Port to use.
+- `supports_streaming`: Whether streaming is enabled.
+
+**Example:**
+```python
+server = MCPServer()
+server.configure_vscode(server_name="OARC Crawlers", port=3000)
+```
+
+### Example Usage
+
+```python
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
+
+server = MCPServer(data_dir="./data", name="OARC Crawlers", port=3000)
+server.run()
 ```

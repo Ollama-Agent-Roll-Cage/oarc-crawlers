@@ -22,6 +22,7 @@ from oarc_crawlers.utils.const import (
     CONFIG_KEY_MAX_RETRIES,
     CONFIG_KEY_TIMEOUT,
     CONFIG_KEY_USER_AGENT,
+    CONFIG_KEY_GITHUB_TOKEN,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
@@ -31,6 +32,7 @@ from oarc_crawlers.utils.const import (
     ENV_MAX_RETRIES,
     ENV_TIMEOUT,
     ENV_USER_AGENT,
+    ENV_GITHUB_TOKEN,
 )
 
 @singleton
@@ -61,6 +63,7 @@ class Config:
         CONFIG_KEY_MAX_RETRIES: DEFAULT_MAX_RETRIES,
         CONFIG_KEY_TIMEOUT: DEFAULT_TIMEOUT,
         CONFIG_KEY_USER_AGENT: DEFAULT_USER_AGENT,
+        CONFIG_KEY_GITHUB_TOKEN: "",
     }
 
     # Environment variable mappings (ENV_VAR_NAME: config_key)
@@ -70,6 +73,7 @@ class Config:
         ENV_MAX_RETRIES: CONFIG_KEY_MAX_RETRIES, 
         ENV_TIMEOUT: CONFIG_KEY_TIMEOUT,
         ENV_USER_AGENT: CONFIG_KEY_USER_AGENT,
+        ENV_GITHUB_TOKEN: CONFIG_KEY_GITHUB_TOKEN,
     }
     
     # Storage for config values
@@ -78,8 +82,7 @@ class Config:
 
     def __init__(self):
         """Initialize configuration if not already done."""
-        # Let the singleton decorator handle instance management
-        # Initialize only if this is a fresh instance (first time)
+        # Let singleton decorator handle instance management; initialize only on first instance
         if not hasattr(self, '_init_done'):
             self.initialize()
             self._init_done = True
@@ -277,6 +280,11 @@ class Config:
     def user_agent(self) -> str:
         """Get the configured user agent string."""
         return self._config[CONFIG_KEY_USER_AGENT]
+
+    @property
+    def github_token(self) -> str:
+        """Get the configured GitHub API token (empty string if not set)."""
+        return self._config[CONFIG_KEY_GITHUB_TOKEN]
 
     @classmethod
     def get(cls, key: str, default: Any = None) -> Any:

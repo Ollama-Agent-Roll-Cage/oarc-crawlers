@@ -1,268 +1,245 @@
 import os
-import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock, PropertyMock
 import tempfile
 import pandas as pd
+import pytest
+import git
 from pathlib import Path
 
 from oarc_crawlers import GHCrawler
-from oarc_crawlers.utils.crawler_utils import CrawlerUtils
 from oarc_crawlers.utils.paths import Paths
+from oarc_crawlers.utils.crawler_utils import CrawlerUtils
+from oarc_utils.errors import NetworkError, ResourceNotFoundError, DataExtractionError
 
-class TestGitHubCrawler(unittest.TestCase):
+@pytest.fixture
+def crawler_fixture():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        crawler = GHCrawler(data_dir=temp_dir)
+        # Set a mock attribute for GitHub API testing
+        crawler.github = MagicMock()
+        yield crawler, temp_dir
+
+@pytest.fixture
+def mock_repo():
+    """Create a mock GitHub repository object."""
+    repo = MagicMock()
+    repo.full_name = "user/repo"
+    repo.name = "repo"
+    repo.default_branch = "main"
+    
+    # Mock owner object
+    owner = MagicMock()
+    owner.login = "user"
+    repo.owner = owner
+    
+    # Mock repository attributes
+    repo.description = "Test repository"
+    repo.stargazers_count = 10
+    repo.forks_count = 5
+    repo.created_at = MagicMock(strftime=lambda x: "2023-01-01")
+    repo.updated_at = MagicMock(strftime=lambda x: "2023-06-01")
+    
+    return repo
+
+class TestGitHubCrawler:
     """Test the GitHub crawler module."""
-    
-    def setUp(self):
-        """Set up test environment."""
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.crawler = GHCrawler(data_dir=self.temp_dir.name)
-        
-        # Use test URLs with 'username' as owner
-        self.repo_url = "https://github.com/username/repo"
-        self.repo_url_with_branch = "https://github.com/username/repo/tree/dev"
-        self.git_url = "git@github.com:username/repo.git"
-    
-    def tearDown(self):
-        """Clean up after tests."""
-        self.temp_dir.cleanup()
-    
-    def test_extract_repo_info_from_url(self):
-        """Test extracting repository information from URLs."""
-        # Test standard GitHub URL
-        owner, repo, branch = GHCrawler.extract_repo_info_from_url(self.repo_url)
-        self.assertEqual(owner, "username")
-        self.assertEqual(repo, "repo")
-        self.assertEqual(branch, "main")
-    
-        # Test URL with branch specified
-        owner, repo, branch = GHCrawler.extract_repo_info_from_url(self.repo_url_with_branch)
-        self.assertEqual(owner, "username")
-        self.assertEqual(repo, "repo")
-        self.assertEqual(branch, "dev")
 
-        # Test git URL
-        owner, repo, branch = GHCrawler.extract_repo_info_from_url(self.git_url)
-        self.assertEqual(owner, "username")
-        self.assertEqual(repo, "repo")
-        self.assertEqual(branch, "main")
+    def test_extract_repo_info_from_url(self, crawler_fixture):
+        """Test extracting repository info from URL."""
+        crawler, _ = crawler_fixture
+        owner, repo, branch = GHCrawler.extract_repo_info_from_url("https://github.com/user/repo")
+        assert owner == "user"
+        assert repo == "repo"
+        assert branch == "main"  # Default branch
 
-        # Test invalid URL
-        with self.assertRaises(ValueError):
-            GHCrawler.extract_repo_info_from_url("https://example.com")
-    
-    def test_get_repo_dir_path(self):
+        with pytest.raises(ValueError):
+            GHCrawler.extract_repo_info_from_url("invalid_url")
+
+    def test_get_repo_dir_path(self, crawler_fixture):
         """Test getting repository directory path."""
-        path = self.crawler.get_repo_dir_path("username", "repo")
-        expected_path = Path(f"{self.temp_dir.name}/github_repos/username_repo")
-        self.assertEqual(path, expected_path)
-    
-    def test_is_binary_file(self):
-        """Test binary file detection."""
-        # Create temporary files
-        text_file = os.path.join(self.temp_dir.name, "text.txt")
-        with open(text_file, 'w') as f:
-            f.write("This is a text file.")
-            
-        # Test extension-based detection
-        self.assertTrue(Paths.is_binary_file(os.path.join(self.temp_dir.name, "image.png")))
-        self.assertTrue(Paths.is_binary_file(os.path.join(self.temp_dir.name, "document.pdf")))
-        self.assertFalse(Paths.is_binary_file(text_file))
-    
-    def test_get_language_from_extension(self):
-        """Test language detection from file extension."""
-        # Now test CrawlerUtils instead of GHCrawler
-        self.assertEqual(CrawlerUtils.get_language_from_extension(".py"), "Python")
-        self.assertEqual(CrawlerUtils.get_language_from_extension(".js"), "JavaScript")
-        self.assertEqual(CrawlerUtils.get_language_from_extension(".unknown"), "Unknown")
+        crawler, temp_dir = crawler_fixture
+        path = crawler.get_repo_dir_path("user", "repo")
+        expected_path = Paths.github_repo_dir(temp_dir, "user", "repo")
+        assert path == expected_path
 
-    @patch('git.Repo')
-    async def test_clone_repo(self, mock_git):
+    @pytest.mark.asyncio
+    @patch('git.Repo.clone_from')
+    async def test_clone_repo(self, mock_clone, crawler_fixture):
         """Test cloning a repository."""
-        # Setup mock
-        mock_repo = MagicMock()
-        mock_git.clone_from.return_value = mock_repo
+        crawler, temp_dir = crawler_fixture
+        repo_url = "https://github.com/user/repo"
+        target_dir = os.path.join(temp_dir, "clone_target")
         
-        # Test with default temp directory
-        with patch('tempfile.mkdtemp', return_value='/tmp/test_dir'):
-            result = await self.crawler.clone_repo(self.repo_url)
-            mock_git.clone_from.assert_called_once_with(self.repo_url, '/tmp/test_dir')
-            self.assertEqual(result, Path('/tmp/test_dir'))
+        # Reset and set up for successful case
+        mock_clone.reset_mock()
+        mock_clone.side_effect = None
         
-        # Test with specified temp directory
-        mock_git.reset_mock()
-        temp_dir = os.path.join(self.temp_dir.name, "custom_temp_dir")
-        with patch('pathlib.Path.exists', return_value=False):
-            with patch('pathlib.Path.mkdir'):
-                result = await self.crawler.clone_repo(self.repo_url, temp_dir)
-                mock_git.clone_from.assert_called_once_with(self.repo_url, temp_dir)
+        # Test successful case
+        result_path = await crawler.clone_repo(repo_url, target_dir)
+        assert result_path == target_dir
+        mock_clone.assert_called_once_with(repo_url, target_dir)
         
-        # Test with branch checkout
-        mock_git.reset_mock()
-        with patch('tempfile.mkdtemp', return_value='/tmp/test_dir'):
-            result = await self.crawler.clone_repo(self.repo_url_with_branch)
-            mock_git.clone_from.assert_called_once_with(self.repo_url_with_branch, '/tmp/test_dir')
-            mock_repo.git.checkout.assert_called_once_with('dev')
+        # Reset mock for error case
+        mock_clone.reset_mock()
+        
+        # Test ResourceNotFoundError with exact error message matching
+        not_found_error = git.GitCommandError("clone", "fatal: repository 'not found")
+        mock_clone.side_effect = not_found_error
+        
+        with pytest.raises(ResourceNotFoundError):
+            await crawler.clone_repo("https://github.com/user/nonexistent", target_dir)
+            
+        # Reset for NetworkError test
+        mock_clone.reset_mock()
+        network_error = git.GitCommandError("clone", "Could not resolve host: github.com")
+        mock_clone.side_effect = network_error
+        
+        with pytest.raises(NetworkError):
+            await crawler.clone_repo(repo_url, target_dir)
 
-    @patch('git.Repo')
-    async def test_process_repo_to_dataframe(self, mock_git):
-        """Test processing repository files to DataFrame."""
-        # Create a test repository structure
-        repo_dir = os.path.join(self.temp_dir.name, "test_repo")
-        os.makedirs(repo_dir)
-        
-        # Add some sample files
-        python_file = os.path.join(repo_dir, "test.py")
-        with open(python_file, 'w') as f:
-            f.write("def hello():\n    return 'Hello World'")
-        
-        js_file = os.path.join(repo_dir, "test.js")
-        with open(js_file, 'w') as f:
-            f.write("function hello() {\n    return 'Hello World';\n}")
-        
-        # Mock git repository
-        mock_repo = MagicMock()
-        mock_git.return_value = mock_repo
-        
-        # Mock git blame
-        mock_repo.git.blame.return_value = {
-            'commit1': 'author Test Author\nauthor-time 1617111111\n'
-        }
-        
-        # Call the method
-        result = await self.crawler.process_repo_to_dataframe(Path(repo_dir))
-        
-        # Assertions
-        self.assertIsInstance(result, pd.DataFrame)
-        self.assertEqual(result.shape[0], 2)  # Should have 2 files
-        self.assertTrue('test.py' in result['file_path'].values)
-        self.assertTrue('test.js' in result['file_path'].values)
-        
-        # Check languages
-        python_row = result[result['file_path'] == 'test.py']
-        js_row = result[result['file_path'] == 'test.js']
-        self.assertEqual(python_row['language'].iloc[0], 'Python')
-        self.assertEqual(js_row['language'].iloc[0], 'JavaScript')
-        
-        # Check content
-        self.assertIn("def hello():", python_row['content'].iloc[0])
-        self.assertIn("function hello()", js_row['content'].iloc[0])
+    @pytest.mark.asyncio
+    async def test_is_binary_file(self, crawler_fixture):
+        """Test identifying binary files."""
+        _, temp_dir = crawler_fixture
+        binary_file = os.path.join(temp_dir, "test.png")
+        text_file = os.path.join(temp_dir, "test.txt")
+        null_byte_file = os.path.join(temp_dir, "test_null.bin")
 
-    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_repo')
-    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.process_repo_to_dataframe')
-    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
-    @patch('tempfile.mkdtemp')
-    @patch('shutil.rmtree')
-    async def test_clone_and_store_repo(self, mock_rmtree, mock_mkdtemp, mock_storage, 
-                                        mock_process, mock_clone):
-        """Test cloning and storing a repository."""
-        # Setup mocks
-        mock_mkdtemp.return_value = os.path.join(self.temp_dir.name, "temp_clone_dir")
-        mock_clone.return_value = Path(os.path.join(self.temp_dir.name, "cloned_repo"))
-        
-        # Create a mock DataFrame
-        mock_df = pd.DataFrame({
-            'file_path': ['file1.py', 'file2.js'],
-            'content': ['content1', 'content2'],
-            'language': ['Python', 'JavaScript']
-        })
-        mock_process.return_value = mock_df
-        
-        # Call the method
-        result = await self.crawler.clone_and_store_repo(self.repo_url)
-        
-        # Assertions
-        mock_mkdtemp.assert_called_once()
-        mock_clone.assert_called_once_with(self.repo_url, mock_mkdtemp.return_value)
-        mock_process.assert_called_once_with(mock_clone.return_value)
-        mock_storage.save_to_parquet.assert_called_once()
-        mock_rmtree.assert_called_once_with(mock_mkdtemp.return_value)
-        
-        # Check return value
-        expected_path = f"{self.temp_dir.name}/github_repos/username_repo.parquet"
-        self.assertEqual(result, expected_path)
+        with open(binary_file, "wb") as f:
+            f.write(b"dummy binary data")
+        with open(text_file, "w") as f:
+            f.write("hello world")
+        with open(null_byte_file, "wb") as f:
+            f.write(b"hello\0world")
 
-    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_and_store_repo')
-    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
+        # Await the async method calls
+        assert await crawler_fixture[0].is_binary_file(binary_file, None) is True
+        assert await crawler_fixture[0].is_binary_file(text_file, "hello world") is False
+        assert await crawler_fixture[0].is_binary_file(null_byte_file, None) is True
+
+    def test_get_language_from_extension(self, crawler_fixture):
+        """Test getting language from file extension."""
+        assert CrawlerUtils.get_language_from_extension(".py") == "Python"
+        assert CrawlerUtils.get_language_from_extension(".js") == "JavaScript"
+        assert CrawlerUtils.get_language_from_extension(".unknown") == "Unknown"
+        assert CrawlerUtils.get_language_from_extension("") == "Unknown"
+
+    @pytest.mark.asyncio
+    async def test_process_repo_to_dataframe(self, crawler_fixture):
+        """Test processing repository files into a DataFrame."""
+        crawler, temp_dir = crawler_fixture
+        repo_path = Path(os.path.join(temp_dir, "repo"))
+        os.makedirs(os.path.join(repo_path, "subdir"), exist_ok=True)
+
+        with open(os.path.join(repo_path, "file1.py"), "w") as f:
+            f.write("print('hello')")
+        with open(os.path.join(repo_path, "subdir", "file2.js"), "w") as f:
+            f.write("console.log('world');")
+        with open(os.path.join(repo_path, "binary.png"), "wb") as f:
+            f.write(b"dummy binary\x00data")
+
+        # Process local repo
+        df = await crawler.process_repo_to_dataframe(repo_path)
+
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2  # Binary file should be skipped
+        assert "file1.py" in df["file_path"].values
+        assert os.path.join("subdir", "file2.js") in df["file_path"].values
+        assert "Python" in df["language"].values
+        assert "JavaScript" in df["language"].values
+        # Binary file should be excluded
+        assert not any("binary.png" in path for path in df["file_path"].values)
+
+    @pytest.mark.asyncio
+    @patch('oarc_crawlers.core.crawlers.gh_crawler.GHCrawler.clone_repo')
+    async def test_clone_and_store_repo(self, mock_clone_repo, crawler_fixture, mock_repo):
+        """Test the end-to-end process of cloning and storing repo data."""
+        crawler, temp_dir = crawler_fixture
+        repo_url = "https://github.com/user/repo"
+        
+        # Set up mocks
+        mock_temp_path = os.path.join(temp_dir, "mock_github_temp")
+        os.makedirs(mock_temp_path, exist_ok=True)
+        mock_clone_repo.return_value = mock_temp_path
+        
+        # Mock get_repo
+        crawler.get_repo = AsyncMock(return_value=mock_repo)
+        
+        # Mock process_repo_to_dataframe
+        mock_df = pd.DataFrame([{'file_path': 'test.py', 'language': 'Python', 'content': 'pass', 'size_bytes': 4}])
+        crawler.process_repo_to_dataframe = AsyncMock(return_value=mock_df)
+        
+        # Create mock for ParquetStorage
+        with patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.save_github_data') as mock_save:
+            mock_save.return_value = os.path.join(temp_dir, "dummy_path.parquet")
+            
+            # Execute the method
+            result = await crawler.clone_and_store_repo(repo_url)
+            
+            # Assertions
+            assert result["owner"] == "user"
+            assert result["repo"] == "repo"
+            assert result["num_files"] == 1
+            assert result["data_path"] == os.path.join(temp_dir, "dummy_path.parquet")
+            
+            # Verify the mock calls
+            crawler.get_repo.assert_called_once()
+            crawler.process_repo_to_dataframe.assert_called_once()
+            mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
     @patch('os.path.exists')
-    async def test_get_repo_summary(self, mock_exists, mock_storage, mock_clone_store):
-        """Test getting a repository summary."""
-        # Setup mocks
-        mock_exists.return_value = True
+    @patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.load_from_parquet')
+    async def test_get_repo_summary(self, mock_load, mock_exists, crawler_fixture, mock_repo):
+        """Test generating a repository summary."""
+        crawler, _ = crawler_fixture
+        repo_url = "https://github.com/user/repo"
         
-        # Create a mock DataFrame
-        mock_df = pd.DataFrame({
-            'file_path': ['src/file1.py', 'src/file2.py', 'tests/test_file.py', 'README.md'],
-            'content': ['content1', 'content2', 'test content', '# README\nThis is a test repository.'],
-            'language': ['Python', 'Python', 'Python', 'Markdown'],
-            'line_count': [10, 20, 15, 5]
-        })
-        mock_storage.load_from_parquet.return_value = mock_df
+        # Set up mocks
+        mock_df = pd.DataFrame([
+            {'language': 'Python', 'size_bytes': 1000, 'line_count': 50, 'file_path': 'a.py'},
+            {'language': 'Python', 'size_bytes': 500, 'line_count': 20, 'file_path': 'b.py'},
+            {'language': 'JavaScript', 'size_bytes': 2000, 'line_count': 100, 'file_path': 'c.js'},
+            {'language': 'Unknown', 'size_bytes': 100, 'line_count': 5, 'file_path': 'd.txt'}
+        ])
+        mock_exists.return_value = True  # Pretend file exists to avoid clone_and_store
+        mock_load.return_value = mock_df
         
-        # Call the method
-        result = await self.crawler.get_repo_summary(self.repo_url)
+        # Mock get_repo method
+        crawler.get_repo = AsyncMock(return_value=mock_repo)
         
-        # Assertions
-        mock_exists.assert_called_once()
-        mock_storage.load_from_parquet.assert_called_once()
-        self.assertIn("# GitHub Repository Summary: username/repo", result)
-        self.assertIn("**Total Files:** 4", result)
-        self.assertIn("**Total Lines of Code:** 50", result)
-        self.assertIn("**Python:** 3 files", result)
-        self.assertIn("**Markdown:** 1 files", result)
-        self.assertIn("- src/", result)
-        self.assertIn("- tests/", result)
-        self.assertIn("# README", result)
-        self.assertIn("This is a test repository.", result)
-        
-        # Test with repo that needs to be cloned
-        mock_exists.return_value = False
-        mock_clone_store.return_value = f"{self.temp_dir.name}/github_repos/username_repo.parquet"
-        result = await self.crawler.get_repo_summary(self.repo_url)
-        mock_clone_store.assert_called_once_with(self.repo_url)
-    
-    @patch('oarc_crawlers.gh_crawler.GitHubCrawler.clone_and_store_repo')
-    @patch('oarc_crawlers.gh_crawler.ParquetStorage')
-    @patch('os.path.exists')
-    async def test_find_similar_code(self, mock_exists, mock_storage, mock_clone_store):
-        """Test finding similar code in a repository."""
-        # Setup mocks
-        mock_exists.return_value = True
-        
-        # Create a mock DataFrame
-        mock_df = pd.DataFrame({
-            'file_path': ['file1.py', 'file2.py', 'file3.js'],
-            'content': [
-                'def test_function():\n    return "Hello World"',
-                'def another_function():\n    print("Different")',
-                'function jsFunc() {\n    return "Hello World";\n}'
-            ],
-            'language': ['Python', 'Python', 'JavaScript'],
-            'line_count': [2, 2, 3]
-        })
-        mock_storage.load_from_parquet.return_value = mock_df
-        
-        # Test code snippet to find
-        code_snippet = 'def test_function():\n    return "Hello World"'
-        
-        # Call the method
-        result = await self.crawler.find_similar_code(self.repo_url, code_snippet)
+        # Execute the method
+        summary = await crawler.get_repo_summary(repo_url)
         
         # Assertions
-        mock_exists.assert_called_once()
-        mock_storage.load_from_parquet.assert_called_once()
-        self.assertIn("# Similar Code Findings", result)
-        self.assertIn("file1.py", result)
-        self.assertIn("100.0% similarity", result)
-        self.assertIn("def test_function():", result)
-        
-        # Test with a JavaScript snippet
-        mock_exists.reset_mock()
-        mock_storage.reset_mock()
-        mock_exists.return_value = True
-        code_snippet = 'function jsFunc() {\n    return "Hello World";\n}'
-        result = await self.crawler.find_similar_code(self.repo_url, code_snippet)
-        self.assertIn("file3.js", result)
-        self.assertIn("JavaScript", result)
+        assert isinstance(summary, str)
+        assert "GitHub Repository Summary: user/repo" in summary
+        assert "**Total Files:** 4" in summary
+        assert "**Total Lines of Code:** 175" in summary
+        # Fix the assertion to match the actual format (with bold markdown)
+        assert "**Python:** 2 files" in summary
+        assert "**JavaScript:** 1 files" in summary
 
-if __name__ == '__main__':
-    unittest.main()
+    @pytest.mark.asyncio
+    async def test_find_similar_code(self, crawler_fixture):
+        """Test finding similar code snippets."""
+        crawler, _ = crawler_fixture
+        
+        # Create test data
+        mock_df = pd.DataFrame([
+            {'file_path': 'a.py', 'content': 'def func1():\n  print("hello")', 'language': 'Python'},
+            {'file_path': 'b.py', 'content': 'def func2():\n  print("world")', 'language': 'Python'},
+            {'file_path': 'c.py', 'content': 'def func1_similar():\n  print("hello")', 'language': 'Python'}
+        ])
+        
+        # Mock methods
+        with patch('os.path.exists', return_value=True):
+            with patch('oarc_crawlers.core.storage.parquet_storage.ParquetStorage.load_from_parquet', return_value=mock_df):
+                results = await crawler.find_similar_code("https://github.com/user/repo", 'def func1():\n  print("hello")')
+                
+                # Assertions
+                assert isinstance(results, list)
+                assert len(results) > 0
+                assert results[0]['file_path'] == 'a.py'
+                assert results[0]['similarity'] > 50  # Should be very similar
+                assert results[1]['file_path'] == 'c.py'
