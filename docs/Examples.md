@@ -4,39 +4,260 @@ This document provides practical examples for using the `oarc-crawlers` package.
 
 ## Table of Contents
 
-- [Basic Operations](#basic-operations)
-  - [Initializing Crawlers](#initializing-crawlers)
-  - [Configuring Storage Paths](#configuring-storage-paths)
-  - [Error Handling](#error-handling)
-- [CLI Usage](#cli-usage)
-  - [Command Overview](#command-overview)
-  - [Getting Help with Commands](#getting-help-with-commands)
-- [YouTube Operations](#youtube-operations)
-  - [Downloading Videos](#downloading-videos)
-  - [Working with Playlists](#working-with-playlists)
-  - [Extracting Captions](#extracting-captions)
-- [GitHub Operations](#github-operations)
-  - [Cloning Repositories](#cloning-repositories)
-  - [Analyzing Code](#analyzing-code)
-  - [Search Repositories](#search-repositories)
-- [Search Operations](#search-operations)
-  - [DuckDuckGo Text Search](#duckduckgo-text-search)
-  - [News and Image Search](#news-and-image-search)
-- [ArXiv Operations](#arxiv-operations)
-  - [Downloading Papers](#downloading-papers)
-  - [Extracting LaTeX Sources](#extracting-latex-sources)
-- [Web Crawling](#web-crawling)
-  - [Crawling Websites](#crawling-websites)
-  - [Extracting Specific Content](#extracting-specific-content)
-- [Data Management](#data-management)
-  - [Working with Parquet Files](#working-with-parquet-files)
-  - [Converting Between Formats](#converting-between-formats)
+- [CLI Examples](#cli-examples)
+  - [Basic CLI Usage](#basic-cli-usage)
+  - [YouTube CLI Examples](#youtube-cli-examples)
+  - [GitHub CLI Examples](#github-cli-examples)
+  - [ArXiv CLI Examples](#arxiv-cli-examples)
+    - [Download LaTeX Source](#download-latex-source)
+    - [Search for Papers](#search-for-papers)
+    - [Extract LaTeX Content](#extract-latex-content)
+    - [Extract Keywords](#extract-keywords)
+    - [Extract References](#extract-references)
+    - [Extract Mathematical Equations](#extract-mathematical-equations)
+    - [Fetch Category Papers](#fetch-category-papers)
+    - [Batch Processing](#batch-processing)
+    - [Generate Citation Network](#generate-citation-network)
+  - [Web Crawler CLI Examples](#web-crawler-cli-examples)
+  - [DuckDuckGo CLI Examples](#duckduckgo-cli-examples)
+  - [Data Management CLI Examples](#data-management-cli-examples)
+- [API Examples](#api-examples)
+  - [Basic API Usage](#basic-api-usage)
+    - [Initializing Crawlers](#initializing-crawlers)
+    - [Configuring Storage Paths](#configuring-storage-paths)
+    - [Error Handling](#error-handling)
+  - [YouTube API Examples](#youtube-api-examples)
+    - [Download a Video](#download-a-video)
+    - [Download a Playlist](#download-a-playlist)
+    - [Extract Captions](#extract-captions)
+    - [Search Videos](#search-videos)
+    - [Fetch Chat Messages](#fetch-chat-messages)
+  - [GitHub API Examples](#github-api-examples)
+    - [Clone a Repository](#clone-a-repository)
+    - [Analyze Code](#analyze-code)
+    - [Search Repositories](#search-repositories)
+  - [ArXiv API Examples](#arxiv-api-examples)
+    - [Downloading Papers](#downloading-papers)
+    - [Extracting LaTeX Sources](#extracting-latex-sources)
+    - [Extracting Keywords and References](#extracting-keywords-and-references)
+    - [Working with Categories](#working-with-categories)
+    - [Generate Citation Network](#generate-citation-network-1)
+  - [Web Crawler API Examples](#web-crawler-api-examples)
+    - [Crawling Websites](#crawling-websites)
+    - [Extracting Specific Content](#extracting-specific-content)
+  - [DuckDuckGo API Examples](#duckduckgo-api-examples)
+    - [Text Search](#text-search)
+    - [News and Image Search](#news-and-image-search)
+  - [Data Management API Examples](#data-management-api-examples)
+    - [Working with Parquet Files](#working-with-parquet-files)
+    - [Converting Between Formats](#converting-between-formats)
+    - [Working with the Parquet Storage System](#working-with-the-parquet-storage-system)
 
-## Basic Operations
+---
 
-### Initializing Crawlers
+## CLI Examples
 
-All crawler modules follow a consistent initialization pattern, typically accepting a `data_dir` parameter to specify where data should be stored.
+### Basic CLI Usage
+
+The CLI follows a consistent pattern of `oarc-crawlers [module] [action] [--parameters]`, making it intuitive to use across different modules.
+
+```bash
+# YouTube operations
+oarc-crawlers yt download --url "https://youtube.com/watch?v=..."
+oarc-crawlers yt playlist --url "https://youtube.com/playlist?list=..."
+oarc-crawlers yt captions --url "https://youtube.com/watch?v=..."
+oarc-crawlers yt search --query "machine learning"
+
+# GitHub operations
+oarc-crawlers gh clone --url "https://github.com/user/repo"
+oarc-crawlers gh analyze --url "https://github.com/user/repo"
+oarc-crawlers gh find-similar --url "https://github.com/user/repo" --code "def foo():"
+
+# ArXiv operations
+oarc-crawlers arxiv download --id "2103.00020"
+oarc-crawlers arxiv search --query "quantum computing"
+oarc-crawlers arxiv latex --id "2103.00020"
+oarc-crawlers arxiv keywords --id "2103.00020"
+oarc-crawlers arxiv references --id "2103.00020"
+oarc-crawlers arxiv category --category "cs.AI"
+
+# Web crawling (BeautifulSoup)
+oarc-crawlers web crawl --url "https://example.com"
+oarc-crawlers web docs --url "https://docs.python.org"
+oarc-crawlers web pypi --package "requests"
+
+# DuckDuckGo search
+oarc-crawlers ddg text --query "python programming" --max-results 5
+oarc-crawlers ddg images --query "cute cats" --max-results 10
+oarc-crawlers ddg news --query "technology" --max-results 3
+
+# Data management
+oarc-crawlers data view ./data/example.parquet --max-rows 20
+```
+
+Each command and subcommand in the CLI has detailed help documentation that can be accessed using the `--help` flag:
+
+```bash
+oarc-crawlers --help
+oarc-crawlers yt --help
+oarc-crawlers gh --help
+oarc-crawlers arxiv --help
+oarc-crawlers web --help
+oarc-crawlers ddg --help
+```
+
+---
+
+### YouTube CLI Examples
+
+```bash
+# Download a video with default settings
+oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ"
+
+# Download a video with specific resolution
+oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --resolution 720p
+
+# Extract audio only (mp3)
+oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --extract-audio --format mp3
+
+# Download to a specific location with custom filename
+oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --output-path ./my_videos --filename my_video
+
+# Download a playlist (default: 10 videos)
+oarc-crawlers yt playlist --url "https://youtube.com/playlist?list=PLzH6n4zXuckpKAj1_88VS-8Z6yn9zX_P6"
+
+# Download a playlist with more videos and different format
+oarc-crawlers yt playlist --url "https://youtube.com/playlist?list=PLzH6n4zXuckpKAj1_88VS-8Z6yn9zX_P6" --max-videos 20 --format webm
+
+# Extract captions in multiple languages
+oarc-crawlers yt captions --url "https://youtube.com/watch?v=dQw4w9WgXcQ" --languages "en,es,fr"
+
+# Search for videos
+oarc-crawlers yt search --query "python asynchronous programming" --limit 5
+
+# Fetch chat messages from a live stream
+oarc-crawlers yt chat --video-id dQw4w9WgXcQ --max-messages 500 --duration 300
+```
+
+---
+
+### GitHub CLI Examples
+
+```bash
+# Clone a repository
+oarc-crawlers gh clone --url "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
+
+# Analyze a repository
+oarc-crawlers gh analyze --url "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
+
+# Search for similar code
+oarc-crawlers gh find-similar --url "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers" --code "def calculate_mean(values): return sum(values) / len(values)"
+```
+
+---
+
+### ArXiv CLI Examples
+
+#### Download LaTeX Source
+
+```bash
+oarc-crawlers arxiv download --id 2103.00020
+```
+
+#### Search for Papers
+
+```bash
+oarc-crawlers arxiv search --query "quantum computing" --limit 5
+```
+
+#### Extract LaTeX Content
+
+```bash
+oarc-crawlers arxiv latex --id 2103.00020
+```
+
+#### Extract Keywords
+
+```bash
+oarc-crawlers arxiv keywords --id 2103.00020
+oarc-crawlers arxiv keywords --id 2103.00020 --output-file keywords.json
+```
+
+#### Extract References
+
+```bash
+oarc-crawlers arxiv references --id 2103.00020
+oarc-crawlers arxiv references --id 2103.00020 --output-file refs.json
+```
+
+#### Extract Mathematical Equations
+
+```bash
+oarc-crawlers arxiv equations --id 2103.00020
+oarc-crawlers arxiv equations --id 2103.00020 --output-file equations.json
+```
+
+#### Fetch Category Papers
+
+```bash
+oarc-crawlers arxiv category --category cs.AI --limit 10
+```
+
+#### Batch Processing
+
+```bash
+oarc-crawlers arxiv batch --ids "2103.00020,2304.12749" --keywords --references
+```
+
+#### Generate Citation Network
+
+```bash
+oarc-crawlers arxiv citation-network --ids "2103.00020,2304.12749" --max-depth 2 --output-file network.json
+```
+
+---
+
+### Web Crawler CLI Examples
+
+```bash
+# Crawl a website
+oarc-crawlers web crawl --url "https://www.python.org/"
+
+# Extract documentation content
+oarc-crawlers web docs --url "https://docs.python.org/3/library/asyncio.html"
+```
+
+---
+
+### DuckDuckGo CLI Examples
+
+```bash
+# Perform a text search
+oarc-crawlers ddg text --query "OARC Python framework" --max-results 5
+
+# Perform a news search
+oarc-crawlers ddg news --query "artificial intelligence" --max-results 3
+
+# Perform an image search
+oarc-crawlers ddg images --query "python programming" --max-results 5
+```
+
+---
+
+### Data Management CLI Examples
+
+```bash
+# View a Parquet file
+oarc-crawlers data view ./data/example.parquet --max-rows 20
+```
+
+---
+
+## API Examples
+
+### Basic API Usage
+
+#### Initializing Crawlers
 
 ```python
 from oarc_crawlers import YTCrawler, GHCrawler, ArxivCrawler, DDGCrawler, WebCrawler
@@ -57,9 +278,7 @@ ddg_custom = DDGCrawler(data_dir=data_dir)
 web_custom = WebCrawler(data_dir=data_dir)
 ```
 
-### Configuring Storage Paths
-
-The storage system can be configured through initialization parameters or environment variables.
+#### Configuring Storage Paths
 
 ```python
 import os
@@ -83,9 +302,7 @@ video_dir = yt.data_dir / "videos"
 print(f"Videos will be stored in: {video_dir}")
 ```
 
-### Error Handling
-
-The crawlers provide comprehensive error handling to manage common issues.
+#### Error Handling
 
 ```python
 import asyncio
@@ -116,81 +333,23 @@ async def error_handling_examples():
 asyncio.run(error_handling_examples())
 ```
 
-## CLI Usage
+---
 
-The OARC-Crawlers package provides a unified command-line interface for all its functionality. This section demonstrates how to use the CLI for various operations.
-
-### Command Overview
-
-The CLI follows a consistent pattern of `oarc-crawlers [module] [action] [--parameters]`, making it intuitive to use across different modules.
-
-```bash
-# YouTube operations
-oarc-crawlers yt download --url "https://youtube.com/watch?v=..."
-oarc-crawlers yt playlist --url "https://youtube.com/playlist?list=..."
-oarc-crawlers yt captions --url "https://youtube.com/watch?v=..."
-oarc-crawlers yt search --query "machine learning"
-
-# GitHub operations
-oarc-crawlers gh clone --url "https://github.com/user/repo"
-oarc-crawlers gh analyze --url "https://github.com/user/repo"
-oarc-crawlers gh find-similar --url "https://github.com/user/repo" --code "def foo():"
-
-# ArXiv operations
-oarc-crawlers arxiv download --id "2103.00020"
-oarc-crawlers arxiv search --query "quantum computing"
-oarc-crawlers arxiv latex --id "2103.00020"
-
-# Web crawling (BeautifulSoup)
-oarc-crawlers web crawl --url "https://example.com"
-oarc-crawlers web docs --url "https://docs.python.org"
-oarc-crawlers web pypi --package "requests"
-
-# DuckDuckGo search
-oarc-crawlers ddg text --query "python programming" --max-results 5
-oarc-crawlers ddg images --query "cute cats" --max-results 10
-oarc-crawlers ddg news --query "technology" --max-results 3
-
-# Data management
-oarc-crawlers data view ./data/example.parquet --max-rows 20
-```
-
-### Getting Help with Commands
-
-Each command and subcommand in the CLI has detailed help documentation that can be accessed using the `--help` flag:
-
-```bash
-oarc-crawlers --help
-oarc-crawlers yt --help
-oarc-crawlers gh --help
-oarc-crawlers arxiv --help
-oarc-crawlers web --help
-oarc-crawlers ddg --help
-```
-
-For example, running `oarc-crawlers yt --help` will display all available YouTube operations and their parameters, while `oarc-crawlers yt download --help` will show the specific options for downloading YouTube videos.
-
-## YouTube Operations
-
-### Downloading Videos
+### YouTube API Examples
 
 ```python
 import asyncio
 from oarc_crawlers import YTCrawler
 
-async def download_videos_example():
+async def download_video_example():
     yt = YTCrawler(data_dir="./data")
-    # Basic video download
+    # Download a video with default settings
     result = await yt.download_video(
-        url="https://youtube.com/watch?v=dQw4w9WgXcQ",
-        video_format="mp4",
-        resolution="highest"
+        url="https://youtube.com/watch?v=dQw4w9WgXcQ"
     )
-    if result:
-        print(f"Video downloaded successfully to {result['file_path']}")
-        print(f"Video title: {result.get('title', 'Unknown')}")
+    print(f"Downloaded: {result['file_path']} ({result['format']})")
 
-    # Download with specific format and resolution
+    # Download with specific resolution and format
     result = await yt.download_video(
         url="https://youtube.com/watch?v=dQw4w9WgXcQ",
         video_format="mp4",
@@ -198,35 +357,35 @@ async def download_videos_example():
         output_path="./my_videos/",
         filename="custom_name"
     )
+    print(f"Downloaded: {result['file_path']}")
 
-# Run the async function
-asyncio.run(download_videos_example())
+    # Download audio only as mp3
+    result = await yt.download_video(
+        url="https://youtube.com/watch?v=dQw4w9WgXcQ",
+        video_format="mp3",
+        extract_audio=True
+    )
+    print(f"Downloaded audio: {result['file_path']}")
+
+asyncio.run(download_video_example())
 ```
-
-### Working with Playlists
 
 ```python
 import asyncio
 from oarc_crawlers import YTCrawler
 
-async def playlist_example():
+async def download_playlist_example():
     yt = YTCrawler(data_dir="./data")
-    # Download a playlist (limited to first 5 videos)
-    results = await yt.download_playlist(
+    # Download a playlist (limit to 5 videos)
+    result = await yt.download_playlist(
         playlist_url="https://www.youtube.com/playlist?list=PLzH6n4zXuckpKAj1_88VS-8Z6yn9zX_P6",
         format="mp4",
         max_videos=5
     )
-    if results and "results" in results:
-        print(f"Downloaded {results['success_count']} videos from playlist")
-        for i, video in enumerate(results['results']):
-            print(f"Video {i+1}: {video.get('title', 'Unknown')}")
+    print(f"Downloaded {len(result['videos'])} videos from playlist '{result['title']}'")
 
-# Run the async function
-asyncio.run(playlist_example())
+asyncio.run(download_playlist_example())
 ```
-
-### Extracting Captions
 
 ```python
 import asyncio
@@ -234,24 +393,53 @@ from oarc_crawlers import YTCrawler
 
 async def captions_example():
     yt = YTCrawler(data_dir="./data")
+    # Extract captions in multiple languages
     captions_result = await yt.extract_captions(
         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         languages=['en', 'es', 'fr']
     )
-    if captions_result and "captions" in captions_result:
-        available_langs = captions_result["captions"].keys()
-        print(f"Captions available in: {', '.join(available_langs)}")
-        if 'en' in captions_result["captions"]:
-            en_captions = captions_result["captions"]["en"]
-            print(f"English captions sample: {en_captions[:100]}...")
+    print(f"Captions available: {list(captions_result['captions'].keys())}")
 
-# Run the async function
 asyncio.run(captions_example())
 ```
 
-## GitHub Operations
+```python
+import asyncio
+from oarc_crawlers import YTCrawler
 
-### Cloning Repositories
+async def search_videos_example():
+    yt = YTCrawler(data_dir="./data")
+    results = await yt.search_videos(
+        query="python asynchronous programming tutorial",
+        limit=10
+    )
+    print(f"Found {results['result_count']} videos")
+    for video in results['results']:
+        print(f"- {video['title']} ({video['url']})")
+
+asyncio.run(search_videos_example())
+```
+
+```python
+import asyncio
+from oarc_crawlers import YTCrawler
+
+async def fetch_chat_example():
+    yt = YTCrawler(data_dir="./data")
+    chat_result = await yt.fetch_stream_chat(
+        video_id="dQw4w9WgXcQ",
+        max_messages=100,
+        duration=60
+    )
+    print(f"Collected {chat_result['message_count']} chat messages")
+    print(f"Saved to: {chat_result.get('parquet_path', 'N/A')}")
+
+asyncio.run(fetch_chat_example())
+```
+
+---
+
+### GitHub API Examples
 
 ```python
 import asyncio
@@ -268,100 +456,11 @@ async def clone_repo_example():
 asyncio.run(clone_repo_example())
 ```
 
-### Analyzing Code
+---
 
-```python
-import asyncio
-from oarc_crawlers import GHCrawler
+### ArXiv API Examples
 
-async def analyze_code_example():
-    gh = GHCrawler(data_dir="./data")
-    repo_url = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
-    repo_path = await gh.clone_repo(repo_url)
-    if repo_path:
-        df = await gh.process_repo_to_dataframe(repo_path, max_file_size_kb=500)
-        print(df.head())
-        summary = await gh.get_repo_summary(repo_url)
-        print(f"\nRepository Summary:\n{summary}")
-
-# Run the async function
-asyncio.run(analyze_code_example())
-```
-
-### Search Repositories
-
-```python
-import asyncio
-from oarc_crawlers import GHCrawler
-
-async def search_repo_example():
-    gh = GHCrawler(data_dir="./data")
-    repo_url = "https://github.com/Ollama-Agent-Roll-Cage/oarc-crawlers"
-    query_result = await gh.query_repo_content(
-        repo_url=repo_url,
-        query="ParquetStorage"
-    )
-    print(f"Search results for 'ParquetStorage':\n{query_result}")
-
-    code_snippet = """def calculate_mean(values):
-    return sum(values) / len(values)"""
-    similar_code = await gh.find_similar_code(
-        repo_url=repo_url,
-        code_snippet=code_snippet
-    )
-    print(f"\nSimilar code found:\n{similar_code}")
-
-# Run the async function
-asyncio.run(search_repo_example())
-```
-
-## Search Operations
-
-### DuckDuckGo Text Search
-
-```python
-import asyncio
-from oarc_crawlers import DDGCrawler
-
-async def text_search_example():
-    ddg = DDGCrawler(data_dir="./data")
-    results = await ddg.text_search(
-        search_query="OARC Python framework",
-        max_results=5
-    )
-    if results:
-        print(results)
-
-# Run the async function
-asyncio.run(text_search_example())
-```
-
-### News and Image Search
-
-```python
-import asyncio
-from oarc_crawlers import DDGCrawler
-
-async def multimedia_search_example():
-    ddg = DDGCrawler(data_dir="./data")
-    news_results = await ddg.news_search(
-        search_query="artificial intelligence",
-        max_results=3
-    )
-    print(news_results)
-    image_results = await ddg.image_search(
-        search_query="python programming",
-        max_results=5
-    )
-    print(image_results)
-
-# Run the async function
-asyncio.run(multimedia_search_example())
-```
-
-## ArXiv Operations
-
-### Downloading Papers
+#### Downloading Papers
 
 ```python
 import asyncio
@@ -382,7 +481,7 @@ async def download_papers_example():
 asyncio.run(download_papers_example())
 ```
 
-### Extracting LaTeX Sources
+#### Extracting LaTeX Sources
 
 ```python
 import asyncio
@@ -407,9 +506,87 @@ async def latex_source_example():
 asyncio.run(latex_source_example())
 ```
 
-## Web Crawling
+#### Extracting Keywords and References
 
-### Crawling Websites
+```python
+import asyncio
+from oarc_crawlers import ArxivCrawler
+
+async def extract_metadata_example():
+    arxiv = ArxivCrawler(data_dir="./data")
+    arxiv_id = "2103.00020"
+    
+    # Extract keywords
+    keywords = await arxiv.extract_keywords(arxiv_id)
+    print("Top keywords:")
+    for kw in keywords['keywords'][:5]:
+        print(f"  • {kw['keyword']} (score: {kw['score']})")
+    
+    # Extract references
+    references = await arxiv.extract_references(arxiv_id)
+    print(f"\nFound {references['reference_count']} references")
+    for i, ref in enumerate(references['references'][:3], 1):
+        if 'fields' in ref:  # BibTeX entry
+            authors = ref.get('fields', {}).get('author', 'Unknown')
+            title = ref.get('fields', {}).get('title', 'Untitled')
+            print(f"  {i}. {authors}: {title}")
+        else:  # Standard citation
+            citation = ref.get('citation', 'Unknown citation')
+            print(f"  {i}. {citation[:100]}...")
+
+# Run the async function
+asyncio.run(extract_metadata_example())
+```
+
+#### Working with Categories
+
+```python
+import asyncio
+from oarc_crawlers import ArxivCrawler
+
+async def category_example():
+    arxiv = ArxivCrawler(data_dir="./data")
+    
+    # Get recent papers in computer science AI category
+    papers = await arxiv.fetch_category_papers("cs.AI", max_results=10)
+    
+    print(f"Found {papers['papers_count']} recent papers in cs.AI:")
+    for i, paper in enumerate(papers['papers']):
+        print(f"{i+1}. {paper['title']}")
+        print(f"   Published: {paper['published'].split('T')[0]}")
+        print()
+
+# Run the async function
+asyncio.run(category_example())
+```
+
+#### Generate Citation Network
+
+```python
+import asyncio
+import json
+from oarc_crawlers import ArxivCrawler
+
+async def create_citation_network():
+    crawler = ArxivCrawler()
+    
+    # Generate a citation network starting from two seed papers
+    seed_papers = ["2304.12749", "2310.06825"]
+    network = await crawler.generate_citation_network(seed_papers, max_depth=1)
+    
+    print(f"Created network with {len(network['nodes'])} nodes and {len(network['edges'])} edges")
+    
+    # Save network to a JSON file
+    with open("citation_network.json", "w") as f:
+        json.dump(network, f, indent=2)
+
+if __name__ == "__main__":
+    asyncio.run(create_citation_network())
+```
+
+---
+
+### Web Crawler API Examples
 
 ```python
 import asyncio
@@ -428,31 +605,59 @@ async def crawl_website_example():
 asyncio.run(crawl_website_example())
 ```
 
-### Extracting Specific Content
+---
+
+### DuckDuckGo API Examples
 
 ```python
 import asyncio
-from oarc_crawlers import WebCrawler
+from oarc_crawlers import DDGCrawler
 
-async def extract_specific_content_example():
-    web = WebCrawler(data_dir="./data")
-    doc_url = "https://docs.python.org/3/library/asyncio.html"
-    html_content = await web.fetch_url_content(doc_url)
-    if html_content:
-        doc_data = WebCrawler.extract_documentation_content(html_content, doc_url)
-        if doc_data:
-            print(f"Documentation title: {doc_data.get('title', 'Unknown')}")
-            if 'code_snippets' in doc_data and doc_data['code_snippets']:
-                print(f"Found {len(doc_data['code_snippets'])} code snippets")
-                print(f"First snippet: {doc_data['code_snippets'][0][:100]}...")
+async def ddg_examples():
+    # Initialize the searcher
+    searcher = DDGCrawler(data_dir="./data")
 
-# Run the async function
-asyncio.run(extract_specific_content_example())
+    # Text search (returns markdown-formatted string)
+    try:
+        text_results = await searcher.text_search("quantum computing", max_results=3)
+        print(text_results)
+    except Exception as e:
+        print(f"Error during text search: {e}")
+
+    # Image search (returns markdown-formatted string)
+    try:
+        image_results = await searcher.image_search("mountain landscape", max_results=2)
+        print(image_results)
+    except Exception as e:
+        print(f"Error during image search: {e}")
+
+    # News search (returns markdown-formatted string)
+    try:
+        news_results = await searcher.news_search("artificial intelligence", max_results=3)
+        print(news_results)
+    except Exception as e:
+        print(f"Error during news search: {e}")
+
+    # Error handling demonstration
+    try:
+        invalid_result = await searcher.text_search("", max_results=-1)
+        print(invalid_result)
+    except Exception as e:
+        print(f"Caught exception: {e}")
+
+asyncio.run(ddg_examples())
 ```
 
-## Data Management
+**Note:**  
+- All DuckDuckGo API methods return markdown-formatted strings for direct printing.
+- Errors are raised as exceptions and should be caught as shown above.
+- Results are also saved to Parquet files in the configured data directory.
 
-### Working with Parquet Files
+---
+
+### Data Management API Examples
+
+#### Working with Parquet Files
 
 ```python
 import pandas as pd
@@ -504,7 +709,7 @@ if updated_df is not None:
     print(updated_df.tail(3))
 ```
 
-### Converting Between Formats
+#### Converting Between Formats
 
 ```python
 import pandas as pd
@@ -555,9 +760,7 @@ if loaded_df is not None:
     print(f"Converted Parquet to Excel: {excel_path}")
 ```
 
-### Working with the Parquet Storage System
-
-All crawler modules utilize the `ParquetStorage` class for efficient data handling in the Parquet format. The following examples demonstrate its basic usage for saving, loading, and appending data.
+#### Working with the Parquet Storage System
 
 ```python
 from oarc_crawlers import ParquetStorage

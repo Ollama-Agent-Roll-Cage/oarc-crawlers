@@ -22,6 +22,7 @@ classifiers = [
 
 dependencies = [
     "aiohttp>=3.11.16",
+    "arxiv>=2.2.0",
     "beautifulsoup4>=4.13.3",
     "build>=1.2.2.post1",
     "click>=8.1.8",

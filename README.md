@@ -106,20 +106,32 @@ For detailed examples and advanced usage patterns, check our comprehensive [Exam
 | **Basic Operations** | [Initializing Crawlers](docs/Examples.md#initializing-crawlers) |
 | | [Configuring Storage Paths](docs/Examples.md#configuring-storage-paths) |
 | | [Error Handling](docs/Examples.md#error-handling) |
-| **YouTube Operations** | [Downloading Videos](docs/Examples.md#downloading-videos) |
-| | [Working with Playlists](docs/Examples.md#working-with-playlists) |
-| | [Extracting Captions](docs/Examples.md#extracting-captions) |
-| **GitHub Operations** | [Cloning Repositories](docs/Examples.md#cloning-repositories) |
-| | [Analyzing Code](docs/Examples.md#analyzing-code) |
+| **YouTube Operations** | [YouTube CLI Examples](docs/Examples.md#youtube-cli-examples) |
+| | [Download a Video](docs/Examples.md#download-a-video) |
+| | [Download a Playlist](docs/Examples.md#download-a-playlist) |
+| | [Extract Captions](docs/Examples.md#extract-captions) |
+| | [Search Videos](docs/Examples.md#search-videos) |
+| | [Fetch Chat Messages](docs/Examples.md#fetch-chat-messages) |
+| **GitHub Operations** | [GitHub CLI Examples](docs/Examples.md#github-cli-examples) |
+| | [Clone a Repository](docs/Examples.md#clone-a-repository) |
+| | [Analyze Code](docs/Examples.md#analyze-code) |
 | | [Search Repositories](docs/Examples.md#search-repositories) |
-| **Search Operations** | [DuckDuckGo Text Search](docs/Examples.md#duckduckgo-text-search) |
+| **Search Operations** | [DuckDuckGo CLI Examples](docs/Examples.md#duckduckgo-cli-examples) |
+| | [Text Search](docs/Examples.md#text-search) |
 | | [News and Image Search](docs/Examples.md#news-and-image-search) |
-| **ArXiv Operations** | [Downloading Papers](docs/Examples.md#downloading-papers) |
+| **ArXiv Operations** | [ArXiv CLI Examples](docs/Examples.md#arxiv-cli-examples) |
+| | [Downloading Papers](docs/Examples.md#downloading-papers) |
 | | [Extracting LaTeX Sources](docs/Examples.md#extracting-latex-sources) |
-| **Web Crawling** | [Crawling Websites](docs/Examples.md#crawling-websites) |
+| | [Extracting Keywords and References](docs/Examples.md#extracting-keywords-and-references) |
+| | [Working with Categories](docs/Examples.md#working-with-categories) |
+| | [Generate Citation Network](docs/Examples.md#generate-citation-network-1) |
+| **Web Crawling** | [Web Crawler CLI Examples](docs/Examples.md#web-crawler-cli-examples) |
+| | [Crawling Websites](docs/Examples.md#crawling-websites) |
 | | [Extracting Specific Content](docs/Examples.md#extracting-specific-content) |
-| **Data Management** | [Working with Parquet Files](docs/Examples.md#working-with-parquet-files) |
+| **Data Management** | [Data Management CLI Examples](docs/Examples.md#data-management-cli-examples) |
+| | [Working with Parquet Files](docs/Examples.md#working-with-parquet-files) |
 | | [Converting Between Formats](docs/Examples.md#converting-between-formats) |
+| | [Working with the Parquet Storage System](docs/Examples.md#working-with-the-parquet-storage-system) |
 
 ## Development
 

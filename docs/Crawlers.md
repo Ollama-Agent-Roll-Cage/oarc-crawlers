@@ -8,7 +8,7 @@ This document provides in-depth explanations of the various crawlers and compone
   - [1.2 Data Flow](#12-data-flow)
   - [1.3 Advanced Usage](#13-advanced-usage)
   - [1.4 Schema Management](#14-schema-management)
-- [2. YouTube Downloader](#2-youtube-downloader)
+- [2. YouTube Crawler](#2-youtube-crawler)
   - [2.1 Architecture](#21-architecture)
   - [2.2 Video Download Process](#22-video-download-process)
   - [2.3 Playlist Handling](#23-playlist-handling)
@@ -20,23 +20,24 @@ This document provides in-depth explanations of the various crawlers and compone
   - [3.3 Code Analysis & Summary](#33-code-analysis--summary)
   - [3.4 Similarity Detection](#34-similarity-detection)
   - [3.5 Natural Language Querying](#35-natural-language-querying)
-- [4. DuckDuckGo Searcher](#4-duckduckgo-searcher)
+- [4. DuckDuckGo Crawler](#4-duckduckgo-crawler)
   - [4.1 Architecture](#41-architecture)
   - [4.2 Search Types](#42-search-types)
   - [4.3 Result Processing](#43-result-processing)
   - [4.4 Privacy Considerations](#44-privacy-considerations)
-- [5. BeautifulSoup Web Crawler](#5-beautifulsoup-web-crawler)
+- [5. Web Crawler](#5-web-crawler)
   - [5.1 Architecture](#51-architecture)
   - [5.2 Content Extraction](#52-content-extraction)
   - [5.3 Specialized Extractors (PyPI, Docs)](#53-specialized-extractors-pypi-docs)
   - [5.4 Document Formatting](#54-document-formatting)
-- [6. ArXiv Fetcher](#6-arxiv-fetcher)
+- [6. ArXiv Crawler](#6-arxiv-crawler)
   - [6.1 Architecture](#61-architecture)
   - [6.2 Metadata Extraction](#62-metadata-extraction)
   - [6.3 LaTeX Source Processing](#63-latex-source-processing)
   - [6.4 Combined Workflows](#64-combined-workflows)
 - [7. Appendix](#7-appendix)
   - [7.1 Glossary of Terms](#71-glossary-of-terms)
+- [See Also](#see-also)
 
 ## 1. Parquet Storage
 
@@ -150,11 +151,11 @@ graph TD
 
 Enforcing schemas ensures data consistency, especially in long-running data collection projects or when multiple processes write to the same datasets.
 
-## 2. YouTube Downloader
+## 2. YouTube Crawler
 
 *Component for interacting with YouTube.*
 
-The `YouTubeDownloader` module provides functionalities for downloading videos and playlists, extracting captions, and searching for videos on YouTube.
+The `YouTubeCrawler` module provides functionalities for downloading videos and playlists, extracting captions, and searching for videos on YouTube.
 
 ### 2.1 Architecture
 
@@ -162,7 +163,7 @@ Implemented as an asynchronous class, leveraging external libraries for YouTube 
 
 ```mermaid
 classDiagram
-    class YouTubeDownloader {
+    class YouTubeCrawler {
         -data_dir: Path
         +__init__(data_dir: Optional[str]=None)
         +download_video(url: str, ...) Dict
@@ -176,12 +177,12 @@ classDiagram
         -_save_metadata(metadata: Dict, filepath_base: str) None
     }
 
-    YouTubeDownloader ..> pytube.YouTube : uses
-    YouTubeDownloader ..> pytube.Playlist : uses
-    YouTubeDownloader ..> pytube.Search : uses (or alternative)
-    YouTubeDownloader ..> ParquetStorage : uses
-    YouTubeDownloader ..> asyncio : uses
-    YouTubeDownloader ..> aiofiles : uses (potentially for async file ops)
+    YouTubeCrawler ..> pytube.YouTube : uses
+    YouTubeCrawler ..> pytube.Playlist : uses
+    YouTubeCrawler ..> pytube.Search : uses (or alternative)
+    YouTubeCrawler ..> ParquetStorage : uses
+    YouTubeCrawler ..> asyncio : uses
+    YouTubeCrawler ..> aiofiles : uses (potentially for async file ops)
 ```
 
 Key aspects:
@@ -198,7 +199,7 @@ Downloading a single video involves fetching info, selecting a stream, downloadi
 ```mermaid
 sequenceDiagram
     participant User
-    participant YTD as YouTubeDownloader
+    participant YTD as YouTubeCrawler
     participant PytubeLib as pytube
     participant FileSystem as FS
     participant ParquetStore as ParquetStorage
@@ -287,7 +288,7 @@ Searching YouTube involves querying an API or library and processing the results
 ```mermaid
 sequenceDiagram
     participant User
-    participant YTD as YouTubeDownloader
+    participant YTD as YouTubeCrawler
     participant SearchLib as YouTube Search Lib/API
     participant ParquetStore as ParquetStorage
 
@@ -313,7 +314,7 @@ The `GitHubCrawler` clones repositories, processes their file contents, and prov
 
 ### 3.1 Architecture
 
-An asynchronous class using `GitPython` for Git operations and potentially other libraries for analysis.
+An asynchronous class using `GitPython` and `PyGitHub`for Git operations and potentially other libraries for analysis.
 
 ```mermaid
 classDiagram
@@ -481,7 +482,7 @@ An asynchronous class using HTTP requests to interact with DuckDuckGo.
 
 ```mermaid
 classDiagram
-    class DuckDuckGoSearcher {
+    class DuckDuckGoCrawler {
         -data_dir: Path
         -session: aiohttp.ClientSession
         +text_search(search_query: str, ...) str | Dict
@@ -498,9 +499,9 @@ classDiagram
         -_save_results(results: List[Dict], query: str, type: str) None
     }
 
-    DuckDuckGoSearcher ..> aiohttp.ClientSession : uses
-    DuckDuckGoSearcher ..> ParquetStorage : uses
-    DuckDuckGoSearcher ..> asyncio : uses
+    DuckDuckGoCrawler ..> aiohttp.ClientSession : uses
+    DuckDuckGoCrawler ..> ParquetStorage : uses
+    DuckDuckGoCrawler ..> asyncio : uses
 ```
 
 Key aspects:
@@ -516,7 +517,7 @@ Supports distinct search modalities:
 
 ```mermaid
 graph TB
-    A[DuckDuckGoSearcher] --> B(Text Search)
+    A[DuckDuckGoCrawler] --> B(Text Search)
     A --> C(Image Search)
     A --> D(News Search)
 
@@ -552,7 +553,7 @@ A pipeline for fetching, parsing, formatting, and storing results.
 ```mermaid
 sequenceDiagram
     participant User
-    participant DDGS as DuckDuckGoSearcher
+    participant DDGS as DuckDuckGoCrawler
     participant DDGEndpoints as DuckDuckGo
     participant ParquetStore as ParquetStorage
 
@@ -604,7 +605,7 @@ An asynchronous class combining HTTP requests and HTML parsing.
 
 ```mermaid
 classDiagram
-    class BSWebCrawler {
+    class WebCrawler {
         -data_dir: Path
         -session: aiohttp.ClientSession
         +fetch_url_content(url: str) Optional[str]
@@ -620,11 +621,11 @@ classDiagram
         -_resolve_relative_url(base_url: str, link: str) str
     }
 
-    BSWebCrawler ..> aiohttp.ClientSession : uses
-    BSWebCrawler ..> bs4.BeautifulSoup : uses
-    BSWebCrawler ..> ParquetStorage : uses
-    BSWebCrawler ..> asyncio : uses
-    BSWebCrawler ..> urllib.parse : uses (for URL joining)
+    WebCrawler ..> aiohttp.ClientSession : uses
+    WebCrawler ..> bs4.BeautifulSoup : uses
+    WebCrawler ..> ParquetStorage : uses
+    WebCrawler ..> asyncio : uses
+    WebCrawler ..> urllib.parse : uses (for URL joining)
 ```
 
 Key aspects:
@@ -718,7 +719,7 @@ Implementation details:
 - `format_documentation`: Rebuilds document using headings, lists, and fenced code blocks (with language hints).
 - Handles missing data gracefully by omitting sections.
 
-## 6. ArXiv Fetcher
+## 6. ArXiv Crawler
 
 *Component for retrieving data from the arXiv academic preprint server.*
 
@@ -730,7 +731,7 @@ An asynchronous class interacting with the arXiv API and download endpoints.
 
 ```mermaid
 classDiagram
-    class ArxivFetcher {
+    class ArxivCrawler {
         -data_dir: Path
         -session: aiohttp.ClientSession
         +__init__(data_dir: Optional[str]=None)
@@ -747,12 +748,12 @@ classDiagram
         -_read_file_content(file_path: Path) Optional[str]
     }
 
-    ArxivFetcher ..> aiohttp.ClientSession : uses
-    ArxivFetcher ..> xml.etree.ElementTree : uses (or similar XML parser)
-    ArxivFetcher ..> tarfile : uses
-    ArxivFetcher ..> asyncio : uses
-    ArxivFetcher ..> ParquetStorage : uses
-    ArxivFetcher ..> re : uses (for ID extraction)
+    ArxivCrawler ..> aiohttp.ClientSession : uses
+    ArxivCrawler ..> xml.etree.ElementTree : uses (or similar XML parser)
+    ArxivCrawler ..> tarfile : uses
+    ArxivCrawler ..> asyncio : uses
+    ArxivCrawler ..> ParquetStorage : uses
+    ArxivCrawler ..> re : uses (for ID extraction)
 ```
 
 Key aspects:
@@ -793,7 +794,7 @@ Downloading, extracting, and optionally analyzing the `.tar.gz` source archive.
 ```mermaid
 sequenceDiagram
     participant User
-    participant AF as ArxivFetcher
+    participant AF as ArxivCrawler
     participant ArxivServer as arXiv Download Endpoint
     participant FileSystem as FS
     participant TarLib as tarfile
@@ -897,3 +898,15 @@ This approach uses `asyncio` to overlap the network-bound operations of fetching
 | **User-Agent**       | HTTP header identifying the client software making a request.                                          |
 | **XML**              | Extensible Markup Language; format for encoding documents.                                             |
 | **YouTube Data API** | Google's official API for interacting with YouTube.                                                    |
+
+## See Also
+
+- [API Reference](./API.md)
+- [CLI Reference](./CLI.md)
+- [Examples](./Examples.md#cli-examples)
+- [Examples: YouTube](./Examples.md#youtube-cli-examples)
+- [Examples: GitHub](./Examples.md#github-cli-examples)
+- [Examples: ArXiv](./Examples.md#arxiv-cli-examples)
+- [Examples: DuckDuckGo](./Examples.md#duckduckgo-cli-examples)
+- [Examples: Web Crawler](./Examples.md#web-crawler-cli-examples)
+- [Examples: Data Management](./Examples.md#data-management-cli-examples)
