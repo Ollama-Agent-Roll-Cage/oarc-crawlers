@@ -1,3 +1,11 @@
+<p align="center">
+  <img src="assets/oarcCrawlerLlamaEmoji.png" alt="OARC LOGO" width="250"/>
+</p>
+<p align="center">
+  <a href="https://discord.gg/mNeQZzBHuW"><img src="assets/Discord Button Ollama v4.png" height="48"></a>
+  <a href="https://ko-fi.com/theborch"><img src="assets/buy me a coffee button.png" height="48"></a>
+</p>
+
 # ⛏️ OARC-Crawlers ⛏️
 
 OARC-Crawlers is a Python framework designed for acquiring, processing, and storing data from diverse online sources including YouTube, GitHub, ArXiv, DuckDuckGo, and general websites. Built with modularity and asynchronous operation, it features specialized crawlers for each source, unified data persistence using Apache Parquet via a central `ParquetStorage` component, and provides both a command-line interface (CLI) and a Python API for interaction. The framework aims to streamline data collection for research, analysis, and integration into agentic AI workflows by delivering structured, analysis-ready outputs.
