@@ -1,6 +1,6 @@
 # OARC-Crawlers: Components and Implementations
 
-This document provides in-depth explanations of the various crawlers and components in the OARC-Crawlers framework, including data flow diagrams, implementation details, and advanced usage patterns.
+This document provides in-depth explanations of the various crawlers and components in the OARC-Crawlers framework, including architecture overviews, data flow diagrams, implementation details, and advanced usage patterns.
 
 ## Table of Contents
 - [1. Parquet Storage](#1-parquet-storage)
@@ -17,8 +17,9 @@ This document provides in-depth explanations of the various crawlers and compone
 - [3. GitHub Crawler](#3-github-crawler)
   - [3.1 Architecture](#31-architecture)
   - [3.2 Repository Processing](#32-repository-processing)
-  - [3.3 Code Analysis](#33-code-analysis)
+  - [3.3 Code Analysis & Summary](#33-code-analysis--summary)
   - [3.4 Similarity Detection](#34-similarity-detection)
+  - [3.5 Natural Language Querying](#35-natural-language-querying)
 - [4. DuckDuckGo Searcher](#4-duckduckgo-searcher)
   - [4.1 Architecture](#41-architecture)
   - [4.2 Search Types](#42-search-types)
@@ -27,883 +28,872 @@ This document provides in-depth explanations of the various crawlers and compone
 - [5. BeautifulSoup Web Crawler](#5-beautifulsoup-web-crawler)
   - [5.1 Architecture](#51-architecture)
   - [5.2 Content Extraction](#52-content-extraction)
-  - [5.3 Specialized Extractors](#53-specialized-extractors)
+  - [5.3 Specialized Extractors (PyPI, Docs)](#53-specialized-extractors-pypi-docs)
   - [5.4 Document Formatting](#54-document-formatting)
 - [6. ArXiv Fetcher](#6-arxiv-fetcher)
   - [6.1 Architecture](#61-architecture)
   - [6.2 Metadata Extraction](#62-metadata-extraction)
-  - [6.3 LaTeX Processing](#63-latex-processing)
+  - [6.3 LaTeX Source Processing](#63-latex-source-processing)
   - [6.4 Combined Workflows](#64-combined-workflows)
 - [7. Appendix](#7-appendix)
   - [7.1 Glossary of Terms](#71-glossary-of-terms)
 
 ## 1. Parquet Storage
 
-The ParquetStorage component is the cornerstone of the OARC-Crawlers framework, providing a unified mechanism for efficient data persistence across all modules.
+*Component providing unified data persistence.*
+
+The `ParquetStorage` component serves as the standardized interface for saving, loading, and appending structured data across all OARC-Crawlers modules. It ensures data is stored efficiently in the Apache Parquet format, ready for analysis.
 
 ### 1.1 Architecture
 
-ParquetStorage is implemented as a utility class with static methods for saving, loading, and appending data in the Apache Parquet format. It abstracts away the complexities of Parquet serialization and provides a simple, consistent interface for all data storage operations.
+`ParquetStorage` is typically implemented as a utility class or module containing static methods. It abstracts the underlying `pyarrow` library interactions.
 
 ```mermaid
 classDiagram
     class ParquetStorage {
-        +save_to_parquet(data, file_path) bool
-        +load_from_parquet(file_path) DataFrame
-        +append_to_parquet(data, file_path) bool
-        -_ensure_directory_exists(file_path) None
-        -_convert_to_dataframe(data) DataFrame
+        <<Utility>>
+        +save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) bool
+        +load_from_parquet(file_path: str) Optional[pd.DataFrame]
+        +append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) bool
+        -_ensure_directory_exists(file_path: Path) None
+        -_convert_to_dataframe(data: Union[Dict, List[Dict], pd.DataFrame]) pd.DataFrame
+        -_read_parquet_safe(file_path: str) Optional[pd.DataFrame]
+        -_write_parquet_safe(df: pd.DataFrame, file_path: str) bool
     }
-    
-    ParquetStorage ..> DataFrame : uses
-    ParquetStorage ..> pyarrow.Table : uses
-    ParquetStorage ..> pyarrow.parquet : uses
+
+    ParquetStorage ..> pd.DataFrame : uses
+    ParquetStorage ..> pyarrow.Table : uses (internally)
+    ParquetStorage ..> pyarrow.parquet : uses (internally)
+    ParquetStorage ..> pathlib.Path : uses
 ```
 
-The class is designed to handle multiple input data types, automatically converting between them as needed:
-- Python dictionaries
-- Lists of dictionaries
-- Pandas DataFrames
-- Nested structures with JSON-compatible types
+Key responsibilities:
+- Handling input data types (Dict, List[Dict], DataFrame).
+- Converting inputs to Pandas DataFrames.
+- Managing file paths and directory creation.
+- Interfacing with `pyarrow` for read/write operations.
+- Implementing safe read/write logic (error handling).
+- Handling schema evolution during appends.
 
 ### 1.2 Data Flow
 
-The data flow through the ParquetStorage system follows a consistent pattern regardless of the source crawler:
+The typical data flow for saving data involves normalization and serialization:
 
 ```mermaid
-flowchart LR
-    subgraph Input [Input Sources]
-        D[Dictionaries]
-        L[Lists]
-        DF[DataFrames]
+graph LR
+    subgraph InputSources [Input Data Sources]
+        direction LR
+        InputDict[Dictionary]
+        InputList[List of Dictionaries]
+        InputDF[Pandas DataFrame]
     end
-    
-    subgraph Process [Processing]
-        C[Convert to DataFrame]
-        V[Validate Schema]
-        S[Serialize to Parquet]
+
+    subgraph ParquetStorageProcess [ParquetStorage Operations]
+        direction TB
+        A[Receive Data] --> B[Convert to DataFrame]
+        B --> C{Validate Schema - Optional}
+        C --> D[Serialize via PyArrow]
+        D --> E[Write Parquet File]
     end
-    
-    subgraph Output [Output]
-        PF[Parquet Files]
-        RDF[Retrieved DataFrames]
+
+    subgraph OutputData [Output & Retrieval]
+        direction LR
+        ParquetFile[(Parquet File on Disk)] --> LoadOp[Load Operation]
+        LoadOp --> OutputDF[Pandas DataFrame]
     end
-    
-    D --> C
-    L --> C
-    DF --> V
-    C --> V
-    V --> S
-    S --> PF
-    PF --> RDF
+
+    InputSources --> A
+    E --> ParquetFile
 ```
 
-This architecture ensures that all data, regardless of its original format, is normalized to a consistent Parquet representation, facilitating later analysis and integration.
+This ensures that regardless of the crawler module, the output data is consistently stored in the efficient, columnar Parquet format.
 
 ### 1.3 Advanced Usage
 
-ParquetStorage provides several advanced features for handling complex data scenarios:
+`ParquetStorage` incorporates features for robust data handling:
 
-1. **Schema Evolution**: When appending data to existing files, ParquetStorage handles schema differences by identifying common fields, allowing for flexible schema evolution over time.
+1.  **Schema Evolution**: The `append_to_parquet` method intelligently handles schema differences between the existing file and the new data. It typically aligns columns by name, adding nulls where columns don't exist in one of the datasets, thus allowing schemas to evolve over time without breaking the append operation.
+2.  **Automatic Type Conversion**: Python types (int, float, str, bool, datetime, lists, dicts) within the input data are automatically mapped to appropriate `pyarrow`/Parquet types during serialization. Nested structures are often stored as JSON strings or using Parquet's nested types if the schema allows.
+3.  **Fault Tolerance**: `load_from_parquet` is designed to be resilient. It returns `None` and logs errors for common issues like file not found, permission errors, or corrupted files, preventing crashes in the calling crawler code.
+4.  **Directory Management**: `save_to_parquet` and `append_to_parquet` automatically create the necessary parent directories for the specified `file_path`, simplifying usage for crawler modules.
 
-2. **Automatic Type Conversion**: The system automatically converts Python types to appropriate Parquet/Arrow types, including complex nested structures.
-
-3. **Error Recovery**: During loading operations, ParquetStorage implements fault-tolerant behavior, returning None instead of raising exceptions for missing files or corrupted data, simplifying error handling in crawler code.
-
-4. **Directory Management**: The system automatically creates necessary directory structures when saving files, reducing the burden on individual crawler implementations.
-
-Example for handling schema evolution:
+Example of schema evolution during append:
 ```python
-# Initial data with a certain schema
-initial_data = {'id': 1, 'name': 'Example', 'score': 95}
-ParquetStorage.save_to_parquet(initial_data, 'data.parquet')
-
-# Later, append data with a different schema
-new_data = {'id': 2, 'name': 'Another Example', 'grade': 'A'}  # 'score' missing, 'grade' added
-ParquetStorage.append_to_parquet(new_data, 'data.parquet')
-
-# The resulting file will contain both records with a unified schema
-# id | name           | score | grade
-# -------------------+-------+------
-# 1  | Example       | 95    | null
-# 2  | Another Example | null  | A
+# Initial save
+ParquetStorage.save_to_parquet({'id': 1, 'value': 100}, 'data.parquet')
+# Append data with new column 'category' and missing 'value'
+ParquetStorage.append_to_parquet({'id': 2, 'category': 'A'}, 'data.parquet')
+# Load combined data
+df = ParquetStorage.load_from_parquet('data.parquet')
+# df will contain:
+#    id  value category
+# 0   1  100.0     None
+# 1   2    NaN        A
 ```
 
 ### 1.4 Schema Management
 
-For projects with well-defined data structures, ParquetStorage can enforce schema consistency:
+While Parquet files inherently store their schema, `ParquetStorage` can optionally integrate with explicit schema definitions (e.g., `pyarrow.Schema`) for validation before writing.
 
 ```mermaid
-flowchart TD
-    A[Start: Save Data] --> B{Has Schema?}
-    B -->|Yes| C[Validate Against Schema]
-    B -->|No| D[Infer Schema]
-    C -->|Valid| E[Convert to Arrow Table]
-    C -->|Invalid| F[Raise Schema Error]
+graph TD
+    A[Start: Save/Append Data] --> B{Schema Provided?}
+    B -- Yes --> C[Validate DataFrame against Schema]
+    B -- No --> D[Infer Schema from DataFrame]
+    C -- Valid --> E[Convert to Arrow Table]
+    C -- Invalid --> F[Log Warning / Raise Error - Configurable]
     D --> E
-    E --> G[Write to Parquet]
-    G --> H[End: Return Success]
-    F --> I[End: Return Failure]
+    E --> G[Write Table to Parquet File]
+    G --> H[End: Success]
+    F --> I[End: Failure or Skipped]
 ```
 
-This schema validation ensures data integrity throughout the collection and storage process.
+Enforcing schemas ensures data consistency, especially in long-running data collection projects or when multiple processes write to the same datasets.
 
 ## 2. YouTube Downloader
 
-The YouTubeDownloader module provides comprehensive capabilities for acquiring video content and metadata from YouTube.
+*Component for interacting with YouTube.*
+
+The `YouTubeDownloader` module provides functionalities for downloading videos and playlists, extracting captions, and searching for videos on YouTube.
 
 ### 2.1 Architecture
 
-The YouTubeDownloader is implemented as a class with asynchronous methods for video operations:
+Implemented as an asynchronous class, leveraging external libraries for YouTube interaction.
 
 ```mermaid
 classDiagram
     class YouTubeDownloader {
-        -data_dir: str
-        +__init__(data_dir)
-        +download_video(url, format, resolution, ...) Dict
-        +download_playlist(playlist_url, format, max_videos, ...) Dict
-        +extract_captions(url, languages) Dict
-        +search_videos(query, limit) Dict
-        -_get_video_info(video) Dict
-        -_download_stream(stream, output_path, filename) str
-        -_save_video_metadata(video_info, file_path) None
+        -data_dir: Path
+        +__init__(data_dir: Optional[str]=None)
+        +download_video(url: str, ...) Dict
+        +download_playlist(playlist_url: str, ...) Dict
+        +extract_captions(url: str, ...) Dict
+        +search_videos(query: str, ...) Dict
+        -_get_pytube_instance(url: str) pytube.YouTube
+        -_select_stream(yt: pytube.YouTube, format: str, resolution: str, audio_only: bool) pytube.Stream
+        -_download_stream_async(stream: pytube.Stream, output_path: Path, filename: str) Path
+        -_extract_video_metadata(yt: pytube.YouTube) Dict
+        -_save_metadata(metadata: Dict, filepath_base: str) None
     }
-    
+
     YouTubeDownloader ..> pytube.YouTube : uses
     YouTubeDownloader ..> pytube.Playlist : uses
+    YouTubeDownloader ..> pytube.Search : uses (or alternative)
     YouTubeDownloader ..> ParquetStorage : uses
+    YouTubeDownloader ..> asyncio : uses
+    YouTubeDownloader ..> aiofiles : uses (potentially for async file ops)
 ```
 
-The module leverages the pytube library for YouTube interactions while adding significant value through:
-- Asynchronous operation
-- Consistent error handling
-- Structured metadata extraction and storage
-- Integrated Parquet persistence
-- Additional capabilities like caption extraction
+Key aspects:
+- Asynchronous methods (`async def`) for non-blocking I/O.
+- Uses `pytube` (or similar) for core YouTube interactions.
+- Integrates `ParquetStorage` for saving metadata and results.
+- Manages file paths and downloads within the configured `data_dir`.
+- Provides structured dictionary outputs summarizing operations.
 
 ### 2.2 Video Download Process
 
-The video download process involves several steps:
+Downloading a single video involves fetching info, selecting a stream, downloading, and saving metadata.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant YTD as YouTubeDownloader
-    participant PT as pytube
-    participant FS as File System
-    participant PS as ParquetStorage
-    
-    User->>YTD: download_video(url, ...)
-    YTD->>PT: YouTube(url)
-    PT->>PT: fetch video info
-    PT-->>YTD: video object
-    
-    YTD->>YTD: _get_video_info(video)
-    YTD->>PT: get appropriate stream
-    PT-->>YTD: stream object
-    
-    YTD->>FS: create output directory
-    YTD->>PT: download stream
-    PT->>FS: write video file
-    FS-->>YTD: file path
-    
-    YTD->>PS: save_to_parquet(metadata)
-    PS->>FS: write metadata file
-    
-    YTD-->>User: result dictionary
+    participant PytubeLib as pytube
+    participant FileSystem as FS
+    participant ParquetStore as ParquetStorage
+
+    User->>YTD: download_video(url, format='mp4', resolution='720p', ...)
+    YTD->>PytubeLib: YouTube(url)
+    PytubeLib-->>YTD: yt_object
+    YTD->>YTD: _extract_video_metadata(yt_object)
+    YTD->>YTD: _select_stream(yt_object, format, resolution, audio_only=False)
+    YTD-->>YTD: selected_stream
+    YTD->>YTD: Determine output_path and filename
+    YTD->>FileSystem: Ensure directory exists (output_path)
+    YTD->>YTD: _download_stream_async(selected_stream, output_path, filename)
+    Note right of YTD: Runs download in executor<br/>or uses async features if available.
+    YTD-->>FileSystem: Write video file bytes
+    FileSystem-->>YTD: final_file_path
+    YTD->>ParquetStore: save_to_parquet(metadata, metadata_filepath)
+    ParquetStore-->>FileSystem: Write metadata.parquet
+    YTD-->>User: {'status': 'success', 'file_path': final_file_path, 'metadata': {...}}
 ```
 
-This process ensures both the video content and its associated metadata are properly saved and organized.
-
-Key implementation details:
-- Handles stream selection based on format and resolution preferences
-- Manages filesystem operations for creating directories and naming files
-- Extracts comprehensive metadata including title, author, publish date, view count, etc.
-- Properly handles errors at each step with contextual information
+Implementation details:
+- Stream selection logic prioritizes user requests but falls back to available options.
+- Audio extraction might involve post-processing with `ffmpeg` (requiring it as a dependency/external tool).
+- Downloads are performed asynchronously, often using `asyncio.to_thread` or similar if the underlying library is synchronous.
+- Metadata (title, author, duration, views, publish date, etc.) is saved alongside the video file.
 
 ### 2.3 Playlist Handling
 
-For playlists, the YouTubeDownloader implements a sequential processing approach:
+Downloading playlists involves iterating through videos, handling each individually while managing overall progress.
 
 ```mermaid
-flowchart TD
-    A[Start: download_playlist] --> B[Fetch Playlist Metadata]
-    B --> C[Create Playlist Directory]
-    C --> D[Initialize Counters]
-    D --> E{More Videos?}
-    E -->|Yes| F[Process Next Video]
-    F --> G{Download Successful?}
-    G -->|Yes| H[Increment Success Counter]
-    G -->|No| I[Record Error]
-    H --> E
-    I --> E
-    E -->|No| J[Save Playlist Metadata]
-    J --> K[Return Results]
+graph TD
+    A[Start: download_playlist - url, max_videos] --> B[Fetch Playlist Info via Pytube]
+    B --> C[Create Playlist Subdirectory]
+    C --> D{Initialize counters: success=0, failed=0}
+    D --> E{Iterate Video URLs up to max_videos}
+    E -- Video URL --> F[Call download_video for video_url]
+    subgraph Individual Video Download
+        F --> G{Download OK?}
+    end
+    G -- Yes --> H[Increment success counter]
+    G -- No --> I[Increment failed counter, Log Error]
+    H --> J[Store individual result]
+    I --> J
+    J --> E
+    E -- Done Iterating --> K[Save Overall Playlist Metadata - title, counts - to Parquet]
+    K --> L[Return Summary Dictionary - counts, list of individual results]
 ```
 
-This approach:
-- Processes videos sequentially to avoid rate limiting
-- Tracks success and failure counts
-- Continues processing despite individual video failures
-- Organizes downloads in a playlist-specific directory structure
-- Stores comprehensive playlist metadata
+Key points:
+- Sequential processing (or limited concurrency) is often used to avoid rate-limiting.
+- Errors in downloading one video do not stop the entire playlist download.
+- Results provide both an overall summary and details for each video attempt.
+- Files are organized within a dedicated playlist subdirectory.
 
 ### 2.4 Caption Extraction
 
-The caption extraction functionality provides access to subtitle data:
+Fetching captions involves checking availability and retrieving specific language tracks.
 
 ```mermaid
-flowchart TD
-    A[Start: extract_captions] --> B[Fetch Video Info]
-    B --> C{Has Captions?}
-    C -->|No| D[Return Empty Result]
-    C -->|Yes| E[Get Available Tracks]
-    E --> F[Filter by Requested Languages]
-    F --> G{Any Matches?}
-    G -->|No| D
-    G -->|Yes| H[Process Each Caption Track]
-    H --> I[Convert to Text Format]
-    I --> J[Save as SRT Files]
-    J --> K[Store in Parquet]
-    K --> L[Return Caption Data]
+graph TD
+    A[Start: extract_captions - url, languages] --> B[Fetch Video Info via Pytube]
+    B --> C{Get Available Caption Tracks}
+    C --> D{Filter tracks matching requested languages}
+    D -- No Matches --> E[Return captions: empty, available_languages]
+    D -- Matches Found --> F{For each matched language track}
+    F --> G[Download or Generate Caption Text]
+    G --> H[Save SRT file - Optional]
+    H --> I[Store Text in Result Dictionary]
+    F -- Next Language --> G
+    F -- Done --> J[Save All Extracted Captions to Parquet]
+    J --> K[Return captions, srt_files, parquet_path]
 ```
 
-Caption extraction provides:
-- Multi-language support
-- Both raw SRT format and plaintext extraction
-- Timestamp mapping
-- Storage in both filesystem (SRT) and Parquet formats
-- Detailed metadata about available languages and tracks
+Implementation details:
+- Uses `pytube`'s caption functionality.
+- Handles cases where no captions or no requested languages are available.
+- Can save captions as both raw SRT files and cleaned text content.
+- Stores structured caption data (language, text) in Parquet.
 
 ### 2.5 Search Functionality
 
-The search functionality interfaces with YouTube's search capabilities:
+Searching YouTube involves querying an API or library and processing the results.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant YTD as YouTubeDownloader
-    participant YT as YouTube API
-    participant PS as ParquetStorage
-    
-    User->>YTD: search_videos(query, limit)
-    YTD->>YT: search query
-    YT-->>YTD: raw search results
-    
-    YTD->>YTD: process results
-    YTD->>YTD: extract metadata
-    YTD->>YTD: format results
-    
-    YTD->>PS: save_to_parquet(results)
-    
-    YTD-->>User: formatted results
+    participant SearchLib as YouTube Search Lib/API
+    participant ParquetStore as ParquetStorage
+
+    User->>YTD: search_videos(query="python async", limit=5)
+    YTD->>SearchLib: Perform Search(query, limit)
+    SearchLib-->>YTD: Raw Results (List of Videos/Data)
+    YTD->>YTD: Process & Structure Results (Extract title, url, channel, views, etc.)
+    YTD->>ParquetStore: save_to_parquet(structured_results, results_filepath)
+    ParquetStore-->>YTD: parquet_path
+    YTD-->>User: {'status': 'success', 'query': "...", 'results': [{...}, ...], 'parquet_path': ...}
 ```
 
-The search functionality:
-- Formats results consistently
-- Extracts key metadata from each video in the results
-- Stores search results for later analysis
-- Handles YouTube API quota limitations
-- Provides both human-readable and structured data outputs
+Key points:
+- May use official YouTube Data API (requires key, quota management) or scraping libraries (less stable).
+- Extracts relevant metadata for each video result.
+- Provides results in both a structured list and saves them to Parquet.
 
 ## 3. GitHub Crawler
 
-The GitHubCrawler provides advanced capabilities for cloning, analyzing, and extracting information from GitHub repositories.
+*Component for interacting with GitHub repositories.*
+
+The `GitHubCrawler` clones repositories, processes their file contents, and provides analysis features like summarization and code search.
 
 ### 3.1 Architecture
 
-The GitHubCrawler is implemented as a class with both static utility methods and instance methods for repository operations:
+An asynchronous class using `GitPython` for Git operations and potentially other libraries for analysis.
 
 ```mermaid
 classDiagram
     class GitHubCrawler {
-        -data_dir: str
-        +__init__(data_dir)
-        +extract_repo_info_from_url(url) Tuple
-        +clone_repo(repo_url, temp_dir) Path
-        +process_repo_to_dataframe(repo_path, max_file_size_kb) DataFrame
-        +clone_and_store_repo(repo_url) str
-        +get_repo_summary(repo_url) str
-        +find_similar_code(repo_url, code_snippet) str
-        +query_repo_content(repo_url, query) str
-        -_process_file(file_path, repo_root) Dict
-        -_detect_language(file_path, content) str
-        -_calculate_similarity(code1, code2) float
+        -data_dir: Path
+        +__init__(data_dir: Optional[str]=None)
+        +extract_repo_info_from_url(url: str) Tuple[str, str, str]
+        +clone_repo(repo_url: str, ...) Path
+        +process_repo_to_dataframe(repo_path: Path, ...) pd.DataFrame
+        +clone_and_store_repo(repo_url: str) str
+        +get_repo_summary(repo_url: str) str
+        +find_similar_code(repo_url: str, code_snippet: str) str
+        +query_repo_content(repo_url: str, query: str) str
+        -_clone_repo_internal(repo_url: str, target_path: Path, depth: Optional[int]) None
+        -_walk_and_process_files(repo_path: Path, max_file_size_kb: int) List[Dict]
+        -_process_single_file(file_path: Path, repo_root: Path) Dict
+        -_detect_language(file_path: Path, content_sample: bytes) str
+        -_calculate_similarity(text1: str, text2: float) float
+        -_generate_markdown_summary(df: pd.DataFrame) str
     }
-    
-    GitHubCrawler ..> git.Repo : uses
+
+    GitHubCrawler ..> git.Repo : uses (via GitPython)
     GitHubCrawler ..> ParquetStorage : uses
-    GitHubCrawler ..> DataFrame : uses
+    GitHubCrawler ..> pd.DataFrame : uses
+    GitHubCrawler ..> asyncio : uses
+    GitHubCrawler ..> tempfile : uses (potentially)
+    GitHubCrawler ..> chardet : uses (potentially for encoding)
+    GitHubCrawler ..> re : uses (potentially for language/binary detection)
 ```
 
-The GitHubCrawler leverages:
-- GitPython for repository operations
-- Language detection libraries for code analysis
-- Fuzzy matching algorithms for code similarity
-- Parquet storage for efficient data persistence
+Key aspects:
+- Asynchronous methods for network/disk I/O.
+- Uses `GitPython` for cloning and potentially other Git operations.
+- Relies on `ParquetStorage` for saving processed repository data.
+- Manages temporary directories for cloning.
+- Implements file processing logic (language detection, metadata extraction).
+- Provides higher-level analysis functions.
 
 ### 3.2 Repository Processing
 
-The repository processing workflow involves multiple steps to transform a Git repository into an analyzable dataset:
+Transforming a cloned repository into a structured DataFrame involves walking the file tree and processing each file.
 
 ```mermaid
-flowchart TD
-    A[Start: process_repo_to_dataframe] --> B[Clone Repository]
-    B --> C[Initialize DataFrame]
-    C --> D[Recursively Walk Directory Tree]
-    D --> E{For each file}
-    E --> F{Skip .git Directory?}
-    F -->|Yes| E
-    F -->|No| G{File Too Large?}
-    G -->|Yes| E
-    G -->|No| H[Read File Content]
-    H --> I{Binary File?}
-    I -->|Yes| E
-    I -->|No| J[Detect Language]
-    J --> K[Extract Metadata]
-    K --> L[Add to DataFrame]
-    L --> E
-    E -->|Done| M[Return DataFrame]
+graph TD
+    A[Start: process_repo_to_dataframe - repo_path] --> B[Initialize empty list for file data]
+    B --> C{Walk directory tree repo_path}
+    C -- File Found --> D{Is it in .git directory?}
+    D -- Yes --> C
+    D -- No --> E{Get File Size}
+    E --> F{Is file > max_size_kb?}
+    F -- Yes --> G[Process Metadata Only - path, size]
+    F -- No --> H[Read File Content - handle encoding]
+    H --> I{Detect if Binary}
+    I -- Yes --> J[Process Metadata + Binary Flag]
+    I -- No --> K[Detect Language]
+    K --> L[Calculate Line Count]
+    L --> M[Extract Metadata + Content + Language + Lines]
+    G --> N[Append file info dict to list]
+    J --> N
+    M --> N
+    N --> C
+    C -- Done Walking --> O[Convert list of dicts to Pandas DataFrame]
+    O --> P[Return DataFrame]
 ```
 
-Key implementation details:
-- Uses heuristics to identify binary files that should be skipped
-- Extracts file metadata including size, line count, and path
-- Detects programming language based on file extension and content
-- Handles encoding issues gracefully
-- Maintains repository structure information
+Implementation details:
+- Skips the `.git` directory.
+- Handles file reading errors (permissions, encoding) gracefully for individual files.
+- Uses heuristics (file extensions, content analysis like checking for null bytes) for binary detection.
+- Uses libraries or mappings for language detection.
+- Stores file content only for non-binary files below the size threshold.
 
-### 3.3 Code Analysis
+### 3.3 Code Analysis & Summary
 
-The code analysis functionality provides insights into repository contents:
+Generating a repository summary involves analyzing the processed file data.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant GC as GitHubCrawler
-    participant Git as GitPython
-    participant FS as File System
-    participant PS as ParquetStorage
-    
+    participant GitPython as Git
+    participant FileSystem as FS
+    participant ParquetStore as ParquetStorage
+
     User->>GC: get_repo_summary(repo_url)
-    GC->>GC: extract_repo_info_from_url(repo_url)
-    GC->>GC: clone_repo(repo_url)
-    GC->>Git: Repo.clone_from()
-    Git->>FS: Create local repo copy
-    FS-->>GC: Repo path
-    
-    GC->>GC: process_repo_to_dataframe(repo_path)
-    GC->>FS: Walk directory tree
-    FS-->>GC: File paths and content
-    
-    GC->>GC: Analyze language distribution
-    GC->>GC: Analyze directory structure
-    GC->>GC: Identify key files
-    
-    GC->>PS: save_to_parquet(repo_data)
-    
-    GC-->>User: Formatted summary
+    GC->>GC: clone_and_store_repo(repo_url) # Or load cached data
+    Note right of GC: Clones repo, processes files,<br/>saves DataFrame to Parquet.
+    GC-->>GC: repo_dataframe
+    GC->>GC: Analyze DataFrame (language counts, file types, sizes)
+    GC->>GC: Identify key files (README, LICENSE, etc.) from paths
+    GC->>GC: Summarize directory structure (optional)
+    GC->>GC: _generate_markdown_summary(repo_dataframe)
+    GC-->>User: Formatted Markdown String
 ```
 
-The analysis provides:
-- Language distribution statistics
-- Directory structure overview
-- Identification of key files (README, LICENSE, etc.)
-- Code complexity metrics
-- Contributor information when available
+The summary typically includes:
+- Basic repo info (name, owner).
+- Language distribution (e.g., Python 60%, JS 20%, HTML 10%).
+- Total file count, total lines of code (estimated).
+- Presence/absence of key files (README, LICENSE, CONTRIBUTING).
+- Overview of top-level directories.
 
 ### 3.4 Similarity Detection
 
-The code similarity detection functionality identifies matching patterns in repository code:
+Finding similar code involves comparing the input snippet against the content of files in the repository.
 
 ```mermaid
-flowchart TD
-    A[Start: find_similar_code] --> B[Clone Repository]
-    B --> C[Process Repository]
-    C --> D[Filter by Language]
-    D --> E{For Each File}
-    E --> F[Tokenize Content]
-    F --> G[Calculate Similarity Score]
-    G --> H{Score > Threshold?}
-    H -->|Yes| I[Add to Matches]
-    H -->|No| E
-    I --> E
-    E -->|Done| J[Sort Matches by Score]
-    J --> K[Format Results as Markdown]
-    K --> L[Return Results]
+graph TD
+    A[Start: find_similar_code - repo_url, snippet] --> B[Clone or Process Repo to DataFrame]
+    B --> C{Filter DataFrame by Language - optional, based on snippet}
+    C --> D{For each relevant file content in DataFrame}
+    D --> E[Calculate Similarity - snippet vs file_content]
+    E --> F{Similarity > threshold?}
+    F -- Yes --> G[Record Match - file_path, line_numbers, score]
+    F -- No --> D
+    G --> D
+    D -- Done --> H[Sort Matches by Score]
+    H --> I[Format Matches as Markdown]
+    I --> J[Return Markdown Report]
+
+    %% Note: Uses fuzzy matching, token-based diff, or other similarity algorithms.
 ```
 
-The similarity detection:
-- Uses language-specific tokenization
-- Applies fuzzy matching algorithms
-- Calculates normalized similarity scores
-- Prioritizes results by relevance
-- Includes contextual information like file path and line numbers
-- Formats results with syntax highlighting in markdown
+Key points:
+- Leverages the processed repository DataFrame.
+- Uses string similarity algorithms (e.g., `difflib.SequenceMatcher`, Levenshtein distance) or potentially more advanced methods.
+- Filters results based on a similarity threshold.
+- Formats output clearly, showing context (file, lines) for each match.
+
+### 3.5 Natural Language Querying
+
+Answering natural language questions about code requires deeper semantic understanding, often involving LLMs or specialized code search indexes.
+
+```mermaid
+graph TD
+    A[Start: query_repo_content - repo_url, query] --> B[Index or Process Repo to DataFrame or Files]
+    B --> C{Index Repository Content}
+    C --> D{Interpret Natural Language Query}
+    D --> E{Search Index based on Query Interpretation}
+    E --> F[Retrieve Relevant Code Snippets or Files]
+    F --> G{Synthesize Answer}
+    G --> H[Format Answer as Markdown]
+    H --> I[Return Markdown Response]
+
+    %% Explanatory notes (not nodes)
+    %% Note: Indexing may involve creating embeddings, keyword index, or preparing context for LLM.
+    %% Note: Synthesis may involve feeding retrieved context and query to an LLM.
+```
+
+Implementation notes:
+- This is complex and relies heavily on the chosen indexing and search/synthesis strategy.
+- Could use vector databases (e.g., ChromaDB, FAISS) with code embeddings (e.g., from Sentence Transformers or code-specific models).
+- Could involve prompting an LLM with the query and relevant code context retrieved via simpler search methods first.
+- Error handling needs to manage failures in indexing, search, or LLM interaction.
 
 ## 4. DuckDuckGo Searcher
 
-The DuckDuckGoSearcher provides a privacy-focused interface for web searches, supporting multiple search types and formats.
+*Component for performing web searches via DuckDuckGo.*
+
+Provides a privacy-respecting interface to DuckDuckGo's search capabilities (text, images, news).
 
 ### 4.1 Architecture
 
-The DuckDuckGoSearcher is implemented as a class with methods for different search types:
+An asynchronous class using HTTP requests to interact with DuckDuckGo.
 
 ```mermaid
 classDiagram
     class DuckDuckGoSearcher {
-        -data_dir: str
-        +__init__(data_dir)
-        +text_search(search_query, max_results) str
-        +image_search(search_query, max_results) str
-        +news_search(search_query, max_results) str
-        +text_search_to_dict(search_query, max_results) Dict
-        +image_search_to_dict(search_query, max_results) Dict
-        +news_search_to_dict(search_query, max_results) Dict
-        -_sanitize_filename(filename) str
-        -_format_results_as_markdown(results, query) str
+        -data_dir: Path
+        -session: aiohttp.ClientSession
+        +text_search(search_query: str, ...) str | Dict
+        +image_search(search_query: str, ...) str | Dict
+        +news_search(search_query: str, ...) str | Dict
+        # Potentially separate methods for dict vs markdown output
+        +text_search_to_dict(search_query: str, ...) Dict
+        +text_search_to_markdown(search_query: str, ...) str
+        -_make_search_request(endpoint: str, params: Dict) Dict | str # Returns parsed JSON or HTML
+        -_parse_text_results(response_data) List[Dict]
+        -_parse_image_results(response_data) List[Dict]
+        -_parse_news_results(response_data) List[Dict]
+        -_format_results_markdown(results: List[Dict], type: str) str
+        -_save_results(results: List[Dict], query: str, type: str) None
     }
-    
+
     DuckDuckGoSearcher ..> aiohttp.ClientSession : uses
     DuckDuckGoSearcher ..> ParquetStorage : uses
+    DuckDuckGoSearcher ..> asyncio : uses
 ```
 
-The module leverages:
-- Asynchronous HTTP requests with aiohttp
-- DuckDuckGo's search APIs
-- Markdown formatting for human-readable output
-- Parquet storage for result persistence
+Key aspects:
+- Uses `aiohttp` for asynchronous requests.
+- Interacts with DuckDuckGo endpoints (official API if available, or HTML/JS endpoints).
+- Parses search result pages (HTML) or JSON responses.
+- Formats results into Markdown or structured dictionaries.
+- Saves structured results using `ParquetStorage`.
 
 ### 4.2 Search Types
 
-The DuckDuckGoSearcher supports multiple search types with specialized handling for each:
+Supports distinct search modalities:
 
 ```mermaid
-flowchart TB
-    A[DuckDuckGoSearcher] --> B[text_search]
-    A --> C[image_search]
-    A --> D[news_search]
-    
-    B --> E[DuckDuckGo Text API]
-    C --> F[DuckDuckGo Image API]
-    D --> G[DuckDuckGo News API]
-    
-    E --> H[Process Text Results]
-    F --> I[Process Image Results]
-    G --> J[Process News Results]
-    
-    H --> K[Format as Markdown]
-    I --> K
+graph TB
+    A[DuckDuckGoSearcher] --> B(Text Search)
+    A --> C(Image Search)
+    A --> D(News Search)
+
+    subgraph Text Processing
+        B --> E[Request DDG Text Endpoint]
+        E --> F[Parse HTML/JSON for Title, Snippet, URL]
+    end
+    subgraph Image Processing
+        C --> G[Request DDG Image Endpoint]
+        G --> H[Parse JSON/HTML for Thumbnail, ImageURL, SourceURL, Title]
+    end
+    subgraph News Processing
+        D --> I[Request DDG News Endpoint]
+        I --> J[Parse JSON/HTML for Title, Snippet, Source, Date, URL]
+    end
+
+    F --> K{Format Output}
+    H --> K
     J --> K
-    
-    H --> L[Save to Parquet]
-    I --> L
-    J --> L
-    
-    K --> M[Human-Readable Output]
-    L --> N[Machine-Readable Storage]
+
+    K -- Markdown --> L[Markdown String]
+    K -- Dictionary --> M[List of Dictionaries]
+
+    M --> N[Save to Parquet]
 ```
 
-Each search type has specialized processing:
-- **Text Search**: Extracts titles, descriptions, and URLs
-- **Image Search**: Handles image URLs, thumbnails, and source information
-- **News Search**: Captures publication dates, sources, and summaries
+Each type requires specific parsing logic tailored to the structure of DuckDuckGo's results for that type.
 
 ### 4.3 Result Processing
 
-The result processing pipeline ensures consistent handling across search types:
+A pipeline for fetching, parsing, formatting, and storing results.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant DDGS as DuckDuckGoSearcher
-    participant DDG as DuckDuckGo API
-    participant PS as ParquetStorage
-    
-    User->>DDGS: text_search(query, max_results)
-    DDGS->>DDG: HTTP Request
-    DDG-->>DDGS: Raw JSON Response
-    
-    DDGS->>DDGS: Parse response
-    DDGS->>DDGS: Extract relevant fields
-    DDGS->>DDGS: Sanitize data
-    
-    DDGS->>DDGS: Format as markdown
-    DDGS->>PS: save_to_parquet(results)
-    
-    DDGS-->>User: Formatted markdown results
+    participant DDGEndpoints as DuckDuckGo
+    participant ParquetStore as ParquetStorage
+
+    User->>DDGS: text_search(query, max_results=5) # Or _to_dict / _to_markdown
+    DDGS->>DDGEndpoints: Async HTTP GET Request (with query params)
+    DDGEndpoints-->>DDGS: HTML or JSON Response
+    DDGS->>DDGS: _parse_text_results(response)
+    DDGS-->>DDGS: structured_results (List[Dict])
+    DDGS->>DDGS: _save_results(structured_results, query, 'text')
+    DDGS->>ParquetStore: save_to_parquet(structured_results, filepath)
+    DDGS->>DDGS: _format_results_markdown(structured_results, 'text') # If markdown requested
+    DDGS-->>User: Markdown String # Or Dict if _to_dict called
 ```
 
-Result processing includes:
-- Sanitization of input and output
-- Consistent field extraction
-- Handling of special characters
-- Removal of duplicate results
-- Limiting to requested result count
-- Both human and machine-readable outputs
+Key steps:
+- Constructing the correct URL and parameters for the search type.
+- Making the asynchronous HTTP request.
+- Parsing the response (handling potential HTML scraping or JSON parsing).
+- Extracting relevant fields for each result item.
+- Storing the structured data via `ParquetStorage`.
+- Formatting the data into the requested output format (Markdown or Dict).
 
 ### 4.4 Privacy Considerations
 
-The DuckDuckGoSearcher is designed with privacy in mind:
+Leverages DuckDuckGo's privacy focus:
 
 ```mermaid
-flowchart TD
-    A[Privacy Features] --> B[No User Tracking]
-    A --> C[No Search History]
-    A --> D[No User Identifiers]
-    A --> E[Minimal Request Headers]
-    
-    B --> F[Implementation]
-    C --> F
-    D --> F
-    E --> F
-    
-    F --> G[Use DDG's Privacy APIs]
-    F --> H[Clean Request Headers]
-    F --> I[No Cookies/Session Storage]
-    F --> J[Minimize Data Retention]
+graph TD
+    A[Privacy by Design] --> B(Use DDG Endpoints)
+    B --> C(No User Tracking Cookies)
+    B --> D(Search Queries Not Tied to User Profiles)
+    A --> E(Minimal Request Headers)
+    E --> F(Avoid Sending Identifying Info)
+    A --> G(Local Storage Only)
+    G --> H(Results stored locally via ParquetStorage, no cloud history)
 ```
 
-These features ensure:
-- No personal data is collected
-- Searches are not linked to user identity
-- Minimal tracking information is transmitted
-- Results are as anonymous as possible
+The component aims to inherit DDG's privacy benefits by using its services appropriately and not adding its own tracking mechanisms.
 
 ## 5. BeautifulSoup Web Crawler
 
-The BSWebCrawler provides robust web page analysis and content extraction capabilities using the BeautifulSoup library.
+*Component for general web page fetching and parsing.*
+
+Uses `aiohttp` for fetching and `BeautifulSoup` for parsing HTML content, with specialized extractors for common site types.
 
 ### 5.1 Architecture
 
-The BSWebCrawler is implemented as a class with both instance methods and static utility methods:
+An asynchronous class combining HTTP requests and HTML parsing.
 
 ```mermaid
 classDiagram
     class BSWebCrawler {
-        -data_dir: str
-        +__init__(data_dir)
-        +fetch_url_content(url) str
-        +extract_text_from_html(html) str
-        +extract_pypi_content(html, package_name) Dict
-        +extract_documentation_content(html, url) Dict
-        +format_pypi_info(package_data) str
-        +format_documentation(doc_data) str
-        +crawl_documentation_site(url) str
-        -_clean_html(html) str
-        -_extract_code_blocks(soup) List
+        -data_dir: Path
+        -session: aiohttp.ClientSession
+        +fetch_url_content(url: str) Optional[str]
+        +extract_text_from_html(html: str) str
+        +extract_pypi_content(html: str, package_name: str) Optional[Dict]
+        +extract_documentation_content(html: str, url: str) Dict
+        +format_pypi_info(package_data: Dict) str
+        +format_documentation(doc_data: Dict) str
+        +crawl_documentation_site(url: str) str
+        -_get_soup(html: str) bs4.BeautifulSoup
+        -_clean_html_content(soup: bs4.BeautifulSoup) None # Removes script, style etc.
+        -_extract_code_snippets(soup: bs4.BeautifulSoup) List[Dict]
+        -_resolve_relative_url(base_url: str, link: str) str
     }
-    
+
     BSWebCrawler ..> aiohttp.ClientSession : uses
     BSWebCrawler ..> bs4.BeautifulSoup : uses
     BSWebCrawler ..> ParquetStorage : uses
+    BSWebCrawler ..> asyncio : uses
+    BSWebCrawler ..> urllib.parse : uses (for URL joining)
 ```
 
-The module combines:
-- Asynchronous HTTP requests via aiohttp
-- HTML parsing with BeautifulSoup
-- Content extraction algorithms
-- Specialized extractors for specific content types
-- Markdown formatting for readable output
+Key aspects:
+- Asynchronous fetching (`fetch_url_content`).
+- Uses `BeautifulSoup` for robust HTML parsing.
+- Provides generic text extraction (`extract_text_from_html`).
+- Includes specialized methods for PyPI and documentation sites.
+- Offers formatting functions to convert structured data to Markdown.
+- Stores extracted structured data using `ParquetStorage`.
 
 ### 5.2 Content Extraction
 
-The general content extraction process follows these steps:
+The basic workflow involves fetching HTML and then parsing it to extract text.
 
 ```mermaid
-flowchart TD
-    A[Start: fetch_url_content] --> B[Create HTTP Session]
-    B --> C[Send HTTP Request]
-    C --> D{Response OK?}
-    D -->|No| E[Return None]
-    D -->|Yes| F[Get Response Text]
-    F --> G[Clean HTML]
-    G --> H[Return HTML Content]
-    
-    I[Start: extract_text_from_html] --> J[Create BeautifulSoup Object]
-    J --> K[Remove Script/Style Tags]
-    K --> L[Extract Text Content]
-    L --> M[Clean Whitespace]
-    M --> N[Return Formatted Text]
+graph TD
+    subgraph Fetching_HTML [Fetch HTML]
+        A[fetch_url_content - url] --> B{aiohttp GET Request}
+        B -- Response --> C{Check Status Code 200}
+        C -- Yes --> D[Decode Response Body]
+        C -- No --> E[Return None or Log Error]
+        D --> F[Return HTML String]
+    end
+
+    subgraph Extraction [Extract Text]
+        G[extract_text_from_html - html] --> H{Parse HTML with BeautifulSoup}
+        H --> I[Remove unwanted tags - script, style, nav, etc.]
+        I --> J[Extract text content - get_text]
+        J --> K[Clean whitespace]
+        K --> L[Return Cleaned Text String]
+    end
+
+    F --> G
 ```
 
-Key implementation details:
-- Handles different HTTP status codes appropriately
-- Sets proper user-agent and headers to avoid blocking
-- Manages connection timeouts and retries
-- Removes irrelevant HTML elements (scripts, styles, etc.)
-- Preserves important structural elements (paragraphs, headings)
+Implementation details:
+- Fetching handles redirects, timeouts, and uses a polite User-Agent.
+- Extraction focuses on removing common boilerplate to isolate main content. `BeautifulSoup`'s lenient parsing handles malformed HTML.
 
-### 5.3 Specialized Extractors
+### 5.3 Specialized Extractors (PyPI, Docs)
 
-The BSWebCrawler includes specialized extractors for specific content types:
+Tailored parsing logic for specific website structures.
 
 ```mermaid
-flowchart TB
-    A[BSWebCrawler] --> B[Generic Content Extraction]
-    A --> C[PyPI Package Extraction]
-    A --> D[Documentation Extraction]
-    
-    C --> E[Package Details]
-    C --> F[Version Information]
-    C --> G[Dependencies]
-    C --> H[Installation Instructions]
-    
-    D --> I[Section Structure]
-    D --> J[Code Blocks]
-    D --> K[API References]
-    D --> L[Navigation Structure]
+graph TB
+    A[Input HTML] --> B{Parse with BeautifulSoup}
+
+    subgraph PyPI_Extractor [extract_pypi_content]
+        B --> C[Find elements by specific CSS selectors]
+        C --> D[Extract version, author, license, links, description, etc.]
+        D --> E[Return Structured Dict]
+    end
+
+    subgraph Docs_Extractor [extract_documentation_content]
+        B --> F[Identify headings h1-h6]
+        F --> G[Infer section structure]
+        B --> H[Find code blocks pre/code]
+        H --> I[Detect code language]
+        G & I --> J[Extract section text and code snippets]
+        J --> K[Return Structured Dict - title, sections, code]
+    end
+
+    E --> L{Format Output - Optional}
+    K --> L
+    L --> M[Markdown String or Save to Parquet]
 ```
 
-Each specialized extractor is tailored to the specific structure and semantics of its target content type:
-
-1. **PyPI Package Extraction**:
-   - Extracts version, author, and license information
-   - Identifies installation commands
-   - Extracts dependency lists
-   - Captures project description and documentation links
-
-2. **Documentation Extraction**:
-   - Identifies section hierarchy
-   - Extracts code examples with language detection
-   - Preserves structure and formatting
-   - Handles cross-references and links
+Key points:
+- **PyPI**: Relies on stable CSS selectors on `pypi.org/project/*` pages. Brittle if PyPI changes its layout.
+- **Docs**: Uses common patterns found in Sphinx, MkDocs, etc. (e.g., heading hierarchy, `div.highlight-*` for code). Tries to preserve structure. Extracts code and attempts language detection.
 
 ### 5.4 Document Formatting
 
-The BSWebCrawler provides consistent document formatting capabilities:
+Converting structured data (from specialized extractors) back into readable Markdown.
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant BSC as BSWebCrawler
-    participant BS as BeautifulSoup
-    participant PS as ParquetStorage
-    
-    User->>BSC: crawl_documentation_site(url)
-    BSC->>BSC: fetch_url_content(url)
-    BSC->>BS: BeautifulSoup(html)
-    BS-->>BSC: Parsed HTML
-    
-    BSC->>BSC: extract_documentation_content(html, url)
-    BSC->>BS: Find headers, sections, code
-    BS-->>BSC: Structured content
-    
-    BSC->>BSC: format_documentation(doc_data)
-    BSC->>PS: save_to_parquet(doc_data)
-    
-    BSC-->>User: Formatted markdown documentation
+    participant ExtractedData as Dict (from extractor)
+    participant Formatter as Formatting Function
+    participant MarkdownOutput as String
+
+    Formatter->>ExtractedData: Access title, version, sections, code_snippets etc.
+    Formatter->>Formatter: Iterate through sections/data points
+    Formatter->>Formatter: Apply Markdown syntax (#, ##, *, ```, [], () etc.)
+    Formatter-->>MarkdownOutput: Append formatted text
+    Formatter-->>MarkdownOutput: Final Markdown String
 ```
 
-The document formatting:
-- Creates consistent hierarchical structures
-- Applies syntax highlighting to code blocks
-- Preserves links with proper formatting
-- Generates tables of contents for complex documents
-- Formats metadata consistently
-- Produces clean, readable markdown output
+Implementation details:
+- `format_pypi_info`: Creates sections for version, install, links, etc.
+- `format_documentation`: Rebuilds document using headings, lists, and fenced code blocks (with language hints).
+- Handles missing data gracefully by omitting sections.
 
 ## 6. ArXiv Fetcher
 
-The ArxivFetcher provides specialized capabilities for retrieving and processing academic papers from the arXiv repository.
+*Component for retrieving data from the arXiv academic preprint server.*
+
+Fetches paper metadata via the arXiv API and downloads paper source files (LaTeX).
 
 ### 6.1 Architecture
 
-The ArxivFetcher is implemented as a class with methods for different aspects of arXiv paper retrieval:
+An asynchronous class interacting with the arXiv API and download endpoints.
 
 ```mermaid
 classDiagram
     class ArxivFetcher {
-        -data_dir: str
-        +__init__(data_dir)
-        +extract_arxiv_id(url_or_id) str
-        +fetch_paper_info(arxiv_id) Dict
-        +download_source(arxiv_id) Dict
-        +fetch_paper_with_latex(arxiv_id) Dict
-        +format_paper_for_learning(paper_info) str
-        -_extract_metadata_from_xml(response) Dict
-        -_find_main_tex_file(source_dir) str
-        -_extract_latex_from_tarball(file_path, target_dir) Dict
+        -data_dir: Path
+        -session: aiohttp.ClientSession
+        +__init__(data_dir: Optional[str]=None)
+        +extract_arxiv_id(url_or_id: str) str
+        +fetch_paper_info(arxiv_id: str) Dict
+        +download_source(arxiv_id: str) Dict
+        +fetch_paper_with_latex(arxiv_id: str) Dict
+        +format_paper_for_learning(paper_info: Dict) str
+        -_query_arxiv_api(id_list: List[str]) str # Returns XML string
+        -_parse_arxiv_xml(xml_string: str) List[Dict]
+        -_download_tarball(url: str, target_path: Path) bool
+        -_extract_tarball(tarball_path: Path, extract_dir: Path) List[str]
+        -_find_main_tex_file(extracted_files: List[str], extract_dir: Path) Optional[str]
+        -_read_file_content(file_path: Path) Optional[str]
     }
-    
+
     ArxivFetcher ..> aiohttp.ClientSession : uses
+    ArxivFetcher ..> xml.etree.ElementTree : uses (or similar XML parser)
     ArxivFetcher ..> tarfile : uses
-    ArxivFetcher ..> xml.etree.ElementTree : uses
+    ArxivFetcher ..> asyncio : uses
     ArxivFetcher ..> ParquetStorage : uses
+    ArxivFetcher ..> re : uses (for ID extraction)
 ```
 
-The ArxivFetcher combines:
-- arXiv API queries for metadata
-- Direct tarball download for LaTeX source
-- XML parsing for metadata extraction
-- LaTeX file analysis and processing
-- Parquet storage for data persistence
+Key aspects:
+- Asynchronous operations for API calls and downloads.
+- Uses arXiv's official API for metadata.
+- Parses Atom XML responses.
+- Downloads `.tar.gz` source archives directly.
+- Extracts tarballs and potentially identifies/reads the main `.tex` file.
+- Stores metadata and source information using `ParquetStorage`.
 
 ### 6.2 Metadata Extraction
 
-The metadata extraction process retrieves comprehensive paper information:
+Querying the arXiv API and parsing the XML response.
 
 ```mermaid
-flowchart TD
-    A[Start: fetch_paper_info] --> B[Validate arXiv ID]
-    B --> C[Construct API URL]
-    C --> D[Send API Request]
-    D --> E{Response OK?}
-    E -->|No| F[Return Error]
-    E -->|Yes| G[Parse XML Response]
-    G --> H[Extract Paper Metadata]
-    H --> I[Format Metadata Dict]
-    I --> J[Save to Parquet]
-    J --> K[Return Metadata]
+graph TD
+    A[Start: fetch_paper_info - arxiv_id] --> B[Validate or Normalize arXiv ID]
+    B --> C[Construct API Query URL]
+    C --> D{aiohttp GET Request to arXiv API}
+    D -- Response --> E{Check Status and Content Type XML}
+    E -- OK --> F[Parse Atom XML Response]
+    F --> G[Extract fields: title, authors, abstract, date, categories, links, etc.]
+    G --> H[Structure Metadata into Dictionary]
+    H --> I[Save Metadata to Parquet]
+    I --> J[Return Metadata Dictionary]
+    E -- Error --> K[Return Error Dictionary or Raise Exception]
 ```
 
-The metadata extraction:
-- Retrieves comprehensive metadata including title, authors, abstract, and categories
-- Handles different arXiv ID formats
-- Parses XML responses cleanly
-- Creates structured data dictionaries
-- Respects arXiv API rate limits
+Implementation details:
+- Uses the `http://export.arxiv.org/api/query` endpoint.
+- Parses XML carefully to extract all relevant fields.
+- Respects arXiv API usage policies (rate limiting, identification).
 
-### 6.3 LaTeX Processing
+### 6.3 LaTeX Source Processing
 
-The LaTeX source processing involves several complex steps:
+Downloading, extracting, and optionally analyzing the `.tar.gz` source archive.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant AF as ArxivFetcher
-    participant AX as arXiv API
-    participant FS as File System
-    participant PS as ParquetStorage
-    
+    participant ArxivServer as arXiv Download Endpoint
+    participant FileSystem as FS
+    participant TarLib as tarfile
+    participant ParquetStore as ParquetStorage
+
     User->>AF: download_source(arxiv_id)
-    AF->>AF: Validate arXiv ID
-    AF->>AX: Construct source URL
-    AF->>AX: Download tarball
-    AX-->>AF: .tar.gz file
-    
-    AF->>FS: Create extraction directory
-    AF->>AF: Extract tarball
-    AF->>FS: Write extracted files
-    
-    AF->>AF: Identify main LaTeX file
-    AF->>FS: Read LaTeX content
-    FS-->>AF: LaTeX source
-    
-    AF->>AF: Process LaTeX
-    AF->>PS: Save metadata to Parquet
-    
-    AF-->>User: Source information
+    AF->>ArxivServer: Async HTTP GET Request (e.g., /e-print/arxiv_id)
+    ArxivServer-->>AF: .tar.gz file stream
+    AF->>FileSystem: Save stream to tarball_path
+    FileSystem-->>AF: Tarball saved
+    AF->>FileSystem: Create extraction directory (extract_path)
+    AF->>TarLib: open(tarball_path)
+    AF->>TarLib: extractall(extract_path)
+    TarLib-->>FileSystem: Write extracted files
+    FileSystem-->>AF: Extraction complete, list of files
+    AF->>AF: _find_main_tex_file(extracted_files, extract_path)
+    AF-->>AF: main_tex_filepath (optional)
+    AF->>FileSystem: Read content of main_tex_filepath (optional)
+    FileSystem-->>AF: latex_content (optional)
+    AF->>AF: Structure source info (paths, files, content) into Dict
+    AF->>ParquetStore: save_to_parquet(source_info, parquet_path)
+    AF-->>User: Source Info Dictionary
 ```
 
-Key LaTeX processing features:
-- Extracts and organizes all source files
-- Identifies the main LaTeX document
-- Handles figures and supplementary materials
-- Processes bibliographies and references
-- Creates a structured representation of the paper source
+Key points:
+- Downloads the tarball from the `/e-print/` endpoint.
+- Uses `tarfile` library for extraction.
+- May include heuristics to find the main `.tex` file.
+- Optionally reads the content of the main file.
+- Stores paths and potentially main file content in Parquet.
 
 ### 6.4 Combined Workflows
 
-The ArxivFetcher supports combined workflows that integrate multiple operations:
+Fetching metadata and source concurrently for efficiency.
 
 ```mermaid
-flowchart TD
-    A[Start: fetch_paper_with_latex] --> B[Split into Parallel Tasks]
-    B --> C[fetch_paper_info]
-    B --> D[download_source]
-    C --> E[Paper Metadata]
-    D --> F[LaTeX Source]
-    E --> G[Combine Results]
+graph TD
+    A[Start: fetch_paper_with_latex - arxiv_id] --> B[Run Concurrently via asyncio.gather]
+    B --> C[Task 1: fetch_paper_info - arxiv_id]
+    B --> D[Task 2: download_source - arxiv_id]
+    C --> E[Metadata Result - Dict]
+    D --> F[Source Result - Dict]
+    E --> G[Combine Metadata & Source Dictionaries]
     F --> G
-    G --> H[Create Unified Dictionary]
-    H --> I[Save to Parquet]
-    I --> J[Return Combined Result]
+    G --> H[Handle potential errors or partial success]
+    H --> I[Save Combined Info to Parquet]
+    I --> J[Return Combined Dictionary]
 ```
 
-Advanced features include:
-- Parallel processing of metadata and source retrieval
-- Consistent error handling for partial success scenarios
-- Integration of metadata and source content
-- Extraction of mathematical formulas
-- Creation of learning-friendly paper representations
-- Comprehensive paper summaries with key information highlighted
-
-```mermaid
-flowchart TD
-    A[ArxivFetcher Capabilities] --> B[Metadata Extraction]
-    A --> C[LaTeX Source Retrieval]
-    A --> D[Combined Workflows]
-    A --> E[Learning Format Generation]
-    
-    B --> F[Title, Authors, Abstract]
-    B --> G[Categories & Tags]
-    B --> H[Publication Info]
-    
-    C --> I[Source Code Extraction]
-    C --> J[Figure Handling]
-    C --> K[Bibliography Processing]
-    
-    D --> L[Unified Paper Object]
-    D --> M[Comprehensive Analysis]
-    
-    E --> N[Structured Summary]
-    E --> O[Key Concept Extraction]
-    E --> P[Formula Highlighting]
-```
-
-The combined workflows enable comprehensive paper analysis and learning, bringing together both metadata and content for a complete understanding of academic papers.
+This approach uses `asyncio` to overlap the network-bound operations of fetching metadata and downloading the source archive.
 
 ## 7. Appendix
 
 ### 7.1 Glossary of Terms
 
-| Term | Definition |
-|------|------------|
-| **aiohttp** | Asynchronous HTTP client/server framework for Python used for non-blocking network operations. |
-| **API** | Application Programming Interface; a set of rules allowing different software applications to communicate with each other. |
-| **Apache Arrow** | Cross-language development platform for in-memory data, providing a standardized columnar memory format. |
-| **arXiv API** | Interface for programmatically accessing academic paper metadata and content from the arXiv repository. |
-| **Asynchronous Programming** | Programming paradigm that allows operations to execute independently without blocking the main execution thread. |
-| **BeautifulSoup** | Python library for parsing HTML and XML documents, facilitating web scraping by navigating and searching the parse tree. |
-| **Binary File** | File containing data stored in binary format (non-text), often requiring specialized software to interpret. |
-| **Breadth-First Crawling** | Web crawling strategy that explores all links at the current depth before moving to links at the next depth level. |
-| **Caption Track** | Text-based representation of the spoken content in a video, often available in multiple languages. |
-| **Class Diagram** | UML diagram showing the structure of a system by displaying classes, attributes, methods, and relationships. |
-| **Code Similarity** | Measure of how similar two code snippets are based on algorithms like fuzzy matching, tokenization, or semantic analysis. |
-| **Columnar Storage** | Data organization method that stores each column separately, optimizing for analytical operations on specific columns. |
-| **Crawler** | Software that systematically browses web content and extracts information according to specific rules. |
-| **Data Flow Diagram** | Visual representation showing how data moves through a system or process. |
-| **Depth-First Crawling** | Web crawling strategy that explores as far as possible along each branch before backtracking. |
-| **Documentation Site** | Website containing technical documentation, API references, tutorials, or guides for software products. |
-| **DuckDuckGo API** | Interface for programmatically performing web searches through the DuckDuckGo search engine. |
-| **Fuzzy Matching** | Algorithm for finding strings that approximately match a pattern, allowing for minor differences. |
-| **Git** | Distributed version control system for tracking changes in source code during software development. |
-| **GitHub** | Web-based hosting service for version control using Git, providing collaboration features for software projects. |
-| **GitPython** | Python library for interacting with Git repositories programmatically. |
-| **HTML** | HyperText Markup Language; standard markup language for creating web pages and applications. |
-| **JSON** | JavaScript Object Notation; lightweight data-interchange format based on JavaScript object syntax. |
-| **LaTeX** | Document preparation system especially suited for scientific and mathematical documentation. |
-| **Markdown** | Lightweight markup language designed to be converted to HTML and other formats. |
-| **Metadata** | Data that provides information about other data (e.g., video title, author, publication date). |
-| **Pandas DataFrame** | Two-dimensional, size-mutable, potentially heterogeneous tabular data structure in Python. |
-| **Parquet** | Columnar storage file format designed for efficient data compression and encoding. |
-| **Parser** | Software component that analyzes a string of symbols according to formal grammar rules. |
-| **Playlist** | Collection of videos grouped together, typically sharing a common theme or creator. |
-| **PyPI** | Python Package Index; repository of software packages written in Python. |
-| **pytube** | Python library specifically designed for downloading YouTube videos. |
-| **Rate Limiting** | Practice of limiting the number of API requests a user can make within a given time period. |
-| **Repository** | Central location where data, typically code, is stored and managed. |
-| **Robots.txt** | Text file used by websites to communicate with web crawlers about which areas should not be processed or scanned. |
-| **Schema** | Formal description of the structure and constraints of data, defining how data is organized. |
-| **Schema Evolution** | Process of making changes to a data schema over time while maintaining backward compatibility. |
-| **Sequence Diagram** | UML diagram showing the order of interactions between objects over time. |
-| **Serialization** | Process of converting an object into a format that can be stored or transmitted. |
-| **SRT** | SubRip Text; file format for subtitle files that includes timing information. |
-| **Tarball** | Archive file format that combines multiple files into a single file (often with .tar.gz extension). |
-| **Tokenization** | Process of breaking text into meaningful units (tokens) such as words or phrases. |
-| **User-Agent** | String identifying the browser and operating system to web servers, used by crawlers to identify themselves. |
-| **Web Scraping** | Extracting data from websites by parsing the HTML structure. |
-| **XML** | Extensible Markup Language; markup language that defines rules for encoding documents in a format that is both human and machine-readable. |
-| **YouTube Data API** | Set of interfaces provided by Google for programmatically interacting with YouTube content. |
+| Term                 | Definition                                                                                             |
+|----------------------|--------------------------------------------------------------------------------------------------------|
+| **aiohttp**          | Asynchronous HTTP client/server framework for Python.                                                  |
+| **API**              | Application Programming Interface; contract for software interaction.                                    |
+| **Apache Arrow**     | Cross-language platform for in-memory columnar data; used by `pyarrow`.                                |
+| **arXiv**            | Repository for electronic preprints of scientific papers.                                              |
+| **arXiv API**        | Official interface for querying arXiv metadata.                                                        |
+| **Async/Await**      | Python keywords for defining and running asynchronous code.                                            |
+| **Asynchronous**     | Operations that can run independently, allowing the program to continue without waiting.               |
+| **BeautifulSoup**    | Python library for parsing HTML and XML.                                                               |
+| **Binary File**      | File containing non-text data (e.g., images, executables).                                             |
+| **CLI**              | Command-Line Interface.                                                                                |
+| **Code Similarity**  | Measure of resemblance between two code snippets.                                                      |
+| **Columnar Storage** | Storing data by columns instead of rows (e.g., Parquet).                                               |
+| **Crawler**          | Automated program that browses the web to collect data.                                                |
+| **Data Flow Diagram**| Visual representation of data movement through a system.                                               |
+| **DataFrame**        | Tabular data structure, commonly from the Pandas library.                                              |
+| **DuckDuckGo**       | Privacy-focused search engine.                                                                         |
+| **Embedding**        | Numerical vector representation of text or code, used for semantic search.                             |
+| **Fuzzy Matching**   | Techniques for finding approximate string matches.                                                     |
+| **Git**              | Distributed version control system.                                                                    |
+| **GitHub**           | Web platform for hosting Git repositories.                                                             |
+| **GitPython**        | Python library for interacting with Git repositories.                                                  |
+| **HTML**             | HyperText Markup Language; standard for web pages.                                                     |
+| **JSON**             | JavaScript Object Notation; lightweight data-interchange format.                                       |
+| **LaTeX**            | Document preparation system, common for scientific papers.                                             |
+| **LLM**              | Large Language Model; AI model for understanding and generating text.                                  |
+| **Markdown**         | Lightweight markup language for text formatting.                                                       |
+| **MCP**              | Model Context Protocol; a specification for AI models/tools interaction.                               |
+| **Metadata**         | Data describing other data (e.g., file size, author, date).                                            |
+| **Pandas**           | Python library for data manipulation and analysis.                                                     |
+| **Parquet**          | Efficient, columnar storage format for large datasets.                                                 |
+| **pyarrow**          | Python library for Apache Arrow, used for Parquet I/O.                                                 |
+| **PyPI**             | Python Package Index; repository for Python software.                                                  |
+| **pytube**           | Python library for downloading YouTube videos (or similar).                                            |
+| **Rate Limiting**    | Restriction on the frequency of requests to an API or service.                                         |
+| **Repository**       | Storage location, often for code (e.g., Git repository).                                               |
+| **Schema**           | Formal description of data structure and types.                                                        |
+| **Schema Evolution** | Managing changes to a data schema over time.                                                           |
+| **Scraping**         | Extracting data from websites, often by parsing HTML.                                                  |
+| **Sequence Diagram** | UML diagram showing object interactions over time.                                                     |
+| **Serialization**    | Converting data structures into a format for storage or transmission.                                  |
+| **SRT**              | SubRip Text; common file format for video subtitles.                                                   |
+| **Tarball**          | Archive file format (`.tar`, often compressed as `.tar.gz`).                                           |
+| **Tokenization**     | Breaking text or code into smaller units (tokens).                                                     |
+| **User-Agent**       | HTTP header identifying the client software making a request.                                          |
+| **XML**              | Extensible Markup Language; format for encoding documents.                                             |
+| **YouTube Data API** | Google's official API for interacting with YouTube.                                                    |

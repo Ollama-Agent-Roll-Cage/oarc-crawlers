@@ -16,329 +16,344 @@ This document provides the technical specification for the OARC-Crawlers framewo
   - [5.3 Code Analysis Workflow](#53-code-analysis-workflow)
 - [6. Error Handling and Logging](#6-error-handling-and-logging)
 - [7. Performance Considerations](#7-performance-considerations)
-- [8. Conclusion](#8-conclusion)
-- [9. Appendix](#9-appendix)
-  - [9.1 Glossary of Terms](#91-glossary-of-terms)
-  - [9.2 Directory Structure](#92-directory-structure)
+- [8. Configuration](#8-configuration)
+- [9. Conclusion](#9-conclusion)
+- [10. Appendix](#10-appendix)
+  - [10.1 Glossary of Terms](#101-glossary-of-terms)
+  - [10.2 Directory Structure](#102-directory-structure)
 
 ## 1. Introduction
 
-OARC-Crawlers offers a framework for acquiring, processing, and storing data from diverse online sources. It is built on core principles like modularity and asynchronous operation, utilizing unified Apache Parquet storage for data persistence, as detailed throughout this specification. The system provides specialized crawlers and workflows designed to streamline data collection for researchers, data scientists, and developers.
+OARC-Crawlers is a Python framework designed for efficient acquisition, processing, and storage of data from diverse online sources, including academic repositories (ArXiv), code hosting platforms (GitHub), video platforms (YouTube), search engines (DuckDuckGo), and general websites. Built on principles of modularity, asynchronous operation, and unified data persistence using Apache Parquet, the framework provides specialized crawlers and common workflows to streamline data collection for research, analysis, and development tasks.
 
 ## 2. System Overview
 
 ### 2.1 Core Concepts
 
-The OARC-Crawlers framework operates on the following core principles:
+The OARC-Crawlers framework adheres to these fundamental principles:
 
-1.  **Modularity**: Each data source is managed by a dedicated, specialized component (detailed in [Components](#3-components)).
-2.  **Asynchronous Design**: Utilizes asynchronous programming for high-performance, non-blocking I/O operations (see [Performance Considerations](#7-performance-considerations)).
-3.  **Unified Data Storage**: Employs Apache Parquet for consistent, efficient, and analysis-ready data persistence across all modules (see [Data Storage](#23-data-storage)).
-4.  **Structured Outputs**: Delivers data in well-defined formats suitable for both machine processing (e.g., DataFrames, dictionaries) and human review (e.g., Markdown).
-5.  **Resilience**: Integrates robust error handling and logging mechanisms to ensure operational stability (see [Error Handling and Logging](#6-error-handling-and-logging)).
+1.  **Modularity**: Each data source (YouTube, GitHub, ArXiv, etc.) is handled by a distinct, specialized component (crawler module), promoting separation of concerns and maintainability. See [Components](#3-components).
+2.  **Asynchronous Design**: Leverages Python's `asyncio` library for non-blocking I/O operations, maximizing performance for network-bound tasks like fetching data from APIs or websites. See [Performance Considerations](#7-performance-considerations).
+3.  **Unified Data Storage**: Employs Apache Parquet as the standard format for persistent storage across all modules, facilitated by a central `ParquetStorage` utility. This ensures data is stored efficiently and is readily consumable by analysis tools. See [Data Storage](#23-data-storage).
+4.  **Structured Outputs**: Crawler operations return data in predictable formats, typically Python dictionaries or Pandas DataFrames for programmatic use, and often offer Markdown formatting for human-readable summaries.
+5.  **Resilience & Observability**: Incorporates robust error handling within individual operations and standardized logging practices to ensure operational stability and aid troubleshooting. See [Error Handling and Logging](#6-error-handling-and-logging).
+6.  **Configurability**: Allows customization of behavior (e.g., data directories, timeouts, API keys) through configuration files and environment variables. See [Configuration](#8-configuration).
 
 ### 2.2 Architecture
 
-The OARC-Crawlers framework employs a modular architecture, aligning with the [Core Concepts](#21-core-concepts). Each data source (e.g., YouTube, GitHub, ArXiv) is managed by a dedicated, asynchronous crawler module, detailed in the [Components](#3-components) section.
-
-Key architectural features include:
-1.  **Independent Modules**: Each crawler operates independently, focusing on a specific data source.
-2.  **Asynchronous Operations**: Leverages `async`/`await` for efficient, non-blocking I/O, crucial for network-bound tasks (see [Performance Considerations](#7-performance-considerations)).
-3.  **Centralized Storage**: All modules utilize the `ParquetStorage` component for consistent data persistence in the Apache Parquet format ([Section 2.3](#23-data-storage)).
-4.  **Consistent Initialization**: Crawlers are typically initialized with a `data_dir` parameter specifying the output location.
-
-This design facilitates both the isolated use of individual crawlers and their combination within larger data acquisition workflows ([Section 5](#5-common-workflows)).
-
-The overall interaction flow is depicted below:
+OARC-Crawlers employs a modular, service-oriented architecture designed for extensibility and maintainability. Interaction originates from a user or application via defined entry points, primarily the Command-Line Interface (CLI) or programmatic Application Programming Interfaces (APIs). These entry points delegate tasks to specialized, asynchronous crawler modules. Each module encapsulates the logic for interacting with a specific external data source or API. Common functionalities, such as persistent data storage and HTTP communication, are abstracted into shared utility components, promoting code reuse and consistency. Configuration settings, managed through files and environment variables, influence the behavior of various architectural layers.
 
 ```mermaid
 graph TD
-    User[User/Application] --> Crawlers{Crawler Modules}
-    Crawlers --> PS[ParquetStorage]
-    Crawlers <--> EXT[External Services & APIs]
-    PS --> DF[(Parquet Data Files)]
-
-    subgraph Crawler Modules
-        YT[YouTubeDownloader]
-        GH[GitHubCrawler]
-        DDG[DuckDuckGoSearcher]
-        BS[BSWebCrawler]
-        AX[ArxivFetcher]
-    end
-
-    subgraph External Services & APIs
-        API_YT[YouTube API]
-        API_GH[GitHub]
-        API_DDG[DuckDuckGo]
-        API_WEB[Web Pages]
-        API_AX[ArXiv API]
-    end
-
-    User --> YT
-    User --> GH
-    User --> DDG
-    User --> BS
-    User --> AX
-
-    YT --> PS
-    GH --> PS
-    DDG --> PS
-    BS --> PS
-    AX --> PS
-
-    YT <--> API_YT
-    GH <--> API_GH
-    DDG <--> API_DDG
-    BS <--> API_WEB
-    AX <--> API_AX
+    User[User/Application] --> CLI_API[CLI/API Layer]
+    CLI_API --> YT[YouTubeDownloader]
+    CLI_API --> GH[GitHubCrawler] 
+    CLI_API --> DDG[DuckDuckGoSearcher]
+    CLI_API --> BS[BSWebCrawler]
+    CLI_API --> AX[ArxivFetcher]
+    
+    YT --> Util_PS[ParquetStorage]
+    GH --> Util_PS
+    DDG --> Util_PS
+    BS --> Util_PS
+    AX --> Util_PS
+    
+    YT --> Util_HTTP[HTTP Client]
+    GH --> Util_HTTP
+    DDG --> Util_HTTP
+    BS --> Util_HTTP
+    AX --> Util_HTTP
+    
+    YT --> Ext_YT[YouTube API]
+    GH --> Ext_GH[GitHub API]
+    DDG --> Ext_DDG[DuckDuckGo]
+    BS --> Ext_WEB[Web Pages]
+    AX --> Ext_AX[ArXiv API]
+    
+    Util_PS --> Disk[(Parquet Files)]
+    
+    Config[Configuration] --> CLI_API
+    Config --> Util_PS
+    Config --> Util_HTTP
 ```
+
+**Architectural Characteristics:**
+
+-   **Entry Points**: User interaction is facilitated through the `oarc-crawlers` CLI (implemented via `src/oarc_crawlers/main.py` and `src/oarc_crawlers/cli/`) or programmatically via the APIs exposed by individual modules. An optional Model Context Protocol (MCP) server (`mcp_api.py`) offers an additional integration pathway.
+-   **Crawler Modules**: Residing within `src/oarc_crawlers/core/` (or as distinct files), these modules contain the source-specific data acquisition and processing logic (e.g., `yt_downloader.py`, `gh_crawler.py`). They are implemented using Python's `async`/`await` syntax for asynchronous execution.
+-   **Shared Utilities**: Located in `src/oarc_crawlers/utils/`, these components provide cross-cutting concerns:
+    -   `parquet_storage.py`: Centralizes all read/write operations for Apache Parquet files.
+    -   `http_client.py` (Conceptual): Manages a shared asynchronous HTTP client (e.g., `aiohttp.ClientSession`) for efficient network requests.
+    -   `logging_config.py`: Ensures standardized logging configuration across the framework.
+    -   `paths.py` (Conceptual): Provides utilities for managing file system paths related to data, configuration, and cache directories.
+-   **Configuration Management**: Handled by `src/oarc_crawlers/config/`, this component aggregates settings from INI files and environment variables, providing a unified configuration view to the framework.
 
 ### 2.3 Data Storage
 
-Consistent with the core concept of [Unified Data Storage](#21-core-concepts), the OARC-Crawlers framework utilizes the Apache Parquet format for persistent data storage across all modules. This choice offers significant advantages aligned with the system's goals:
+The framework mandates Apache Parquet as the standard format for persisting structured data acquired by the crawlers. This strategy is implemented and enforced by the `ParquetStorage` utility component (`src/oarc_crawlers/utils/parquet_storage.py`).
 
-1.  **Columnar Storage**: Enables efficient data retrieval and analysis, particularly for queries targeting specific data columns.
-2.  **Efficient Compression**: Reduces disk space usage and potentially speeds up I/O operations.
-3.  **Schema Enforcement**: Helps maintain data consistency and integrity across diverse data sources and collection times.
-4.  **Broad Interoperability**: Ensures compatibility with a wide range of data analysis tools and platforms, including Pandas, Apache Spark, and Apache Arrow.
+**Rationale for Parquet:**
 
-All interactions with Parquet files (saving, loading, appending) are managed through the dedicated `ParquetStorage` component. This centralized approach guarantees a standardized mechanism for data persistence, ensuring consistency regardless of the specific crawler module generating the data.
+1.  **Storage Efficiency**: The columnar storage paradigm enables high compression ratios and reduces storage footprint compared to row-oriented formats.
+2.  **Query Performance**: Analytical queries that access only a subset of columns benefit significantly from the columnar layout, minimizing I/O operations. `pyarrow` provides optimized read/write capabilities.
+3.  **Schema Enforcement and Evolution**: Parquet files embed their schema, facilitating data validation and interpretation. The `ParquetStorage` utility is designed to accommodate schema evolution during data appending operations.
+4.  **Ecosystem Interoperability**: Parquet is a de facto standard in the data processing ecosystem, supported by tools such as Pandas, Spark, Dask, Polars, and various database systems.
 
-The general flow for handling data destined for storage is illustrated below:
+**Storage Mechanism:**
+
+The process of persisting data involves the following steps:
+-   Crawler modules generate structured data, typically represented as Python lists of dictionaries or Pandas DataFrames.
+-   These modules invoke methods on the `ParquetStorage` utility, such as `save_to_parquet()` for initial writes or `append_to_parquet()` for adding data to existing files.
+-   The `ParquetStorage` utility performs necessary data transformations (e.g., conversion to a DataFrame), ensures the existence of target directories, and utilizes the `pyarrow` library to serialize and write the data to a Parquet file.
+-   Data retrieval is accomplished via `ParquetStorage.load_from_parquet()`, which reads the specified Parquet file and returns its contents as a Pandas DataFrame, or `None` if an error occurs during loading.
 
 ```mermaid
 graph LR
-    subgraph "Data Storage Flow"
-        IN[Input Data] --> CONV[Conversion Layer]
-        CONV --> PSTORE[ParquetStorage]
-        PSTORE --> PFILE[(Parquet Files)]
-        PFILE --> PSTORE
-        PSTORE --> DF[DataFrame/Dict]
-    end
-
-    subgraph "Input Data Types"
-        Dict[Dictionary]
-        List[List]
-        DataFrame[DataFrame]
-    end
-
-    Dict --> IN
-    List --> IN
-    DataFrame --> IN
+    A[Generate Data] --> B[Call ParquetStorage]
+    B --> C[Receive Data]
+    C --> D{Convert to DataFrame}
+    D --> E[Write via pyarrow]
+    E --> F[(Parquet File)]
+    F --> G[Read via pyarrow]
+    G --> H[Return DataFrame]
+    H --> A
 ```
 
-This unified storage strategy ensures that data from various sources is stored efficiently and is readily available for subsequent analysis workflows ([Section 5.2](#52-data-analysis-workflow)).
+This standardized approach ensures that all persistent structured data adheres to a consistent, efficient, and readily analyzable format. It is important to note that raw downloaded artifacts (e.g., video files, source code archives) are stored directly on the filesystem, while their associated metadata is typically captured and stored in corresponding Parquet files.
 
 ## 3. Components
 
-The OARC-Crawlers framework includes several specialized components, each designed to interact with a specific data source:
+The OARC-Crawlers framework comprises several key components, each specializing in a data source or core function:
 
-1. **Parquet Storage**: The foundation for all data persistence operations, providing consistent saving, loading, and appending of data in the Parquet format.
+1.  **Parquet Storage (`utils.parquet_storage`)**: Central utility for saving, loading, and appending data in Apache Parquet format. Ensures consistent and efficient data persistence.
+2.  **YouTube Downloader (`core.yt_downloader`)**: Handles interactions with YouTube. Downloads videos and playlists, extracts captions, performs searches, and saves relevant metadata.
+3.  **GitHub Crawler (`core.gh_crawler`)**: Interacts with GitHub repositories. Clones repositories, processes files (detecting language, extracting content), generates summaries, finds similar code, and supports natural language queries.
+4.  **DuckDuckGo Searcher (`core.ddg_searcher`)**: Performs web searches (text, image, news) using the DuckDuckGo engine, focusing on privacy and returning structured or formatted results.
+5.  **BeautifulSoup Web Crawler (`core.bs_crawler`)**: Fetches and parses general web pages using `aiohttp` and `BeautifulSoup`. Includes generic text extraction and specialized parsers for PyPI package pages and documentation sites.
+6.  **ArXiv Fetcher (`core.arxiv_fetcher`)**: Interacts with the ArXiv repository. Fetches paper metadata via the API and downloads paper source files (LaTeX tarballs).
+7.  **CLI Layer (`cli/`, `main.py`)**: Provides the command-line interface, parsing arguments and dispatching tasks to the appropriate core crawler modules. Uses libraries like Typer or Click.
+8.  **Configuration (`config/`)**: Manages loading settings from configuration files (INI) and environment variables.
+9.  **Shared Utilities (`utils/`)**: Contains common helpers for HTTP requests, logging, path management, etc., used by multiple crawlers.
+10. **MCP Server (`mcp_api.py`)**: (If enabled) Exposes crawler functionalities via the Model Context Protocol for integration with external tools like VS Code.
 
-2. **YouTube Downloader**: Facilitates downloading videos, playlists, and metadata from YouTube, as well as extracting captions and performing searches.
-
-3. **GitHub Crawler**: Enables cloning, processing, and analyzing GitHub repositories, with a focus on code extraction and analysis.
-
-4. **DuckDuckGo Searcher**: Performs web searches using the DuckDuckGo search engine API, supporting text, image, and news searches.
-
-5. **BeautifulSoup Web Crawler**: Extracts content from web pages using BeautifulSoup, with specialized extractors for documentation sites and PyPI package pages.
-
-6. **ArXiv Fetcher**: Downloads papers and extracts content from the ArXiv academic repository, including paper metadata and LaTeX source files.
-
-For detailed information about each component, including architecture, data flow diagrams, implementation details, and advanced usage patterns, please refer to the dedicated [Crawlers documentation](./Crawlers.md).
+Detailed descriptions, architectures, and data flows for the main crawler components (1-6) can be found in the [Crawlers documentation](./Crawlers.md).
 
 ## 4. API Reference
 
-For detailed API reference documentation, please see the dedicated [API Reference document](./API.md).
+A detailed reference for the public APIs of each component is available in the [API Reference document](./API.md). This includes:
 
-The API document provides comprehensive information about all public methods, including:
-- Method signatures with type annotations
-- Parameters and return values
-- Error handling behavior
-- Detailed examples with realistic use cases
-- Implementation notes for methods with specific behaviors or limitations
+-   Class initializers (`__init__`).
+-   Public methods with signatures, parameters, return types, and descriptions.
+-   Usage examples for key methods.
+-   Error handling specifics for each method.
+-   Notes on asynchronous (`async`) methods.
 
-Each module's API is documented in detail:
-- [Parquet Storage API](./API.md#1-parquet-storage-api)
-- [YouTube Downloader API](./API.md#2-youtube-downloader-api)
-- [GitHub Crawler API](./API.md#3-github-crawler-api)
-- [DuckDuckGo Searcher API](./API.md#4-duckduckgo-searcher-api)
-- [BeautifulSoup Web Crawler API](./API.md#5-beautifulsoup-web-crawler-api)
-- [ArXiv Fetcher API](./API.md#6-arxiv-fetcher-api)
-
-Asynchronous methods are clearly marked with the `async` keyword, and static methods are identified with the `@staticmethod` notation to help you understand how to use the API effectively.
+Consult [API.md](./API.md) for specifics on how to interact with each crawler module programmatically.
 
 ## 5. Common Workflows
 
+OARC-Crawlers is designed to support various data collection and analysis paradigms by orchestrating its constituent components.
+
 ### 5.1 Research Workflow
 
-One of the primary use cases for OARC-Crawlers is conducting research on specific topics by collecting information from multiple sources:
+This workflow exemplifies the process of gathering multi-modal information pertaining to a specific research topic:
 
-1.  Begin with a search query using the DuckDuckGoSearcher to get general information.
-2.  Find relevant academic papers using the ArxivFetcher.
-3.  Collect documentation from related websites using the BSWebCrawler.
-4.  Find relevant GitHub repositories using the GitHubCrawler.
-5.  Download educational videos using the YouTubeDownloader.
-6.  Analyze and correlate the collected data.
-
-This workflow is demonstrated in the `combined_example.py` file, which shows how multiple crawler modules can be used together to gather comprehensive information on a topic.
+1.  **Exploratory Search**: Utilize the `DuckDuckGoSearcher` (`ddg text` command) to perform initial web searches. This step aims to identify relevant keywords, seminal publications, key software projects, or influential researchers.
+2.  **Literature Acquisition**: Employ the `ArxivFetcher` (`arxiv search`, `arxiv info`, `arxiv download` commands) to locate and retrieve pertinent academic literature from the ArXiv repository, using keywords or specific paper identifiers discovered previously.
+3.  **Codebase Analysis**: Leverage the `GitHubCrawler` (`gh analyze`, `gh clone`, `gh query` commands) to identify, download, and analyze software repositories associated with the research topic, potentially referenced in publications or discovered through search.
+4.  **Web Content Extraction**: Use the `BSWebCrawler` (`web crawl`, `web docs` commands) to extract textual information from relevant project websites, technical documentation, or blog posts identified during the exploratory phase.
+5.  **Video Resource Gathering**: Employ the `YouTubeDownloader` (`yt search`, `yt download`, `yt captions` commands) to find and acquire relevant video materials, such as tutorials, conference presentations, or expert discussions.
+6.  **Data Consolidation**: The structured outputs (metadata, search results, repository analysis data) generated by each component are systematically stored in the Parquet format. This unified storage facilitates subsequent integrated analysis across diverse data types.
 
 ```mermaid
 graph TD
-    A[Start Research] --> B(DuckDuckGo Search);
-    B --> C(ArXiv Fetch);
-    C --> D(BS Web Crawl);
-    D --> E(GitHub Crawl);
-    E --> F(YouTube Download);
-    F --> G[Analyze Data];
-    G --> H[End Research];
+    A[Define Research Topic] --> B[Exploratory DDG Search]
+    B --> C{Identify Keywords & Source URLs/IDs}
+    C -- Paper IDs --> D[4a. ArXiv Fetcher]
+    C -- Repository URLs --> E[4b. GitHub Crawler]
+    C -- Website URLs --> F[4c. BS Web Crawler]
+    C -- Video Search Terms --> G[4d. YouTube Downloader]
+    D --> H[(ArXiv Data)]
+    E --> I[(GitHub Repo Data)]
+    F --> J[(Web Content Data)]
+    G --> K[(YouTube Video Data)]
+    H & I & J & K --> L[5. Analyze Consolidated Parquet Data]
 ```
 
 ### 5.2 Data Analysis Workflow
 
-Another common use case is analyzing previously collected data:
+This workflow outlines the steps for analyzing data previously collected and stored in Parquet format by the framework:
 
-1.  Load data from various sources using `ParquetStorage`.
-2.  Process and clean the data using Pandas.
-3.  Analyze relationships between different data sources.
-4.  Export results to CSV or other formats for visualization.
-5.  Generate reports based on the findings.
-
-The Parquet format makes it easy to load and analyze the data using standard data science tools.
+1.  **Data Ingestion**: Load the relevant Parquet datasets into memory using `ParquetStorage.load_from_parquet()` or directly via data analysis libraries like Pandas (`pd.read_parquet`) or Polars.
+2.  **Data Cleansing and Preprocessing**: Apply necessary data cleaning techniques, including handling missing values, normalizing formats, converting data types, and potentially deriving new features from existing columns.
+3.  **Data Integration and Analysis**: Merge or join DataFrames originating from different crawler components as required (e.g., correlating paper metadata with repository analysis results). Perform statistical analyses, generate visualizations, or apply machine learning models.
+4.  **Result Dissemination**: Persist the processed data or analysis outcomes to new Parquet files, alternative formats (e.g., CSV), databases, or incorporate them into analytical reports.
 
 ```mermaid
 graph TD
-    A[Load Parquet Data] --> B(Process/Clean with Pandas);
-    B --> C(Analyze Relationships);
-    C --> D(Export Results);
-    D --> E[Generate Reports];
-    E --> F[End Analysis];
+    A[1. Identify Relevant Parquet Files] --> B[2. Load DataFrames]
+    B --> C[3. Clean & Preprocess Data]
+    C --> D[4. Integrate & Analyze Data]
+    D --> E[5. Generate Visualizations / Models]
+    E --> F[6. Export Results / Create Report]
 ```
 
 ### 5.3 Code Analysis Workflow
 
-For analyzing code repositories:
+This workflow focuses on the specific task of analyzing software repositories obtained via the `GitHubCrawler`:
 
-1.  Use `GitHubCrawler` to clone and process repositories.
-2.  Find patterns in the code using `find_similar_code`.
-3.  Generate summaries of repository contents.
-4.  Search for specific code features using `query_repo_content`.
-5.  Compare multiple repositories to identify common patterns.
-
-This workflow is particularly useful for software engineers and researchers studying code patterns.
+1.  **Repository Acquisition and Processing**: Utilize `GitHubCrawler.clone_and_store_repo()` (accessible via `gh analyze` or `gh clone` CLI commands) to download target repositories and generate structured data representing their file contents, stored as a Parquet file.
+2.  **Data Loading**: Ingest the generated Parquet file(s) containing repository file information into a Pandas DataFrame.
+3.  **Metric Computation**: Calculate quantitative metrics from the DataFrame, such as programming language distribution (based on file extensions or content analysis), file size statistics, and source lines of code (SLOC) estimations.
+4.  **Targeted Content Exploration**: Employ `GitHubCrawler.find_similar_code()` (`gh find-similar`) to locate code segments resembling a given snippet, or use `GitHubCrawler.query_repo_content()` (`gh query`) for natural language-based querying of the codebase (if supported).
+5.  **In-depth Static Analysis**: Perform more sophisticated analyses directly on the source code content available in the DataFrame's `content` column. This may involve Abstract Syntax Tree (AST) parsing, dependency graph construction, code complexity measurements (e.g., cyclomatic complexity), or vulnerability scanning.
+6.  **Comparative Analysis**: Extend the workflow by loading data from multiple repositories to facilitate comparative studies of architectural patterns, language usage trends, code similarity, or evolution over time.
 
 ```mermaid
 graph TD
-    A[Start Code Analysis] --> B(Clone/Process Repos);
-    B --> C(Find Similar Code);
-    B --> D(Generate Summaries);
-    B --> E(Query Repo Content);
-    C --> F(Compare Repos);
-    D --> F;
-    E --> F;
-    F --> G[End Analysis];
+    A[1. Identify Target Repositories] --> B[2. GitHubCrawler: Clone & Process]
+    B --> C[(3. Repository Data in Parquet)]
+    C --> D[4. Load DataFrame]
+    subgraph Analysis Steps
+        D --> E[5a. Calculate Basic Metrics]
+        D --> F[5b. Perform Similarity/Query Search]
+        D --> G[5c. Custom Static Analysis (AST, etc.)]
+    end
+    E & F & G --> H[6. Synthesize Findings / Report]
 ```
 
 ## 6. Error Handling and Logging
 
-Robust error handling and comprehensive logging are integral to the OARC-Crawlers framework, ensuring operational stability and providing clear diagnostics, aligning with the core concept of [Resilience](#21-core-concepts).
+The framework prioritizes resilience and observability:
 
 1.  **Standardized Logging**:
-    *   All modules utilize Python's built-in `logging` module for consistency and compatibility with standard logging configurations.
-    *   Log levels are employed semantically:
-        *   `INFO`: Tracks normal operational progress (e.g., starting a download, completing a search).
-        *   `WARNING`: Indicates potential issues or non-critical errors that don't halt the current operation (e.g., skipping an unreadable file, encountering an unexpected data format).
-        *   `ERROR`: Reports failures that prevent a specific operation from completing (e.g., network connection failure, API error, invalid URL).
-        *   `DEBUG` (if configured): Provides detailed diagnostic information for troubleshooting.
-    *   Logs provide traceability for operations and are crucial for diagnosing issues during development or production use.
+    *   Uses Python's `logging` module configured via `utils.logging_config`.
+    *   Provides informative logs at different levels (`DEBUG`, `INFO`, `WARNING`, `ERROR`). `INFO` tracks progress, `WARNING` indicates recoverable issues (e.g., skipping a file), `ERROR` reports failures in specific operations, `DEBUG` provides verbose details (enabled via `--verbose` or `OARC_LOG_LEVEL=DEBUG`).
+    *   Logs include timestamps, module names, and contextual information.
 
-2.  **Exception Handling Strategy**:
-    *   The framework aims to contain errors within specific operations rather than allowing exceptions to halt entire workflows.
-    *   Common exceptions (e.g., `ConnectionError`, `TimeoutError`, `IOError`, `PermissionError`, API-specific errors, `ValueError`, `TypeError`) are typically caught within the relevant methods (e.g., fetching a single URL, processing one file).
-    *   Instead of raising exceptions directly from high-level crawler methods, these methods often return structured output (e.g., a dictionary, `None`, or partial results) that includes status information and specific error messages if an operation failed. For example, attempting to download a playlist might successfully download several videos but return information about any videos that failed due to errors, allowing the overall process to complete.
+2.  **Exception Handling**:
+    *   Individual operations within crawlers (e.g., fetching one URL, processing one file, downloading one video) typically use `try...except` blocks to catch expected errors (`ConnectionError`, `TimeoutError`, `FileNotFoundError`, `PermissionError`, `ValueError`, API-specific exceptions).
+    *   Instead of letting exceptions halt a larger process (like downloading a playlist), errors are often logged, and the operation returns a status indicator (e.g., `None`, an empty list, or a dictionary with an `'error'` key and `'status': 'failed'`).
+    *   This allows batch operations to continue despite individual failures. Critical configuration or setup errors might still raise exceptions.
 
-3.  **Resilience in Workflows**:
-    *   This combination of detailed logging and contained error handling makes the framework resilient to transient issues like network interruptions or problems with specific data items.
-    *   Workflows ([Section 5](#5-common-workflows)) involving multiple steps or processing numerous items (e.g., crawling multiple repositories, downloading many videos) can continue operating even if individual sub-tasks fail, maximizing data acquisition efforts. Users can then inspect logs or error statuses in the results to identify and potentially retry failed operations.
+3.  **Resilience**:
+    *   The combination of contained errors and informative logging makes workflows robust against transient network issues or problematic individual data items.
+    *   Users can typically identify failed items from logs or summary results and potentially retry them later.
 
 ## 7. Performance Considerations
 
-The performance of the OARC-Crawlers framework is optimized through several key design choices and features:
+Performance is addressed through several design choices:
 
-1.  **Asynchronous Operations**: Core to the framework's design ([Section 2.1](#21-core-concepts)), all network-bound and I/O-intensive operations (e.g., fetching web pages, downloading files, interacting with APIs) utilize Python's `async`/`await` syntax. This allows for concurrent handling of multiple operations, significantly improving throughput compared to synchronous approaches, especially when dealing with network latency.
-2.  **Efficient Data Storage**: The adoption of Apache Parquet ([Section 2.3](#23-data-storage)) via the `ParquetStorage` component offers performance benefits. Its columnar nature allows for efficient compression and faster querying, particularly when only specific data columns are needed for analysis.
-3.  **Resource Management**: The framework incorporates mechanisms for managing resources effectively. This includes careful handling of network connections (e.g., using `aiohttp.ClientSession`) and automatic cleanup of temporary files where applicable (e.g., during repository cloning in `GitHubCrawler`).
-4.  **Configurable Limits**: Most crawler modules provide parameters to limit the scope of operations (e.g., `max_results` in `DuckDuckGoSearcher`, `limit` in `YouTubeDownloader`). These limits help prevent accidental resource exhaustion and allow users to control the scale of data collection.
-5.  **Selective Processing**: Components like the `GitHubCrawler` include logic to identify and potentially skip processing large or binary files, focusing efforts on relevant text-based content and improving overall processing speed.
+1.  **Asynchronous I/O**: `asyncio` with `aiohttp` is used for all network operations (API calls, downloads, web fetching), allowing high concurrency and efficient handling of network latency. Disk I/O for Parquet writing might also leverage async methods if beneficial.
+2.  **Efficient Data Format**: Apache Parquet provides efficient compression and columnar access, speeding up both storage and subsequent analytical reads compared to row-oriented formats like CSV or JSON lines, especially for large datasets.
+3.  **Resource Management**:
+    *   Shared `aiohttp.ClientSession` can reuse connections.
+    *   Temporary directories used during operations (like repo cloning) are managed and cleaned up.
+    *   Stream processing is used where possible for downloads to avoid loading large files entirely into memory.
+4.  **Configurable Limits**: Operations like search (`max_results`), playlist downloads (`max_videos`), and file processing (`max_file_size_kb`) have limits to control resource usage and execution time.
+5.  **Selective Processing**: Logic exists to skip large binary files or apply different processing levels based on file type/size, focusing resources on relevant content.
 
-For large-scale data collection tasks, users should consider the following:
-*   Ensure the execution environment has adequate RAM, CPU, and disk storage capacity.
-*   Utilize the available configuration options (e.g., download limits, search result counts) to manage resource consumption.
-*   For extremely large workloads, consider distributing tasks across multiple instances or integrating the crawlers into a larger distributed processing system (e.g., using task queues like Celery or RQ).
+**Scaling Considerations:**
+*   For very large tasks, ensure sufficient system resources (RAM, CPU, disk IOPS, network bandwidth).
+*   Adjust concurrency limits if hitting API rate limits or overwhelming local resources.
+*   Consider distributing workloads across multiple machines or using task queues (e.g., Celery, RQ, Dask) for massive-scale crawling, integrating OARC-Crawlers components as task workers.
 
-## 8. Conclusion
+## 8. Configuration
 
-OARC-Crawlers offers a robust and extensible framework for acquiring and analyzing data from diverse online sources, including YouTube, GitHub, ArXiv, and general web pages. Its modular architecture, built upon asynchronous operations and unified Parquet storage, ensures efficient, scalable, and resilient data collection. By providing specialized crawlers with consistent interfaces and structured outputs, OARC-Crawlers streamlines complex data gathering workflows, making it a valuable tool for researchers, data scientists, and developers.
+OARC-Crawlers uses a layered configuration system:
 
-## 9. Appendix
+1.  **Defaults**: Hardcoded default values within the code.
+2.  **Configuration File(s)**: INI files loaded typically from platform-specific locations (`~/.config/oarc/` on Linux, `%APPDATA%\oarc\config` on Windows) or a path specified by `--config` or `OARC_CONFIG_PATH`. Settings here override defaults.
+3.  **Environment Variables**: Variables like `OARC_DATA_DIR`, `OARC_TIMEOUT`, `OARC_LOG_LEVEL` override file settings and defaults. See [CLI.md](./CLI.md#environment-variables) for a list.
+4.  **Command-Line Arguments**: Options like `--data-dir`, `--verbose`, `--limit` override all lower layers for a specific command execution.
 
-### 9.1 Glossary of Terms
+The `src/oarc_crawlers/config/` module typically handles loading and merging these layers. The `oarc-crawlers config` CLI command provides an interactive way to manage the configuration files.
 
-| Term | Definition |
-|---|---|
-| **aiohttp** | Asynchronous HTTP client/server framework for Python. |
-| **API** | Application Programming Interface. |
-| **Arrow** | Apache Arrow, a cross-language development platform for in-memory data, often used with Parquet. |
-| **ArXiv** | Online repository of electronic preprints for scientific papers. |
-| **Async/Await** | Python's asynchronous programming model. |
-| **BeautifulSoup** | Python library for pulling data out of HTML and XML files. |
-| **Binary File** | Non-text file format (e.g., images, videos, executables). |
-| **Columnar Storage** | Data storage technique where data is stored by columns rather than rows, used by Parquet. |
-| **ConnectionError** | Python exception raised for network connection issues. |
-| **Crawler** | Software that automatically browses the Web and collects data. |
-| **DataFrame** | Two-dimensional labeled data structure in Pandas. |
-| **DuckDuckGo** | Privacy-focused search engine. |
-| **Git** | Distributed version control system. |
-| **GitHub** | Web-based hosting service for Git repositories. |
-| **GitPython** | Python library to interact with Git repositories. |
-| **IOError** | Python exception raised for input/output errors (often an alias for `OSError`). |
-| **JSON** | JavaScript Object Notation, a lightweight data-interchange format. |
-| **LaTeX** | Document preparation system for scientific documents. |
-| **Logging** | Recording events that occur in software. |
-| **Markdown** | Lightweight markup language with plain-text formatting syntax. |
-| **Mermaid** | Javascript based diagramming and charting tool that renders Markdown-inspired text definitions. |
-| **Pandas** | Python library providing high-performance, easy-to-use data structures and data analysis tools. |
-| **Parquet** | Columnar storage file format in the Apache Hadoop ecosystem. |
-| **PermissionError** | Python exception raised when trying to run an operation without the adequate access rights. |
-| **PyPI** | Python Package Index, a repository of software for Python. |
-| **pyarrow** | Python library for Apache Arrow, used for Parquet handling. |
-| **Pytube** | Python library for downloading YouTube videos. |
-| **Repository** | Storage location for software packages or code. |
-| **Schema** | The structure or definition of data organization, often enforced in Parquet files. |
-| **Semantic Search** | Search technique that aims to understand the intent and contextual meaning of search queries. |
-| **Sphinx** | Documentation generator used heavily in the Python ecosystem. |
-| **SRT** | SubRip Text file format for subtitles. |
-| **TypeError** | Python exception raised when an operation or function is applied to an object of an inappropriate type. |
-| **Type Hinting** | Static type hints for Python code (e.g., `Union`, `Optional`, `Dict`, `List`), improving readability and allowing static analysis. |
-| **URL** | Uniform Resource Locator, web address. |
-| **User-Agent** | HTTP header field identifying the client software originating the request. |
-| **UTF-8** | Character encoding capable of encoding all Unicode characters. |
-| **ValueError** | Python exception raised when a function receives an argument of the correct type but an inappropriate value. |
-| **XML** | Extensible Markup Language, a markup language for encoding documents. |
-| **YouTube** | Video sharing platform. |
-| **YouTube Data API** | Google API for interacting with YouTube features programmatically. |
+Key configurable items often include:
+-   Default data, cache, and config directories.
+-   Logging level.
+-   Network timeouts and retry counts.
+-   User-Agent string.
+-   Proxy settings.
+-   API keys (should be handled securely, potentially via environment variables or dedicated secrets management).
+-   Default limits for operations (e.g., max search results).
 
-### 9.2 Directory Structure
+## 9. Conclusion
 
-```Bash
+OARC-Crawlers provides a modular, asynchronous, and configurable Python framework for collecting data from various web sources. By standardizing on Parquet for efficient storage and offering specialized components for common targets like YouTube, GitHub, and ArXiv, it aims to simplify and accelerate data acquisition for research and analysis. Its focus on resilience, structured output, and clear interfaces (CLI, API, MCP) makes it a versatile tool for diverse data gathering tasks.
+
+## 10. Appendix
+
+### 10.1 Glossary of Terms
+
+| Term                 | Definition                                                                                             |
+|----------------------|--------------------------------------------------------------------------------------------------------|
+| **aiohttp**          | Asynchronous HTTP client/server framework for Python, used for network requests.                       |
+| **API**              | Application Programming Interface; Defines how software components interact.                             |
+| **Apache Arrow**     | Cross-language platform for in-memory columnar data; used by `pyarrow`.                                |
+| **Apache Parquet**   | Efficient, columnar storage file format used for persistent data storage in the framework.             |
+| **ArXiv**            | Online repository for scientific paper preprints.                                                      |
+| **Async/Await**      | Python keywords for defining and running asynchronous, non-blocking code.                              |
+| **Asynchronous**     | Operations that allow the program to continue executing other tasks without waiting for completion.    |
+| **BeautifulSoup**    | Python library for parsing HTML and XML documents.                                                     |
+| **CLI**              | Command-Line Interface; Text-based interface for interacting with the framework.                       |
+| **Columnar Storage** | Data storage method where values for each column are stored contiguously (e.g., Parquet).              |
+| **Component**        | A distinct module or part of the framework responsible for a specific function (e.g., a crawler).      |
+| **Configuration**    | Settings that control the framework's behavior (e.g., paths, timeouts, API keys).                      |
+| **Crawler**          | An automated component designed to fetch and process data from a specific online source.               |
+| **DataFrame**        | A two-dimensional labeled data structure, typically from the Pandas library.                           |
+| **DuckDuckGo**       | Privacy-focused search engine.                                                                         |
+| **Git**              | Distributed version control system.                                                                    |
+| **GitHub**           | Web platform for hosting Git repositories and software development.                                    |
+| **GitPython**        | Python library for interacting with Git repositories.                                                  |
+| **HTML**             | HyperText Markup Language; Standard markup language for creating web pages.                            |
+| **JSON**             | JavaScript Object Notation; Lightweight text-based data interchange format.                            |
+| **LaTeX**            | Document preparation system commonly used for scientific and technical documents.                      |
+| **LLM**              | Large Language Model; Type of AI model used for understanding and generating text (e.g., in `gh query`). |
+| **Logging**          | Recording events and errors that occur during the execution of the framework.                          |
+| **Markdown**         | Lightweight markup language used for documentation and formatted text output.                          |
+| **MCP**              | Model Context Protocol; Specification for interaction between AI models and tools (like crawlers).     |
+| **Metadata**         | Data that provides information about other data (e.g., file size, author, creation date).              |
+| **Modularity**       | Design principle where the system is composed of independent, interchangeable components.              |
+| **Pandas**           | Python library providing high-performance data structures (like DataFrame) and analysis tools.         |
+| **ParquetStorage**   | The specific utility component within OARC-Crawlers responsible for Parquet I/O.                       |
+| **pyarrow**          | Python library providing the interface to Apache Arrow and Parquet file operations.                    |
+| **PyPI**             | Python Package Index; The official third-party software repository for Python.                         |
+| **pytube**           | Python library (or similar) used for interacting with YouTube.                                         |
+| **Rate Limiting**    | Restriction imposed by APIs on the number of requests allowed within a specific time period.           |
+| **Repository**       | A storage location for project files, often managed by version control (e.g., a Git repository).       |
+| **Resilience**       | The ability of the system to handle errors gracefully and continue operating.                          |
+| **Schema**           | The structure or blueprint of data, defining fields and their types.                                   |
+| **Scraping**         | Extracting data from websites, typically by parsing their HTML structure.                              |
+| **Serialization**    | Converting data structures into a format suitable for storage or transmission.                         |
+| **Workflow**         | A sequence of steps or operations performed using the framework to achieve a specific goal.            |
+| **XML**              | Extensible Markup Language; Markup language for encoding documents in a human-readable format.         |
+| **YouTube**          | Video-sharing platform.                                                                                |
+
+### 10.2 Directory Structure
+
+```bash
 oarc-crawlers/
-├── .github/                     # GitHub workflows and config
-├── docs/                        # Core documentation
-├── examples/                    # Example usage scripts
+├── .github/                 # GitHub Actions CI/CD workflows
+├── docs/                    # Documentation files (API.md, CLI.md, etc.)
+├── examples/                # Example usage scripts
 ├── src/
-│   └── oarc_crawlers/           # Source code to package
-│   │   └── cli/                 # CLI tools directory
-│   └── tests/                   # Unit tests
-└── README.md                    # Project overview
-└── LICENSE                      # Apache 2.0
+│   └── oarc_crawlers/       # Main Python package source
+│       ├── __init__.py      # Package initializer
+│       ├── main.py          # CLI entry point script
+│       ├── api/             # (Potential) Modules for external API interaction logic
+│       ├── cli/             # Modules defining CLI commands (Typer/Click apps)
+│       ├── config/          # Configuration loading logic
+│       ├── core/            # Core crawler implementations (arxiv, bs, ddg, gh, yt)
+│       ├── utils/           # Shared utilities (parquet, http, logging, paths)
+│       ├── mcp_api.py       # (Potential) MCP server implementation
+│       └── version.py       # Package version definition
+├── tests/                   # Automated tests (unit, integration)
+├── .gitignore               # Git ignore rules
+├── .flake8                  # Flake8 config
+├── .pylintrc                # Pylint config
+├── pyproject.toml           # Build config, dependencies, package metadata
+├── pytest.ini               # Pytest config
+├── README.md                # Project overview
+└── LICENSE                  # License file
 ```

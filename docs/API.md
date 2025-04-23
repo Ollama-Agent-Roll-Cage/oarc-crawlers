@@ -2,6 +2,8 @@
 
 This document provides detailed API reference for all components in the OARC-Crawlers system.
 
+*Note: The `core`, `utils`, and `config` modules may contain additional APIs not yet documented here.*
+
 ## Table of Contents
 - [1. Parquet Storage API](#1-parquet-storage-api)
     - [`save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`](#save_to_parquetdata-file_path)
@@ -44,112 +46,148 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [`async fetch_paper_with_latex(arxiv_id: str) -> Dict`](#fetch_paper_with_latexarxiv_id)
     - [`@staticmethod format_paper_for_learning(paper_info: Dict) -> str`](#format_paper_for_learningpaper_info)
 - [7. Model Context Protocol (MCP) Integration](#7-model-context-protocol-mcp-integration)
+    - [Server Configuration](#server-configuration)
+    - [Installation](#installation)
+    - [Available Tools](#available-tools)
+    - [Error Handling](#error-handling)
+    - [VS Code Integration](#vs-code-integration)
+    - [Programmatic Usage](#programmatic-usage)
 
 ## 1. Parquet Storage API
+
+*Assumed Location: `oarc_crawlers.utils.parquet_storage` (or similar)*
 
 ### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
 Saves data to a Parquet file.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame
-- `file_path`: Path where the Parquet file will be saved
+- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to save.
+- `file_path`: Path where the Parquet file will be saved.
 
 **Returns:**
-- `bool`: True if successful, False otherwise
+- `bool`: True if the save operation was successful, False otherwise.
 
 **Error Handling:**
-- Raises `TypeError` if data format is not supported
-- Raises `IOError` if the directory cannot be created or accessed
+- Raises `TypeError` if the input `data` format is not supported (not Dict, List[Dict], or DataFrame).
+- Raises `IOError` or `PermissionError` if the directory cannot be created or the file cannot be written.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 data = {'name': 'Model XYZ', 'accuracy': 0.95, 'parameters': 10000000}
-success = ParquetStorage.save_to_parquet(data, 'model_metrics.parquet')
+try:
+    success = ParquetStorage.save_to_parquet(data, 'model_metrics.parquet')
+    if success:
+        print("Data saved successfully.")
+except (TypeError, IOError, PermissionError) as e:
+    print(f"Error saving data: {e}")
 ```
 
 **Implementation Notes:**
-- Automatically converts dictionaries and lists to DataFrames
-- Creates parent directories if they don't exist
-- Uses pyarrow for efficient serialization
+- Automatically converts dictionaries and lists of dictionaries into Pandas DataFrames before saving.
+- Ensures parent directories for `file_path` exist, creating them if necessary.
+- Utilizes the `pyarrow` library as the backend for efficient Parquet serialization.
 
 ### `load_from_parquet(file_path: str) -> Optional[pd.DataFrame]`
-Loads data from a Parquet file.
+Loads data from a Parquet file into a Pandas DataFrame.
 
 **Parameters:**
-- `file_path`: Path to the Parquet file
+- `file_path`: Path to the Parquet file to load.
 
 **Returns:**
-- `DataFrame`: Pandas DataFrame containing the loaded data, or None if failed
+- `Optional[pd.DataFrame]`: A Pandas DataFrame containing the loaded data, or `None` if the file doesn't exist, is corrupted, or cannot be read.
 
 **Error Handling:**
-- Returns `None` if file doesn't exist or can't be read
-- Logs error details instead of raising exceptions
+- Returns `None` and logs an error if the file specified by `file_path` does not exist or cannot be read (e.g., due to permissions or corruption). It avoids raising exceptions directly to allow for graceful handling in calling code.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 df = ParquetStorage.load_from_parquet('model_metrics.parquet')
 if df is not None:
+    print(f"Loaded {len(df)} records.")
     print(f"Model name: {df['name'].iloc[0]}, Accuracy: {df['accuracy'].iloc[0]}")
+else:
+    print("Failed to load data from Parquet file.")
 ```
 
 ### `append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
-Appends data to an existing Parquet file (creates new file if it doesn't exist).
+Appends data to an existing Parquet file. If the file does not exist, it creates a new one.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame
-- `file_path`: Path to the Parquet file
+- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to append.
+- `file_path`: Path to the Parquet file.
 
 **Returns:**
-- `bool`: True if successful, False otherwise
+- `bool`: True if the append operation was successful, False otherwise.
 
 **Error Handling:**
-- Raises `TypeError` if data format is not supported
-- Creates a new file if the specified file doesn't exist
+- Raises `TypeError` if the input `data` format is not supported.
+- Creates a new file if `file_path` does not exist, behaving like `save_to_parquet`.
+- Raises `IOError` or `PermissionError` if the file cannot be read or written.
 
 **Example:**
 ```python
+# Assuming ParquetStorage is imported
 new_data = {'name': 'Model ABC', 'accuracy': 0.97, 'parameters': 15000000}
-success = ParquetStorage.append_to_parquet(new_data, 'model_metrics.parquet')
+try:
+    success = ParquetStorage.append_to_parquet(new_data, 'model_metrics.parquet')
+    if success:
+        print("Data appended successfully.")
+except (TypeError, IOError, PermissionError) as e:
+    print(f"Error appending data: {e}")
+
 ```
 
 **Implementation Notes:**
-- Handles schema mismatches by using common fields
-- For new files, behaves identically to save_to_parquet()
+- Reads the existing Parquet file (if it exists).
+- Converts the input `data` to a DataFrame.
+- Concatenates the existing DataFrame with the new DataFrame.
+- Writes the combined DataFrame back to the Parquet file, overwriting the original.
+- Handles potential schema mismatches between the existing data and the new data by aligning columns; missing columns in either DataFrame will be filled with null values.
 
 ## 2. YouTube Downloader API
 
+*Assumed Location: `oarc_crawlers.yt_crawler`*
+
 ### `__init__(data_dir: Optional[str]=None)`
-Initializes the YouTube Downloader.
+Initializes the YouTube Downloader instance.
 
 **Parameters:**
-- `data_dir`: Directory to store data (optional)
+- `data_dir` (`Optional[str]`, default=`None`): The base directory where downloaded videos, metadata, and captions should be stored. If `None`, a default location might be used (e.g., within the user's data directory).
 
 **Example:**
 ```python
-downloader = YouTubeDownloader(data_dir='./my_data')
+# Assuming YouTubeDownloader is imported
+downloader = YouTubeDownloader(data_dir='./youtube_output')
 ```
 
 ### `async download_video(url: str, format: str="mp4", resolution: str="highest", output_path: Optional[str]=None, filename: Optional[str]=None, extract_audio: bool=False) -> Dict`
-Downloads a YouTube video.
+Downloads a single YouTube video based on the provided URL and options.
 
 **Parameters:**
-- `url`: YouTube video URL
-- `format`: Video format (mp4, webm, etc.)
-- `resolution`: Video resolution ("highest", "lowest", or specific like "720p")
-- `output_path`: Directory to save the video (optional)
-- `filename`: Custom filename for the downloaded video (optional)
-- `extract_audio`: Whether to extract audio only (boolean)
+- `url` (`str`): The URL of the YouTube video to download.
+- `format` (`str`, default=`"mp4"`): The desired video container format (e.g., "mp4", "webm"). If `extract_audio` is True, this might influence the audio format (e.g., "mp3", "m4a").
+- `resolution` (`str`, default=`"highest"`): The desired video resolution. Can be specific (e.g., "1080p", "720p") or relative ("highest", "lowest").
+- `output_path` (`Optional[str]`, default=`None`): A specific directory to save this video. If `None`, it defaults to a subdirectory within the `data_dir` provided during initialization.
+- `filename` (`Optional[str]`, default=`None`): A custom filename (without extension) for the downloaded file. If `None`, a filename is generated based on the video title or ID.
+- `extract_audio` (`bool`, default=`False`): If True, only the audio track will be downloaded and saved (potentially in a format like mp3 or m4a).
 
 **Returns:**
-- `dict`: Information about the downloaded video
+- `Dict`: A dictionary containing information about the download operation, including:
+    - `file_path` (`str`): The full path to the downloaded file (video or audio).
+    - `metadata` (`Dict`): Extracted metadata about the video (title, author, duration, etc.).
+    - `status` (`str`): "success" or "failed".
+    - `error` (`Optional[str]`): An error message if the download failed.
 
 **Error Handling:**
-- Raises `ConnectionError` if the YouTube URL is unavailable
-- Raises `ValueError` if the specified resolution or format is unavailable
-- Returns error information in the result dictionary if download fails
+- Raises `ConnectionError` if the YouTube URL is invalid or unreachable.
+- Raises `ValueError` if the requested `format` or `resolution` is unavailable for the video.
+- Returns a dictionary with `status: "failed"` and an `error` message for download failures (e.g., network issues during download, filesystem errors).
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def download_hd_video():
     result = await downloader.download_video(
         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -157,118 +195,151 @@ async def download_hd_video():
         output_path="./videos",
         filename="my_video"
     )
-    if 'error' in result:
+    if result['status'] == 'failed':
         print(f"Download failed: {result['error']}")
     else:
         print(f"Downloaded to: {result['file_path']}")
+        # Metadata is also saved to a corresponding Parquet file
     return result
 ```
 
 **Implementation Notes:**
-- Uses pytube library for downloading
-- Creates output directory if it doesn't exist
-- Stores metadata in Parquet format alongside video file
+- Uses the `pytube` library (or a similar alternative) for interacting with YouTube.
+- Automatically creates the `output_path` directory if it doesn't exist.
+- Saves extracted video metadata (title, author, duration, views, etc.) to a separate Parquet file alongside the downloaded video/audio file, using `ParquetStorage`.
 
 ### `async download_playlist(playlist_url: str, format: str="mp4", max_videos: int=10, output_path: Optional[str]=None) -> Dict`
-Downloads videos from a YouTube playlist.
+Downloads multiple videos from a YouTube playlist.
 
 **Parameters:**
-- `playlist_url`: YouTube playlist URL
-- `format`: Video format (mp4, webm, etc.)
-- `max_videos`: Maximum number of videos to download
-- `output_path`: Directory to save the videos (optional)
+- `playlist_url` (`str`): The URL of the YouTube playlist.
+- `format` (`str`, default=`"mp4"`): The desired video format for all videos in the playlist.
+- `max_videos` (`int`, default=`10`): The maximum number of videos to download from the playlist. Downloads typically start from the beginning of the playlist.
+- `output_path` (`Optional[str]`, default=`None`): A specific directory to save the playlist videos. If `None`, defaults to a subdirectory within `data_dir`, often named after the playlist title or ID.
 
 **Returns:**
-- `dict`: Information about the downloaded playlist
+- `Dict`: A summary dictionary of the playlist download operation, including:
+    - `playlist_title` (`str`): The title of the playlist.
+    - `total_videos_in_playlist` (`int`): Total number of videos available in the playlist.
+    - `requested_videos` (`int`): Number of videos requested (`max_videos`).
+    - `success_count` (`int`): Number of videos successfully downloaded.
+    - `failed_count` (`int`): Number of videos that failed to download.
+    - `results` (`List[Dict]`): A list containing the result dictionaries for each individual video download attempt (similar to the return value of `download_video`).
+    - `metadata_path` (`str`): Path to the Parquet file containing playlist metadata.
 
 **Error Handling:**
-- Raises `ConnectionError` if the playlist URL is unavailable
-- Skips failed videos and continues with the next one
-- Returns detailed error for each failed video in the result
+- Raises `ConnectionError` if the `playlist_url` is invalid or unreachable.
+- Individual video download errors are handled within the loop: failed videos are skipped, and the process continues with the next video.
+- Detailed errors for each failed video are included in the `results` list within the returned dictionary.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def download_playlist_example():
     result = await downloader.download_playlist(
         playlist_url="https://www.youtube.com/playlist?list=PLQVvvaa0QuDdttJXlLtAJxJetJcqmqlQq",
-        max_videos=5
+        max_videos=5,
+        output_path="./python_tutorials"
     )
-    print(f"Successfully downloaded {result['success_count']} of {result['total_count']} videos")
+    print(f"Playlist: {result['playlist_title']}")
+    print(f"Successfully downloaded {result['success_count']} of {result['requested_videos']} requested videos.")
+    if result['failed_count'] > 0:
+        print(f"Failed to download {result['failed_count']} videos.")
+        # Optionally iterate through result['results'] for details on failures
     return result
 ```
 
 **Implementation Notes:**
-- Processes videos in sequence to avoid rate limiting
-- Creates a separate subdirectory for each playlist
-- Saves playlist metadata including title, author, and video count
+- Uses `pytube.Playlist` (or similar) to fetch playlist information and video URLs.
+- Processes videos sequentially or with limited concurrency to avoid potential rate limiting by YouTube.
+- Creates a dedicated subdirectory for the playlist within the specified `output_path` or default `data_dir`.
+- Saves overall playlist metadata (title, author, total video count) and individual video metadata to Parquet files using `ParquetStorage`.
 
 ### `async extract_captions(url: str, languages: List[str]=['en']) -> Dict`
-Extracts captions/subtitles from a YouTube video.
+Extracts available captions (subtitles) for a given YouTube video.
 
 **Parameters:**
-- `url`: YouTube video URL
-- `languages`: List of language codes to extract (e.g., ['en', 'es', 'fr'])
+- `url` (`str`): The URL of the YouTube video.
+- `languages` (`List[str]`, default=`['en']`): A list of preferred language codes (e.g., 'en', 'es', 'fr', 'de') for captions. The function will attempt to fetch captions for these languages if available.
 
 **Returns:**
-- `dict`: Captions data
+- `Dict`: A dictionary containing the extracted captions and metadata:
+    - `video_url` (`str`): The input video URL.
+    - `available_languages` (`List[str]`): List of all language codes for which captions are available.
+    - `captions` (`Dict[str, str]`): A dictionary where keys are the language codes of the successfully extracted captions (from the requested `languages` list) and values are the caption text content.
+    - `srt_files` (`Dict[str, str]`): A dictionary mapping language codes to the file paths where the corresponding SRT caption files were saved.
+    - `parquet_path` (`str`): Path to the Parquet file where caption data is stored.
 
 **Error Handling:**
-- Returns empty captions dict if no captions available
-- Silently skips unavailable language tracks
+- Returns a dictionary with an empty `captions` dict if the video has no captions or if none of the requested `languages` are available.
+- Silently skips requested languages for which caption tracks are not found.
+- Handles errors during the fetching process gracefully.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def get_multilingual_captions():
-    captions = await downloader.extract_captions(
+    result = await downloader.extract_captions(
         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         languages=['en', 'es', 'fr', 'de']
     )
-    if len(captions['captions']) == 0:
-        print("No captions found for this video")
+    if not result['captions']:
+        print(f"No captions found for requested languages. Available: {result['available_languages']}")
     else:
-        print(f"Found captions in languages: {list(captions['captions'].keys())}")
-    return captions
+        print(f"Found captions in languages: {list(result['captions'].keys())}")
+        # Access English captions: result['captions'].get('en')
+        # SRT file path: result['srt_files'].get('en')
+    return result
 ```
 
 **Implementation Notes:**
-- Saves captions in both SRT and text format
-- Converts timestamps to readable format
-- Stores captions data in Parquet format for later analysis
+- Uses `pytube`'s caption capabilities.
+- Saves extracted captions in both raw SRT format (to a file) and as processed text content.
+- Stores the caption data (language, text, potentially timestamps) in a Parquet file using `ParquetStorage` for easier analysis.
+- The text format typically concatenates caption lines, possibly removing timestamps.
 
 ### `async search_videos(query: str, limit: int=10) -> Dict`
-Searches for YouTube videos using a query.
+Performs a search on YouTube using the provided query string.
 
 **Parameters:**
-- `query`: Search query
-- `limit`: Maximum number of results
+- `query` (`str`): The search term or phrase.
+- `limit` (`int`, default=`10`): The maximum number of search results to retrieve.
 
 **Returns:**
-- `dict`: Search results
+- `Dict`: A dictionary containing the search results:
+    - `query` (`str`): The original search query.
+    - `results` (`List[Dict]`): A list of dictionaries, each representing a video found. Each video dictionary includes keys like `title`, `url`, `channel`, `views`, `duration`, `publish_date`, `description`.
+    - `status` (`str`): "success" or "failed".
+    - `error` (`Optional[str]`): An error message if the search failed.
+    - `parquet_path` (`str`): Path to the Parquet file where search results are stored.
 
 **Error Handling:**
-- Returns empty results list if search fails
-- Handles YouTube API errors gracefully
+- Returns a dictionary with `status: "failed"` and an `error` message if the search API call fails (e.g., network error, API quota exceeded).
+- Handles potential errors from the underlying search library gracefully.
 
 **Example:**
 ```python
+# Assuming downloader is an initialized YouTubeDownloader instance
 async def search_educational_videos():
-    results = await downloader.search_videos(
-        query="python programming tutorial for beginners",
+    results_data = await downloader.search_videos(
+        query="python asynchronous programming tutorial",
         limit=15
     )
-    if 'error' in results:
-        print(f"Search failed: {results['error']}")
+    if results_data['status'] == 'failed':
+        print(f"Search failed: {results_data['error']}")
     else:
-        print(f"Found {len(results['results'])} videos")
-        for video in results['results']:
-            print(f"- {video['title']} (views: {video['views']})")
-    return results
+        print(f"Found {len(results_data['results'])} videos for query: '{results_data['query']}'")
+        for video in results_data['results']:
+            print(f"- {video['title']} by {video['channel']} ({video['views']} views)")
+        # Results are also saved to results_data['parquet_path']
+    return results_data
 ```
 
 **Implementation Notes:**
-- Uses YouTube Data API for more reliable results
-- Filters out inappropriate content
-- Includes video metadata such as view count, likes, and description
+- May use the official YouTube Data API (requires API key setup and manages quotas) or libraries like `youtube-search-python` that might scrape results (potentially less reliable or subject to breaking changes).
+- Filters results to exclude irrelevant content like channels or playlists if only videos are desired.
+- Extracts key metadata for each video result.
+- Stores the structured search results in a Parquet file using `ParquetStorage`.
 
 ## 3. GitHub Crawler API
 

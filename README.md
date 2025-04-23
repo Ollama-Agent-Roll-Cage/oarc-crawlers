@@ -15,29 +15,16 @@ OARC-Crawlers is a Python framework designed for acquiring, processing, and stor
 
 OARC-Crawlers requires Python >=3.10 and <3.12 (Python 3.12+ is not yet fully supported due to some dependency compatibility issues).
 
-### Creating a new project
-
-This script first installs `uv`, a fast Python package installer and resolver. It then uses `uv` to create a virtual environment specifically with Python 3.11, ensuring compatibility. Finally, it installs the `oarc-crawlers` package from the Python Package Index (PyPI) into this isolated environment.
-
 ```bash
-# Install UV package manager
-pip install uv
-
-# Create & activate virtual environment with UV (use 3.10 or 3.11)
-uv venv --python 3.11
-
 # Install package from PyPI
-uv pip install oarc-crawlers
+pip install oarc-crawlers
 ```
 
 ## Using the CLI
 
-The OARC-Crawlers package can be installed directly using pip and used immediately from the command line, without any complex setup. See our [Cheat Sheet](docs/CHEATSHEET.md) for quick reference of common commands.
+Once setup, the `OARC-Crawlers` package can be installed directly using pip and used immediately from the command line, without any complex setup. See our [Cheat Sheet](docs/CHEATSHEET.md) for quick reference of common commands.
 
 ```bash
-# Install the package
-pip install oarc-crawlers
-
 # Basic CLI usage examples
 oarc-crawlers yt download --url "https://youtube.com/watch?v=dQw4w9WgXcQ"
 oarc-crawlers gh analyze --url "https://github.com/pytorch/pytorch"
@@ -47,10 +34,10 @@ oarc-crawlers web pypi --package "requests"
 
 # Get help for any command
 oarc-crawlers --help
-oarc-crawlers yt --help # help for specific command
+oarc-crawlers yt --help
 ```
 
-For more detailed CLI usage examples and command patterns, see the [CLI Usage](docs/Examples.md#cli-usage) section in our Examples documentation.
+For more detailed CLI usage examples and command patterns, see the [CLI Usage](docs/CLI.md) and [Examples](docs/Examples.md#cli-usage).
 
 ## API Usage
 
@@ -59,10 +46,14 @@ OARC-Crawlers provides a simple, intuitive Python API that allows you to integra
 ### Basic Import Pattern
 
 ```python
-from oarc_crawlers import YTCrawler, GHCrawler, ArxivCrawler, DDGCrawler, WebCrawler
-
-# Optional: Configure the data directory
-DATA_DIR = "./my_data_directory"
+from oarc_crawlers import (
+    YTCrawler,
+    GHCrawler,
+    ArxivCrawler,
+    DDGCrawler,
+    WebCrawler,
+    ParquetStorage,
+)
 ```
 
 ### Quick Examples
@@ -92,18 +83,18 @@ The package includes a collection of example scripts that demonstrate how to use
 
 ```bash
 # Run specific module example
-uv run python examples/run_example.py youtube
-uv run python examples/run_example.py github
-uv run python examples/run_example.py ddg
-uv run python examples/run_example.py bs # Note: 'bs' refers to BeautifulSoup/WebCrawler examples
-uv run python examples/run_example.py arxiv
-uv run python examples/run_example.py parquet
+python examples/run_example.py youtube
+python examples/run_example.py github
+python examples/run_example.py ddg
+python examples/run_example.py bs # Note: 'bs' refers to BeautifulSoup/WebCrawler examples
+python examples/run_example.py arxiv
+python examples/run_example.py parquet
 
 # Run the combined example
-uv run python examples/run_example.py combined
+python examples/run_example.py combined
 
 # Run all examples
-uv run python examples/run_example.py all
+python examples/run_example.py all
 ```
 
 For detailed examples and advanced usage patterns, check our comprehensive [Examples](docs/Examples.md) documentation.
@@ -163,7 +154,7 @@ oarc-crawlers/
 └── LICENSE                      # Apache 2.0
 ```
 
-See the [Project](docs/Project.md) for more detail information on our exact module structure for the project.
+See the [Project Structure](docs/Project.md) for a detailed module breakdown.
 
 ### Running OARC Tests
 
@@ -240,17 +231,6 @@ graph TD
     PS --> FS
 ```
 
-### Why Another Crawler? Integration with Agentic Systems
-
-While numerous web scraping and data extraction tools exist, `oarc-crawlers` was developed with a specific focus: seamless integration into agentic AI workflows, particularly within the OARC (Ollama Agent Roll Cage) ecosystem. Key differentiators include:
-
-1.  **Structured Multimodal Output:** All crawlers are designed to output data in the structured Parquet format. This is ideal for downstream processing by AI models and data analysis pipelines, handling text, metadata, and potentially links to binary data (like videos or code) consistently.
-2.  **Agent-Ready Interface:** The library is built not just for direct user interaction via CLI but also as a programmatic toolset. It's intended to be easily callable by AI agents operating within a Multi-Component Platform (MCP) or similar agentic framework. Agents can request specific data (e.g., "fetch the abstract of arXiv paper X," "find Python code examples for Y on GitHub," "get the latest news on Z from DuckDuckGo"), and the crawlers execute these tasks, returning structured data the agent can directly utilize.
-3.  **Unified Access:** It provides a single, consistent interface (both CLI and API) to access diverse data sources (video platforms, code repositories, academic archives, search engines, general web). This simplifies the tooling required for agents needing to gather information from multiple places.
-4.  **Asynchronous by Design:** Built with `asyncio`, it integrates naturally into modern asynchronous Python applications, common in agentic systems and web servers, ensuring non-blocking operation.
-
-In essence, `oarc-crawlers` acts as the sensory input mechanism for AI agents within the OARC framework, enabling them to perceive and interact with dynamic, real-world information from various online sources in a structured and actionable way.
-
 ## FAQ
 
 **Q: What is OARC-Crawlers?**  
@@ -303,12 +283,28 @@ A: Refer to the [Troubleshooting Guide](docs/Troubleshoot.md) or contact the mai
 
 For common issues and their solutions, please refer to our [Troubleshooting Guide](docs/Troubleshoot.md).
 
-Quick links to specific troubleshooting sections:
+Quick links:
 - [Virtual Environment Issues](docs/Troubleshoot.md#virtual-environment-issues)
 - [Installation Problems](docs/Troubleshoot.md#installation-problems)
 - [Dependency Conflicts](docs/Troubleshoot.md#dependency-conflicts)
 - [Runtime Errors](docs/Troubleshoot.md#runtime-errors)
 - [Platform-Specific Issues](docs/Troubleshoot.md#platform-specific-issues)
+- [CLI & API Issues](docs/Troubleshoot.md#cli--api-issues)
+- [MCP & VS Code Integration](docs/Troubleshoot.md#mcp--vs-code-integration)
+
+## MCP & VS Code Integration
+
+OARC-Crawlers provides a Model Context Protocol (MCP) server for agentic workflows and VS Code Copilot Chat integration.
+
+- See [docs/VSCodeMCP.md](docs/VSCodeMCP.md) for setup and troubleshooting.
+- To run the MCP server:
+  ```bash
+  oarc-crawlers mcp run
+  ```
+- To install for VS Code:
+  ```bash
+  oarc-crawlers mcp install --name "OARC Crawlers"
+  ```
 
 ## License
 
