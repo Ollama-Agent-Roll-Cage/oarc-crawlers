@@ -1311,11 +1311,6 @@ server = MCPServer(
     data_dir="./data",
     name="OARC Crawlers",
     port=3000,
-
-server = MCPServer(
-    data_dir="./data",
-    name="OARC Crawlers",
-    port=3000,
     transport="ws"
 )
 server.run()
@@ -1330,25 +1325,38 @@ server = MCPServer()
 server.run()
 ```
 
-#### `configure_vscode(server_name: str, port: int, supports_streaming: bool = True)`
-Configures VS Code integration for the MCP server.
-
-**Parameters:**
-- `server_name`: Name to display in VS Code.
-- `port`: Port to use.
-- `supports_streaming`: Whether streaming is enabled.
+#### `stop()`
+Stops the MCP server if it's currently running.
 
 **Example:**
 ```python
 server = MCPServer()
-server.configure_vscode(server_name="OARC Crawlers", port=3000)
+server.stop()
 ```
 
-### Example Usage
+#### Managing MCP Servers
+
+The package also includes utility functions for managing MCP servers:
 
 ```python
-from oarc_crawlers.core.mcp.mcp_server import MCPServer
+from oarc_crawlers.utils.mcp_utils import MCPUtils
 
-server = MCPServer(data_dir="./data", name="OARC Crawlers", port=3000)
-server.run()
+# Check if an MCP server is running on port 3000
+is_running = MCPUtils.is_mcp_running_on_port(3000)
+
+# List all running MCP servers with detailed information
+servers = MCPUtils.list_mcp_servers()
+for server in servers:
+    print(f"PID: {server['pid']}, Port: {server.get('port')}, " 
+          f"Memory: {server['memory_mb']:.1f} MB")
+
+# Stop a specific MCP server
+MCPUtils.stop_mcp_server_on_port(3000)
+
+# Stop all running MCP servers
+success_count, error_count = MCPUtils.stop_all_mcp_servers()
 ```
+
+#### `configure_vscode(server_name: str, port: int, supports_streaming: bool = True)`
+
+````

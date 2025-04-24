@@ -5,14 +5,16 @@ and installing it for integration with VS Code and other tools.
 """
 
 import click
+import sys
 
 from oarc_log import log, enable_debug_logging
-from oarc_utils.decorators import asyncio_run, handle_error
+from oarc_utils.decorators import handle_error
 from oarc_utils.errors import MCPError
 
 from oarc_crawlers.config.config import apply_config_file
 from oarc_crawlers.core.mcp.mcp_server import MCPServer
 from oarc_crawlers.utils.const import SUCCESS, ERROR
+from oarc_crawlers.utils.mcp_utils import MCPUtils
 from oarc_crawlers.cli.help_texts import (
     ARGS_VERBOSE_HELP,
     ARGS_CONFIG_HELP,
@@ -20,6 +22,7 @@ from oarc_crawlers.cli.help_texts import (
     ARGS_TRANSPORT_HELP,
     ARGS_DATA_DIR_HELP,
     ARGS_MCP_NAME_HELP,
+    MCP_STOP_HELP,
 )
 
 @click.group()
@@ -45,6 +48,10 @@ def mcp(verbose, config):
       Install the MCP for VS Code:
 
         $ oarc-crawlers mcp install --name "OARC MCP Server"
+        
+      Stop a running MCP server:
+      
+        $ oarc-crawlers mcp stop --port 3000
     """
     pass
 
@@ -53,7 +60,6 @@ def mcp(verbose, config):
 @click.option('--port', default=3000, help=ARGS_PORT_HELP)
 @click.option('--transport', default='ws', help=ARGS_TRANSPORT_HELP)
 @click.option('--data-dir', help=ARGS_DATA_DIR_HELP)
-@asyncio_run
 @handle_error
 def run(port, transport, data_dir):
     """Start the Model Context Protocol (MCP) server.
@@ -104,7 +110,6 @@ def run(port, transport, data_dir):
 
 @mcp.command()
 @click.option('--name', help=ARGS_MCP_NAME_HELP)
-@asyncio_run
 @handle_error
 def install(name):
     """Install the Model Context Protocol (MCP) server for integration with VS Code.
@@ -146,4 +151,204 @@ def install(name):
         return SUCCESS
     except MCPError as e:
         click.secho(f"MCP installation error: {e}", fg='red')
+        return ERROR
+
+
+@mcp.command()
+@click.option('--port', default=3000, help=ARGS_PORT_HELP)
+@click.option('--force', is_flag=True, help="Force kill the process if graceful shutdown fails")
+@click.option('--all', 'stop_all', is_flag=True, help="Stop all running MCP servers")
+@handle_error
+def stop(port, force, stop_all):
+    """Stop a running MCP server.
+
+    This command attempts to gracefully stop an MCP server running on the specified port.
+    If the server doesn't respond to a graceful shutdown signal and the --force flag is used,
+    it will forcibly terminate the process.
+
+    With the --all flag, all running MCP servers will be stopped regardless of port.
+
+    Examples:
+
+      Stop the default server:
+      
+        $ oarc-crawlers mcp stop
+        
+      Stop a server on a specific port:
+      
+        $ oarc-crawlers mcp stop --port 5000
+        
+      Force stop a server that's not responding:
+      
+        $ oarc-crawlers mcp stop --force
+        
+      Stop all running MCP servers:
+      
+        $ oarc-crawlers mcp stop --all
+
+    Args:
+        port (int): The port number the server is running on (default: 3000).
+        force (bool): Whether to forcibly terminate the process if graceful shutdown fails.
+        stop_all (bool): Whether to stop all running MCP servers.
+
+    Returns:
+        int: SUCCESS constant if the server is stopped successfully, ERROR otherwise.
+    """
+    try:
+        if stop_all:
+            click.echo("Stopping all MCP servers...")
+            success_count, error_count = MCPUtils.stop_all_mcp_servers(force)
+            click.echo(f"Successfully stopped {success_count} MCP server(s)")
+            if error_count > 0:
+                click.secho(f"Failed to stop {error_count} MCP server(s)", fg='red')
+                return ERROR
+            return SUCCESS
+        else:
+            click.echo(f"Stopping MCP server on port {port}...")
+            result = MCPUtils.stop_mcp_server_on_port(port, force)
+            if result:
+                click.secho(f"✓ MCP server on port {port} stopped successfully", fg='green')
+                return SUCCESS
+            else:
+                click.secho(f"Failed to stop MCP server on port {port}", fg='red')
+                click.echo("Use --force to forcibly terminate the process.")
+                return ERROR
+    finally:
+        # Make sure to exit cleanly even if the function returns
+        # This ensures no stray threads or connections keep the process alive
+        sys.exit(0)
+
+
+@mcp.command()
+@click.option('--verbose', '-v', is_flag=True, help="Show more detailed information")
+@click.option('--format', type=click.Choice(['table', 'json']), default='table', 
+              help="Output format (table or JSON)")
+@handle_error
+def list(verbose, format):
+    """List all running MCP servers.
+
+    Shows information about all running MCP server processes, including:
+    - Process ID (PID)
+    - Port number
+    - Status
+    - Uptime
+    - Memory usage
+    - CPU usage (with --verbose flag)
+    - Number of connections (with --verbose flag)
+
+    Examples:
+
+      List running MCP servers:
+      
+        $ oarc-crawlers mcp list
+        
+      List running MCP servers with detailed information:
+      
+        $ oarc-crawlers mcp list --verbose
+
+      List running MCP servers in JSON format:
+      
+        $ oarc-crawlers mcp list --format json
+
+    Args:
+        verbose (bool): Whether to show more detailed information.
+        format (str): Output format (table or json).
+
+    Returns:
+        int: SUCCESS constant if the listing is successful, ERROR otherwise.
+    """
+    try:
+        servers_info = MCPUtils.list_mcp_servers()
+        
+        if not servers_info:
+            click.echo("No MCP servers currently running")
+            return SUCCESS
+        
+        if format == 'json':
+            import json
+            output = json.dumps(servers_info, indent=2)
+            click.echo(output)
+            return SUCCESS
+            
+        click.echo(f"Found {len(servers_info)} running MCP server(s):")
+        click.echo()
+        
+        # Create a table layout
+        headers = ["PID", "Port", "Status", "Uptime", "Memory"]
+        if verbose:
+            headers.extend(["CPU", "Connections"])
+        
+        # Get the maximum width for each column based on headers
+        widths = {header: len(header) for header in headers}
+        
+        # Calculate widths based on content
+        for server in servers_info:
+            # Handle possible None values by converting to strings with defaults
+            pid_str = str(server['pid']) if server.get('pid') is not None else "N/A"
+            port_str = str(server.get('port', 'N/A')) if server.get('port') is not None else "N/A"
+            status_str = str(server.get('status', 'N/A')) if server.get('status') is not None else "N/A"
+            uptime_str = MCPUtils.format_uptime(server.get('uptime_sec', 0)) if server.get('uptime_sec') is not None else "N/A"
+            mem_mb = server.get('memory_mb')
+            mem_str = f"{mem_mb:.1f} MB" if mem_mb is not None else "N/A"
+            
+            widths["PID"] = max(widths["PID"], len(pid_str))
+            widths["Port"] = max(widths["Port"], len(port_str))
+            widths["Status"] = max(widths["Status"], len(status_str))
+            widths["Uptime"] = max(widths["Uptime"], len(uptime_str))
+            widths["Memory"] = max(widths["Memory"], len(mem_str))
+            
+            if verbose:
+                cpu_pct = server.get('cpu_percent')
+                cpu_str = f"{cpu_pct:.1f}%" if cpu_pct is not None else "N/A"
+                conn_str = str(server.get('connections', 0)) if server.get('connections') is not None else "N/A"
+                widths["CPU"] = max(widths["CPU"], len(cpu_str))
+                widths["Connections"] = max(widths["Connections"], len(conn_str))
+        
+        # Print the header row
+        header_row = " | ".join(f"{h:{widths[h]}}" for h in headers)
+        click.echo(header_row)
+        click.echo("-" * len(header_row))
+        
+        # Print each server row
+        for server in servers_info:
+            # Handle possible None values by converting to strings with defaults
+            pid_str = str(server['pid']) if server.get('pid') is not None else "N/A"
+            port_str = str(server.get('port', 'N/A')) if server.get('port') is not None else "N/A"
+            status_str = str(server.get('status', 'N/A')) if server.get('status') is not None else "N/A"
+            uptime_str = MCPUtils.format_uptime(server.get('uptime_sec', 0)) if server.get('uptime_sec') is not None else "N/A"
+            mem_mb = server.get('memory_mb')
+            mem_str = f"{mem_mb:.1f} MB" if mem_mb is not None else "N/A"
+            
+            row = [
+                f"{pid_str:{widths['PID']}}", 
+                f"{port_str:{widths['Port']}}", 
+                f"{status_str:{widths['Status']}}", 
+                f"{uptime_str:{widths['Uptime']}}", 
+                f"{mem_str:{widths['Memory']}}"
+            ]
+            
+            if verbose:
+                cpu_pct = server.get('cpu_percent')
+                cpu_str = f"{cpu_pct:.1f}%" if cpu_pct is not None else "N/A"
+                conn_str = str(server.get('connections', 0)) if server.get('connections') is not None else "N/A"
+                row.extend([
+                    f"{cpu_str:{widths['CPU']}}", 
+                    f"{conn_str:{widths['Connections']}}"
+                ])
+                
+            click.echo(" | ".join(row))
+            
+        click.echo()
+        
+        # Print command hint
+        click.echo("To stop specific server: oarc-crawlers mcp stop --port <PORT>")
+        click.echo("To stop all servers: oarc-crawlers mcp stop --all")
+        
+        return SUCCESS
+    except Exception as e:
+        click.secho(f"\n╔═══════════════════════════════╗", fg='red')
+        click.secho(f"║      UNEXPECTED ERROR         ║", fg='red')
+        click.secho(f"╚═══════════════════════════════╝", fg='red')
+        click.secho(f"➤ {type(e).__name__}: {str(e)}", fg='red')
+        click.secho("Please report this error to the project maintainers.", fg='red')
         return ERROR

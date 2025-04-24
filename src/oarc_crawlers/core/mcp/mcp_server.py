@@ -50,6 +50,7 @@ class MCPServer:
         """Initialize the OARC-Crawlers MCP wrapper."""
         self.data_dir = data_dir
         self.port = port
+        self.name = name  # Store the name as a property on the server
         
         # Initialize MCP server with required configuration
         self.mcp = FastMCP(
@@ -161,17 +162,20 @@ class MCPServer:
             return await self.arxiv.download_source(arxiv_id)
     
     async def start_server(self):
-        """Start the MCP server with proper VS Code integration."""
+        """Start the MCP server"""
         try:
-            # Configure server for VS Code integration
-            self.mcp.configure_vscode(
-                server_name=self.mcp.name,
-                port=self.port,
-                supports_streaming=True
-            )
+            # Create or update .vscode/mcp.json configuration
+            try:
+                self._update_vscode_config()
+            except Exception as e:
+                log.warning(f"Failed to update VS Code configuration: {e}")
+                
+            # Start server using FastMCP's run method
+            # FastMCP doesn't have start_server, so use run instead
+            log.info(f"Starting server on port {self.port}")
             
-            # Start server with WebSocket transport
-            await self.mcp.start_server(
+            # Use run method which is commonly available in server libraries
+            self.mcp.run(
                 port=self.port,
                 transport="ws"  # Use WebSocket transport for VS Code
             )
@@ -189,6 +193,46 @@ class MCPServer:
             log.error(f"Unexpected error: {e}")
             raise MCPError(f"MCP server error: {e}")
 
+    def _update_vscode_config(self):
+        """Create or update .vscode/mcp.json for VS Code integration"""
+        import os
+        import json
+        
+        # Find the project root directory (where .vscode would typically be)
+        current_dir = os.path.abspath(os.path.curdir)
+        vscode_dir = os.path.join(current_dir, ".vscode")
+        
+        # Create .vscode directory if it doesn't exist
+        if not os.path.exists(vscode_dir):
+            os.makedirs(vscode_dir)
+            
+        # Path to mcp.json config file
+        config_file = os.path.join(vscode_dir, "mcp.json")
+        
+        # Create or update the configuration
+        config = {}
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+            except json.JSONDecodeError:
+                log.warning(f"Existing mcp.json is invalid, creating new one")
+        
+        # Update the servers configuration
+        if "servers" not in config:
+            config["servers"] = {}
+            
+        config["servers"][self.name] = {
+            "type": "ws",
+            "url": f"ws://localhost:{self.port}"
+        }
+        
+        # Write the updated configuration
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=4)
+            
+        log.info(f"Updated VS Code configuration at {config_file}")
+
     def run(self, transport: str = "ws", **kwargs):
         """Run the MCP server."""
         try:
@@ -204,9 +248,22 @@ class MCPServer:
     def install(self, name: str = None):
         """Install the MCP server for VS Code integration."""
         from oarc_crawlers.utils.mcp_utils import MCPUtils
-        return MCPUtils.install_mcp(
-            script_path=__file__, 
+        
+        # Create a wrapper script with a global 'server' variable that FastMCP can find
+        script_content = f"""
+from oarc_crawlers.core.mcp.mcp_server import MCPServer
+
+# Create server as a global variable - this is what FastMCP looks for
+server = MCPServer(name="{self.name}")
+
+if __name__ == "__main__":
+    server.run()
+"""
+        
+        # Use the wrapper script content instead of the module file
+        return MCPUtils.install_mcp_with_content(
+            script_content=script_content,
             name=name, 
-            mcp_name=self.mcp.name, 
+            mcp_name=self.name,  # Use self.name instead of self.mcp.name
             dependencies=self.mcp.dependencies
         )
