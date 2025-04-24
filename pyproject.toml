@@ -37,6 +37,7 @@ dependencies = [
     "oarc-log>=0.1.0",
     "oarc-utils>=0.1.1",
     "pandas>=2.2.3",
+    "psutil>=7.0.0",
     "pyarrow>=19.0.1",
     "pygithub>=2.6.1",
     "pyinstaller>=6.13.0",
