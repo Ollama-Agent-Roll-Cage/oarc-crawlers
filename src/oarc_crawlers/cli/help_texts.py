@@ -268,6 +268,7 @@ USAGE:
 Commands:
   run                   Run the MCP server.
   install               Install the MCP server for VS Code integration.
+  stop                  Stop a running MCP server.
 
 Options:
   --verbose             {ARGS_VERBOSE_HELP}
@@ -277,6 +278,7 @@ Options:
 Examples:
   oarc-crawlers mcp run
   oarc-crawlers mcp install --name "OARC Tools"
+  oarc-crawlers mcp stop --port 3000
   oarc-crawlers mcp run --config ~/.oarc/config.ini
 
 """
@@ -881,6 +883,28 @@ Examples:
   oarc-crawlers mcp install
   oarc-crawlers mcp install --name "OARC Tools"
   oarc-crawlers mcp install --config ~/.oarc/config.ini
+
+"""
+
+MCP_STOP_HELP = f"""
+Stop a running MCP server.
+
+USAGE:
+  oarc-crawlers mcp stop [OPTIONS]
+
+Options:
+  --port INTEGER              {ARGS_PORT_HELP} [default: 3000]
+  --force                     Force kill the process if graceful shutdown fails
+  --all                       Stop all running MCP servers
+  --verbose                   {ARGS_VERBOSE_HELP}
+  --config TEXT               {ARGS_CONFIG_HELP}
+  --help                      {ARGS_HELP}
+
+Examples:
+  oarc-crawlers mcp stop
+  oarc-crawlers mcp stop --port 5000
+  oarc-crawlers mcp stop --force
+  oarc-crawlers mcp stop --all
 
 """
 

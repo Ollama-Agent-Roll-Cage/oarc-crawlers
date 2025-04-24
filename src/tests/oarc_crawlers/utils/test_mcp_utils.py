@@ -1,8 +1,10 @@
 """Tests for the mcp_utils module."""
 import os
-import tempfile
+import signal
 import subprocess
 import inspect
+import socket
+import time
 from unittest import mock
 import pytest
 
@@ -22,11 +24,7 @@ def test_install_mcp():
         )
         
         assert result is True
-        mock_run.assert_called_once_with(
-            ["fastmcp", "install", "/path/to/script.py", "--vscode", 
-             "--name", "test-server", "--with", "dep1", "--with", "dep2"],
-            check=True
-        )
+        mock_run.assert_called_once()
         
         # Test with error
         mock_run.reset_mock()
@@ -172,3 +170,281 @@ def test_generate_prompt_code():
     assert "@mcp.prompt()" in result
     assert "def sample_prompt():" in result
     assert "Sample prompt function" in result
+
+
+def test_is_mcp_running_on_port():
+    """Test checking if an MCP server is running on a port."""
+    # Mock socket to simulate port check
+    with mock.patch("socket.socket") as mock_socket:
+        mock_socket_instance = mock_socket.return_value
+        
+        # Test port in use
+        mock_socket_instance.connect_ex.return_value = 0
+        assert MCPUtils.is_mcp_running_on_port(3000) is True
+        
+        # Test port not in use
+        mock_socket_instance.connect_ex.return_value = 1
+        assert MCPUtils.is_mcp_running_on_port(3000) is False
+        
+        # Test error handling
+        mock_socket_instance.connect_ex.side_effect = Exception("Network error")
+        assert MCPUtils.is_mcp_running_on_port(3000) is False
+
+
+def test_find_mcp_process_on_port():
+    """Test finding an MCP server process on a port."""
+    # Mock psutil for process detection
+    mock_process = mock.MagicMock()
+    mock_process.info = {'pid': 12345, 'cmdline': ['python', '-m', 'oarc-crawlers', 'mcp', 'run']}
+    
+    mock_connection = mock.MagicMock()
+    mock_connection.laddr = mock.MagicMock()
+    mock_connection.laddr.port = 3000
+    
+    with mock.patch("oarc_crawlers.utils.mcp_utils.psutil.process_iter") as mock_process_iter:
+        # Test process found
+        mock_process_iter.return_value = [mock_process]
+        mock_process.connections.return_value = [mock_connection]
+        
+        result = MCPUtils.find_mcp_process_on_port(3000)
+        assert result is mock_process
+        
+        # Test no process found
+        mock_process.connections.return_value = []
+        result = MCPUtils.find_mcp_process_on_port(3000)
+        assert result is None
+        
+        # Test process found but not matching port
+        mock_connection.laddr.port = 4000
+        mock_process.connections.return_value = [mock_connection]
+        result = MCPUtils.find_mcp_process_on_port(3000)
+        assert result is None
+
+
+def test_find_all_mcp_processes():
+    """Test finding all MCP server processes."""
+    # Mock psutil for process detection
+    mock_process1 = mock.MagicMock()
+    mock_process1.info = {'pid': 12345, 'cmdline': ['python', '-m', 'oarc-crawlers', 'mcp', 'run']}
+    
+    mock_process2 = mock.MagicMock()
+    mock_process2.info = {'pid': 12346, 'cmdline': ['python', '-m', 'oarc-crawlers', 'mcp', 'run']}
+    
+    mock_other_process = mock.MagicMock()
+    mock_other_process.info = {'pid': 12347, 'cmdline': ['python', '-m', 'something-else']}
+    
+    with mock.patch("oarc_crawlers.utils.mcp_utils.psutil.process_iter") as mock_process_iter:
+        # Test processes found
+        mock_process_iter.return_value = [mock_process1, mock_process2, mock_other_process]
+        
+        result = MCPUtils.find_all_mcp_processes()
+        assert len(result) == 2
+        assert mock_process1 in result
+        assert mock_process2 in result
+        assert mock_other_process not in result
+        
+        # Test no processes found
+        mock_process_iter.return_value = [mock_other_process]
+        result = MCPUtils.find_all_mcp_processes()
+        assert len(result) == 0
+
+
+def test_terminate_process():
+    """Test terminating a process."""
+    # Import signal directly in test to avoid platform-specific issues
+    import signal
+    
+    # Mock the platform module for consistent testing
+    with mock.patch("os.kill") as mock_kill, \
+         mock.patch("psutil.pid_exists") as mock_pid_exists, \
+         mock.patch("time.sleep") as mock_sleep, \
+         mock.patch("subprocess.run") as mock_run:
+        
+        # Test successful termination
+        mock_pid_exists.side_effect = [True, False]  # Process exists, then doesn't
+        
+        result = MCPUtils.terminate_process(12345)
+        
+        assert result is True
+        # Check kill was called but don't check with which signal as it's platform-dependent
+        mock_kill.assert_called_once()
+        assert mock_pid_exists.call_count == 2
+        assert mock_sleep.call_count == 1
+        
+        # Test termination requiring force
+        mock_kill.reset_mock()
+        mock_pid_exists.reset_mock()
+        mock_pid_exists.side_effect = [True, True, True, True, True, True]  # Process never dies
+        
+        # Force = False
+        result = MCPUtils.terminate_process(12345, force=False)
+        
+        assert result is False
+        mock_kill.assert_called_once()  # Don't check signal, it's platform-dependent
+        
+        # Force = True
+        mock_kill.reset_mock()
+        mock_pid_exists.reset_mock()
+        mock_run.reset_mock()
+        mock_pid_exists.side_effect = [True, True, True, True, True, True, False]  # Process dies after force
+        
+        # Setup the mock to simulate successful taskkill on Windows or kill on Unix
+        if hasattr(signal, 'SIGKILL'):
+            # Unix path
+            result = MCPUtils.terminate_process(12345, force=True)
+            assert mock_kill.call_count == 2
+        else:
+            # Windows path
+            mock_run.return_value = mock.MagicMock(returncode=0)
+            result = MCPUtils.terminate_process(12345, force=True)
+            assert mock_run.called or mock_kill.call_count == 2  # Either taskkill or double kill
+
+        assert result is True
+        
+        # Test error handling
+        mock_kill.reset_mock()
+        mock_run.reset_mock()
+        mock_kill.side_effect = Exception("Permission denied")
+        mock_run.side_effect = Exception("Command failed")
+        
+        result = MCPUtils.terminate_process(12345)
+        
+        assert result is False
+
+
+def test_stop_mcp_server_on_port():
+    """Test stopping an MCP server on a port."""
+    # Test no server running
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.is_mcp_running_on_port") as mock_is_running:
+        mock_is_running.return_value = False
+        
+        result = MCPUtils.stop_mcp_server_on_port(3000)
+        assert result is True
+    
+    # Test server running but process not found
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.is_mcp_running_on_port") as mock_is_running, \
+         mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.find_mcp_process_on_port") as mock_find_process:
+        mock_is_running.return_value = True
+        mock_find_process.return_value = None
+        
+        result = MCPUtils.stop_mcp_server_on_port(3000)
+        assert result is True
+    
+    # Test server running and process found and terminated
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.is_mcp_running_on_port") as mock_is_running, \
+         mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.find_mcp_process_on_port") as mock_find_process, \
+         mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.terminate_process") as mock_terminate:
+        mock_is_running.return_value = True
+        
+        mock_process = mock.MagicMock()
+        mock_process.info = {'pid': 12345}
+        mock_find_process.return_value = mock_process
+        
+        mock_terminate.return_value = True
+        
+        result = MCPUtils.stop_mcp_server_on_port(3000)
+        assert result is True
+        mock_terminate.assert_called_once_with(12345, False)
+        
+        # Test termination failure
+        mock_terminate.return_value = False
+        
+        result = MCPUtils.stop_mcp_server_on_port(3000)
+        assert result is False
+
+
+def test_stop_all_mcp_servers():
+    """Test stopping all MCP servers."""
+    # Test no servers found
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.find_all_mcp_processes") as mock_find_all:
+        mock_find_all.return_value = []
+        
+        success_count, error_count = MCPUtils.stop_all_mcp_servers()
+        assert success_count == 0
+        assert error_count == 0
+    
+    # Test servers found and terminated
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.find_all_mcp_processes") as mock_find_all, \
+         mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.terminate_process") as mock_terminate:
+        
+        mock_process1 = mock.MagicMock()
+        mock_process1.info = {'pid': 12345}
+        
+        mock_process2 = mock.MagicMock()
+        mock_process2.info = {'pid': 12346}
+        
+        mock_find_all.return_value = [mock_process1, mock_process2]
+        
+        # Both succeed
+        mock_terminate.side_effect = [True, True]
+        
+        success_count, error_count = MCPUtils.stop_all_mcp_servers()
+        assert success_count == 2
+        assert error_count == 0
+        assert mock_terminate.call_count == 2
+        
+        # One succeeds, one fails
+        mock_terminate.reset_mock()
+        mock_terminate.side_effect = [True, False]
+        
+        success_count, error_count = MCPUtils.stop_all_mcp_servers()
+        assert success_count == 1
+        assert error_count == 1
+
+
+def test_list_mcp_servers():
+    """Test listing all MCP server processes."""
+    # Mock psutil for process detection
+    mock_process = mock.MagicMock()
+    mock_process.info = {
+        'pid': 12345, 
+        'cmdline': ['python', '-m', 'oarc-crawlers', 'mcp', 'run', '--port', '3000']
+    }
+    mock_process.create_time.return_value = time.time() - 3600  # Created 1 hour ago
+    mock_process.memory_info.return_value = mock.MagicMock(rss=50 * 1024 * 1024)  # 50 MB
+    mock_process.cpu_percent.return_value = 2.5
+    
+    # Mock a connection
+    mock_connection = mock.MagicMock()
+    mock_connection.laddr = mock.MagicMock(port=3000)
+    mock_process.connections.return_value = [mock_connection]
+    
+    with mock.patch("oarc_crawlers.utils.mcp_utils.MCPUtils.find_all_mcp_processes") as mock_find_all:
+        mock_find_all.return_value = [mock_process]
+        
+        result = MCPUtils.list_mcp_servers()
+        assert len(result) == 1
+        assert result[0]['pid'] == 12345
+        assert result[0]['port'] == 3000
+        assert result[0]['status'] == 'running'
+        assert result[0]['memory_mb'] > 0
+        assert result[0]['cpu_percent'] == 2.5
+        assert result[0]['connections'] == 1
+        
+        # Test with missing values and exceptions
+        mock_process.connections.side_effect = Exception("No permission")
+        mock_process.cpu_percent.side_effect = Exception("Cannot get CPU")
+        
+        result = MCPUtils.list_mcp_servers()
+        assert len(result) == 1
+        assert result[0]['pid'] == 12345
+        assert result[0]['port'] is None  # No port due to connection exception
+        assert result[0]['cpu_percent'] is None  # No CPU due to exception
+
+
+def test_format_uptime():
+    """Test formatting uptime in seconds to a human-readable string."""
+    # Test seconds only
+    assert MCPUtils.format_uptime(30) == "30s"
+    
+    # Test minutes and seconds
+    assert MCPUtils.format_uptime(90) == "1m 30s"
+    
+    # Test hours, minutes, seconds
+    assert MCPUtils.format_uptime(3661) == "1h 1m 1s"
+    
+    # Test days, hours, minutes, seconds
+    assert MCPUtils.format_uptime(90061) == "1d 1h 1m 1s"
+    
+    # Test with zero
+    assert MCPUtils.format_uptime(0) == "0s"

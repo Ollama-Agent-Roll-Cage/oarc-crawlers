@@ -774,6 +774,52 @@ oarc-crawlers mcp install
 oarc-crawlers mcp install --name "OARC Tools"
 ```
 
+#### `stop`
+
+Stop a running MCP server.
+
+```bash
+oarc-crawlers mcp stop [OPTIONS]
+```
+
+**Options:**
+- `--port INTEGER` - Port the server is running on [default: 3000]
+- `--force` - Force kill the process if graceful shutdown fails
+- `--all` - Stop all running MCP servers
+- `--verbose` - Enable verbose output and debug logging
+- `--config PATH` - Path to custom configuration file
+
+**Examples:**
+```bash
+oarc-crawlers mcp stop
+oarc-crawlers mcp stop --port 5000
+oarc-crawlers mcp stop --force
+oarc-crawlers mcp stop --all
+```
+
+#### `list`
+
+List all running MCP servers.
+
+```bash
+oarc-crawlers mcp list [OPTIONS]
+```
+
+**Options:**
+- `--verbose`, `-v` - Show more detailed information including CPU usage and connections
+- `--format` - Output format: 'table' (default) or 'json'
+- `--help` - Show help message and exit
+
+**Examples:**
+```bash
+oarc-crawlers mcp list
+oarc-crawlers mcp list --verbose
+oarc-crawlers mcp list --format json
+```
+
+**Output Example:**
+```
+
 ### Programmatic Usage Example
 
 ```python

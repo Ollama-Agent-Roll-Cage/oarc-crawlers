@@ -1,0 +1,12 @@
+{
+    "servers": {
+        "crawlers": {
+            "type": "sse",
+            "url": "http://localhost:3000"
+        },
+        "OARC-Crawlers": {
+            "type": "ws",
+            "url": "ws://localhost:3000"
+        }
+    }
+}
