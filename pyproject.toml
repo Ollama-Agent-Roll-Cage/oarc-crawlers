@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oarc-crawlers"
-version = "0.1.9"
+version = "0.1.10"
 description = "A modular, async Python framework for structured online data collection used by Ollama Agent Roll Cage (OARC)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -72,9 +72,13 @@ package-dir = {"" = "src"}
 packages = [
     "oarc_crawlers", 
     "oarc_crawlers.cli", 
-    "oarc_crawlers.core", 
+    "oarc_crawlers.core",
+    "oarc_crawlers.utils",
+    "oarc_crawlers.config",
+    "oarc_crawlers.api",
     "oarc_crawlers.core.crawlers",
-    "oarc_crawlers.core.storage"
+    "oarc_crawlers.core.storage",
+    "oarc_crawlers.core.mcp"
 ]
 
 [tool.black]
