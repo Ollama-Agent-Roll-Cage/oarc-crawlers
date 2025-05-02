@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oarc-crawlers"
-version = "0.1.5"
+version = "0.1.6"
 description = "A modular, async Python framework for structured online data collection used by Ollama Agent Roll Cage (OARC)"
 readme = "README.md"
 requires-python = ">=3.10"
