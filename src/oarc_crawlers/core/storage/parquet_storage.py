@@ -1,6 +1,33 @@
 """
 Storage utilities for saving and loading data in Parquet format.
 
+Usage:
+    # Save dictionary to parquet
+    data = {'name': 'Example', 'value': 42}
+    ParquetStorage.save_to_parquet(data, 'output.parquet')
+
+    # Save list of dictionaries
+    items = [{'id': 1, 'name': 'A'}, {'id': 2, 'name': 'B'}]
+    ParquetStorage.save_to_parquet(items, 'items.parquet')
+
+    # Load parquet file
+    df = ParquetStorage.load_from_parquet('output.parquet')
+
+    # Append to existing file
+    ParquetStorage.append_to_parquet({'name': 'New', 'value': 100}, 'output.parquet')
+
+    # Prepare parquet data for vector embedding
+    docs = ParquetStorage.prepare_for_vectors(
+        'papers.parquet',
+        text_columns=['title', 'abstract'],
+        id_column='paper_id',
+        separator=' | '
+    )
+
+    # Save YouTube/GitHub data with automatic path handling
+    ParquetStorage.save_youtube_data(video_data, video_id='abc123', data_type='metadata')
+    ParquetStorage.save_github_data(repo_data, owner='user', repo='project')
+
 Author: @BorcherdingL, RawsonK
 Date: 4/18/2025
 """
@@ -9,7 +36,7 @@ import os
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Dict, List, Sequence
 
 from oarc_log import log
 from oarc_utils.errors import DataExtractionError
@@ -200,3 +227,44 @@ class ParquetStorage:
         except Exception as e:
             log.error(f"Failed to save GitHub data: {str(e)}")
             return ""
+
+    @staticmethod
+    def prepare_for_vectors(
+        file_path: PathLike,
+        text_columns: Union[str, Sequence[str]],
+        id_column: Optional[str] = None,
+        separator: str = " "
+    ) -> List[Dict[str, str]]:
+        """Prepare Parquet data for vector embedding.
+        
+        Args:
+            file_path: Path to parquet file
+            text_columns: Column(s) to use as text content
+            id_column: Column to use as document ID
+            separator: String to join multiple text columns
+            
+        Returns:
+            List of dicts with 'text' and optional 'id' keys
+        """
+        df = ParquetStorage.load_from_parquet(file_path)
+        if df is None:
+            return []
+            
+        # Handle single or multiple text columns
+        if isinstance(text_columns, str):
+            text_columns = [text_columns]
+            
+        # Combine text columns
+        texts = df[text_columns].fillna('').agg(separator.join, axis=1)
+        
+        # Prepare documents
+        documents = []
+        for i, text in enumerate(texts):
+            doc = {'text': text}
+            if id_column and id_column in df:
+                doc['id'] = str(df[id_column].iloc[i])
+            else:
+                doc['id'] = f"doc_{i}"
+            documents.append(doc)
+            
+        return documents
