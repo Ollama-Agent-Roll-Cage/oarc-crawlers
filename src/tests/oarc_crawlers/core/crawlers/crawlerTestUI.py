@@ -1,12 +1,9 @@
 """
-ArXiv Crawler Examples with Network Visualization
+Network Visualization UI for ArXiv Citations and OEIS Sequences
 
-This script demonstrates:
-1. Crawling papers and their citation networks
-2. Handling different ArXiv URL formats
-3. Saving data in Parquet format
-4. Visualizing citation networks using PyVis
-5. Interactive GUI using PyQt6 with modern dark theme
+This script provides visualization for:
+1. ArXiv paper citation networks
+2. OEIS sequence relationships
 """
 
 import asyncio
@@ -16,13 +13,17 @@ from typing import List, Optional, Union
 import json
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QVBoxLayout, 
-                            QWidget, QLineEdit, QSpinBox, QLabel, QTextEdit, QFrame, QHBoxLayout)
+                            QWidget, QLineEdit, QSpinBox, QLabel, QTextEdit, QFrame, QHBoxLayout,
+                            QRadioButton, QButtonGroup, QCheckBox)
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from pyvis.network import Network
 
-from oarc_crawlers import ArxivCrawler
+from oarc_crawlers import ArxivCrawler, OEISCrawler
 from PyQt6.QtWebEngineWidgets import QWebEngineView  # Add this import
 from PyQt6.QtCore import QUrl
+
+import os
+from PyQt6 import QtWebEngineWidgets
 
 # Modern dark theme styles
 STYLE_SHEET = """
@@ -94,21 +95,29 @@ class NetworkWorker(QThread):
     error = pyqtSignal(str)
     progress = pyqtSignal(str)
 
-    def __init__(self, input_str: str, data_dir: str, max_depth: int):
+    def __init__(self, input_str: str, data_dir: str, max_depth: int, mode: str = 'arxiv'):
         super().__init__()
         self.input_str = input_str
         self.data_dir = data_dir
         self.max_depth = max_depth
+        self.mode = mode
 
     def run(self):
         try:
-            # Run the async code in the thread
-            network = asyncio.run(process_arxiv_input(
-                self.input_str,
-                self.data_dir,
-                self.max_depth,
-                progress_callback=self.progress.emit
-            ))
+            if self.mode == 'arxiv':
+                network = asyncio.run(process_arxiv_input(
+                    self.input_str,
+                    self.data_dir,
+                    self.max_depth,
+                    progress_callback=self.progress.emit
+                ))
+            else:  # OEIS mode
+                network = asyncio.run(process_oeis_input(
+                    self.input_str,
+                    self.data_dir,
+                    self.max_depth,
+                    progress_callback=self.progress.emit
+                ))
             self.finished.emit(network)
         except Exception as e:
             self.error.emit(str(e))
@@ -165,6 +174,41 @@ class CitationNetworkUI(QMainWindow):
         
         left_layout.addWidget(input_card)
         
+        # Mode selection card
+        mode_card = CardFrame()
+        mode_layout = QVBoxLayout(mode_card)
+        mode_layout.addWidget(QLabel("Select Mode:"))
+        
+        self.mode_group = QButtonGroup()
+        self.arxiv_radio = QRadioButton("ArXiv Citations")
+        self.oeis_radio = QRadioButton("OEIS Sequences")
+        self.arxiv_radio.setChecked(True)
+        
+        self.mode_group.addButton(self.arxiv_radio)
+        self.mode_group.addButton(self.oeis_radio)
+        
+        mode_layout.addWidget(self.arxiv_radio)
+        mode_layout.addWidget(self.oeis_radio)
+        left_layout.addWidget(mode_card)
+
+        # Visualization options card
+        options_card = CardFrame()
+        options_layout = QVBoxLayout(options_card)
+        options_layout.addWidget(QLabel("Visualization Options:"))
+        
+        self.show_authors = QCheckBox("Show Author Nodes")
+        self.show_external = QCheckBox("Show External References")
+        self.show_authors.setChecked(False)
+        self.show_external.setChecked(True)
+        
+        options_layout.addWidget(self.show_authors)
+        options_layout.addWidget(self.show_external)
+        left_layout.addWidget(options_card)
+
+        # Update input placeholder based on mode
+        self.mode_group.buttonClicked.connect(self.update_input_placeholder)
+        self.update_input_placeholder()
+
         # Status card
         status_card = CardFrame()
         status_layout = QVBoxLayout(status_card)
@@ -214,6 +258,12 @@ class CitationNetworkUI(QMainWindow):
         self.current_network = None
         self.current_visualization = None
 
+    def update_input_placeholder(self):
+        if self.arxiv_radio.isChecked():
+            self.arxiv_input.setPlaceholderText("Enter ArXiv ID or URL (e.g., 1706.03762)")
+        else:
+            self.arxiv_input.setPlaceholderText("Enter OEIS ID (e.g., A000045)")
+
     def generate_network(self):
         """Start network generation in a separate thread."""
         self.generate_button.setEnabled(False)
@@ -224,7 +274,8 @@ class CitationNetworkUI(QMainWindow):
         self.worker = NetworkWorker(
             self.arxiv_input.text(),
             str(self.data_dir),
-            self.depth_selector.value()
+            self.depth_selector.value(),
+            'arxiv' if self.arxiv_radio.isChecked() else 'oeis'
         )
         self.worker.finished.connect(self.on_network_generated)
         self.worker.error.connect(self.on_error)
@@ -298,14 +349,25 @@ class CitationNetworkUI(QMainWindow):
         # First add all internal nodes
         for node_id, node_data in network['nodes'].items():
             try:
-                title = f"""
-                <div style='background-color: #24283b; padding: 10px; border-radius: 8px; border: 2px solid #414868;'>
-                    <strong style='color: #7aa2f7;'>Title:</strong> 
-                    <span style='color: #a9b1d6;'>{node_data['title']}</span><br>
-                    <strong style='color: #7aa2f7;'>Authors:</strong> 
-                    <span style='color: #a9b1d6;'>{', '.join(node_data['authors'])}</span>
-                </div>
-                """
+                # Different visualization for ArXiv vs OEIS
+                if self.arxiv_radio.isChecked():
+                    title = f"""
+                    <div style='background-color: #24283b; padding: 10px; border-radius: 8px; border: 2px solid #414868;'>
+                        <strong style='color: #7aa2f7;'>Title:</strong> 
+                        <span style='color: #a9b1d6;'>{node_data['title']}</span>
+                        {f"<br><strong style='color: #7aa2f7;'>Authors:</strong><span style='color: #a9b1d6;'>{', '.join(node_data['authors'])}</span>" if self.show_authors.isChecked() else ""}
+                    </div>
+                    """
+                else:
+                    title = f"""
+                    <div style='background-color: #24283b; padding: 10px; border-radius: 8px; border: 2px solid #414868;'>
+                        <strong style='color: #7aa2f7;'>Sequence:</strong> 
+                        <span style='color: #a9b1d6;'>{node_data['title']}</span><br>
+                        <strong style='color: #7aa2f7;'>First Terms:</strong> 
+                        <span style='color: #a9b1d6;'>{node_data.get('terms', '[...]')}</span>
+                    </div>
+                    """
+                
                 net.add_node(
                     node_id,
                     label=f"{node_id}",
@@ -321,29 +383,31 @@ class CitationNetworkUI(QMainWindow):
             except Exception as e:
                 self.log_status(f"Warning: Could not add node {node_id}: {str(e)}")
 
-        # Count citations to each external paper
-        external_citation_counts = {}
-        for edge in network['edges']:
-            if edge['target'] not in valid_nodes:
-                external_citation_counts[edge['target']] = external_citation_counts.get(edge['target'], 0) + 1
+        # Only add external nodes if option is enabled
+        if self.show_external.isChecked():
+            # Count citations to each external paper
+            external_citation_counts = {}
+            for edge in network['edges']:
+                if edge['target'] not in valid_nodes:
+                    external_citation_counts[edge['target']] = external_citation_counts.get(edge['target'], 0) + 1
 
-        # Add external nodes (only if they have citations)
-        for target, citation_count in external_citation_counts.items():
-            try:
-                net.add_node(
-                    target,
-                    label=target,
-                    title=f"External Citation: {target}\nCited {citation_count} times",
-                    color='#414868',
-                    size=15 + min(citation_count * 2, 20),  # Size based on citations
-                    shape='diamond',
-                    borderWidth=1,
-                    font={'size': 12, 'color': '#565f89'}
-                )
-                external_nodes.add(target)
-                self.log_status(f"Added external citation node: {target} (cited {citation_count} times)")
-            except Exception as e:
-                self.log_status(f"Warning: Could not add external node {target}: {str(e)}")
+            # Add external nodes (only if they have citations)
+            for target, citation_count in external_citation_counts.items():
+                try:
+                    net.add_node(
+                        target,
+                        label=target,
+                        title=f"External Citation: {target}\nCited {citation_count} times",
+                        color='#414868',
+                        size=15 + min(citation_count * 2, 20),  # Size based on citations
+                        shape='diamond',
+                        borderWidth=1,
+                        font={'size': 12, 'color': '#565f89'}
+                    )
+                    external_nodes.add(target)
+                    self.log_status(f"Added external citation node: {target} (cited {citation_count} times)")
+                except Exception as e:
+                    self.log_status(f"Warning: Could not add external node {target}: {str(e)}")
 
         # Add edges
         for edge in network['edges']:
@@ -492,11 +556,110 @@ async def process_arxiv_input(input_str: str, data_dir: str = "./data",
     
     return network
 
+async def process_oeis_input(input_str: str, data_dir: str = "./data",
+                           max_depth: int = 1, verbose: bool = False,
+                           progress_callback=None):
+    """Process OEIS sequence input and build relationship network."""
+    
+    # Initialize OEIS crawler
+    oeis = OEISCrawler(data_dir=data_dir)
+    
+    def update_progress(message):
+        if progress_callback:
+            progress_callback(message)
+        if verbose:
+            print(message)
+    
+    # Clean up sequence ID (remove 'A' prefix if present)
+    sequence_id = input_str.strip().lstrip('A')
+    update_progress(f"Processing OEIS sequence A{sequence_id}")
+    
+    try:
+        # First get the sequence info
+        sequence_data = await oeis.fetch_sequence(sequence_id)
+        if not sequence_data or not sequence_data.get('values'):
+            raise ValueError(f"Could not fetch sequence A{sequence_id} or sequence has no values")
+        
+        update_progress(f"Found sequence: {sequence_data['title']}")
+        update_progress(f"First values: {', '.join(map(str, sequence_data['values'][:5]))}")
+        
+        # Build sequence network
+        network = await oeis.build_ontology([sequence_id])
+        
+        # Ensure proper node structure with required values
+        nodes = {}
+        for node_id, data in network.get('nodes', {}).items():
+            values = data.get('values', [])
+            title = data.get('title', '')
+            if values and title:  # Only add nodes with valid data
+                nodes[node_id] = {
+                    'title': title,
+                    'terms': values[:5],  # Only take first 5 values
+                    'depth': 0 if node_id == sequence_id else 1  # Set depth explicitly
+                }
+                update_progress(f"Added node {node_id} with {len(values)} values")
+        
+        # If no valid nodes, create one for the main sequence
+        if not nodes and sequence_data['values']:
+            nodes[sequence_id] = {
+                'title': sequence_data['title'],
+                'terms': sequence_data['values'][:5],
+                'depth': 0
+            }
+            update_progress("Added main sequence node")
+        
+        if not nodes:
+            raise ValueError("Could not create visualization - no valid sequence data")
+        
+        # Format network for visualization
+        vis_network = {
+            'nodes': nodes,
+            'edges': network.get('relationships', [])
+        }
+        
+        update_progress(f"Generated network with {len(vis_network['nodes'])} nodes and {len(vis_network.get('edges', []))} relationships")
+        return vis_network
+        
+    except Exception as e:
+        update_progress(f"Error: {str(e)}")
+        raise
+
 def main():
     """Run the GUI application."""
+    # Fix SSL verification issues
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    os.environ['SSL_CERT_DIR'] = ''  # Clear SSL cert directory
+    
+    # Qt environment settings
+    os.environ['QT_QPA_PLATFORM'] = 'windows:darkmode=2'
+    os.environ['QTWEBENGINE_DISABLE_SANDBOX'] = '1'
+    os.environ['QT_ENABLE_HIGHDPI_SCALING'] = '1'
+    
+    # Create QApplication
     app = QApplication(sys.argv)
+    
+    # Try to enable high DPI support with fallbacks
+    try:
+        # Qt6 style
+        app.setAttribute(Qt.ApplicationAttribute.HighDpiScaleFactorRoundingPolicy)
+    except AttributeError:
+        try:
+            # Alternative Qt6 attributes
+            app.setAttribute(Qt.AA_EnableHighDpiScaling)
+            app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+        except AttributeError:
+            # Fallback to environment variables if attributes not available
+            os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
+            os.environ['QT_SCALE_FACTOR'] = '1'
+    
+    # Initialize Qt WebEngine before creating window
+    QtWebEngineWidgets.QWebEngineView()
+    
+    # Create and show window
     window = CitationNetworkUI()
     window.show()
+    
     sys.exit(app.exec())
 
 if __name__ == "__main__":

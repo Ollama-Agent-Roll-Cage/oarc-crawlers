@@ -21,7 +21,7 @@ import pandas as pd
 from oarc_log import log
 from oarc_utils.errors import ResourceNotFoundError, DataExtractionError
 from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
-from oarc_crawlers.core.web.web_crawler import WebCrawler
+from oarc_crawlers.core.crawlers.web_crawler import WebCrawler
 from oarc_crawlers.config.config import Config
 from oarc_crawlers.utils.paths import Paths
 
@@ -39,7 +39,7 @@ class OEISCrawler(WebCrawler):
             data_dir (str, optional): Directory to store data. Defaults to Config's data_dir.
         """
         super().__init__(data_dir)
-        self.oeis_data_dir = Paths.ensure_dir(Path(self.data_dir) / "oeis")
+        self.oeis_data_dir = Paths.ensure_path(Path(self.data_dir) / "oeis")
         log.debug(f"Initialized OEISCrawler with OEIS data directory: {self.oeis_data_dir}")
     
     async def fetch_sequence(self, sequence_id: str) -> Dict[str, Any]:
@@ -265,17 +265,7 @@ class OEISCrawler(WebCrawler):
             raise ResourceNotFoundError(f"Failed to search OEIS: {str(e)}")
     
     async def build_sequence_report(self, sequence_id: str) -> Dict[str, Any]:
-        """Build a comprehensive report for a specific sequence.
-        
-        Args:
-            sequence_id (str): The OEIS sequence ID
-            
-        Returns:
-            Dict[str, Any]: Sequence report data
-            
-        Raises:
-            ResourceNotFoundError: If the sequence doesn't exist
-        """
+        """Build a comprehensive report for a specific sequence."""
         log.debug(f"Building report for sequence {sequence_id}")
         
         # Normalize the sequence ID
@@ -287,10 +277,10 @@ class OEISCrawler(WebCrawler):
             log.debug(f"Loading cached data from {cache_file}")
             try:
                 df = ParquetStorage.load_from_parquet(str(cache_file))
-                if df is not None and not df.empty:
+                if df is not None and len(df.index) > 0:  # Fixed empty array check
                     sequence_data = df.iloc[0].to_dict()
-                    # Check if the data is complete
-                    if sequence_data.get('values') and sequence_data.get('title'):
+                    # Check if the data is complete and has values
+                    if sequence_data.get('values') and len(sequence_data['values']) > 0:
                         log.debug(f"Using cached data for A{sequence_id}")
                         return sequence_data
             except Exception as e:
@@ -298,6 +288,11 @@ class OEISCrawler(WebCrawler):
         
         # Fetch new data if not cached or cache is incomplete
         sequence_data = await self.fetch_sequence(sequence_id)
+        
+        # Validate sequence data
+        if not sequence_data.get('values'):
+            log.warning(f"No values found for sequence {sequence_id}")
+            sequence_data['values'] = []
         
         # Enhance the report with additional analysis
         enhanced_data = await self._enhance_sequence_data(sequence_data)
@@ -372,22 +367,24 @@ class OEISCrawler(WebCrawler):
         return enhanced_data
     
     async def build_ontology(self, sequence_ids: List[str]) -> Dict[str, Any]:
-        """Build an ontology of relationships between multiple sequences.
-        
-        Args:
-            sequence_ids (List[str]): List of OEIS sequence IDs
-            
-        Returns:
-            Dict[str, Any]: Ontology data
-        """
+        """Build an ontology of relationships between multiple sequences."""
         log.debug(f"Building ontology for {len(sequence_ids)} sequences")
         
         # Fetch data for all sequences
         sequence_data_list = []
+        nodes = {}
+        
         for seq_id in sequence_ids:
             try:
                 data = await self.build_sequence_report(seq_id)
                 sequence_data_list.append(data)
+                # Add to nodes dictionary with proper structure
+                nodes[seq_id] = {
+                    'id': data['id'],
+                    'title': data['title'],
+                    'values': data.get('values', [])[:5],  # First 5 values
+                    'depth': 0 if seq_id == sequence_ids[0] else 1  # Main sequence has depth 0
+                }
             except Exception as e:
                 log.warning(f"Failed to fetch data for sequence {seq_id}: {str(e)}")
         
@@ -403,8 +400,9 @@ class OEISCrawler(WebCrawler):
                         'relationship': relation
                     })
         
-        # Create the ontology
+        # Create the ontology with proper structure
         ontology = {
+            'nodes': nodes,
             'sequences': [seq['id'] for seq in sequence_data_list],
             'relationships': relationships,
             'time': datetime.now(UTC).isoformat(),
