@@ -1,25 +1,29 @@
 # envCreation Cheat Sheet
 
-## create env
+## Create env
 
 ```bash
 uv venv -p 3.11 oarc-crawlers
 .venv\Scripts\activate
 ```
 
-##  Uninstall all packages from your Python environment
+## Uninstall all packages from your Python environment
 
 ```bash
 uv pip freeze > requirements.txt
 uv pip uninstall -r requirements.txt -y
 ```
 
+## Core utils to install after cleaning env
 ```bash
+# Install core utils
 uv pip install pip
 uv pip install wheel
 uv pip install setuptools
 uv pip install build twine
 ```
+
+## Install oarc-crawlers in development mode
 
 ```bash
 # Install in development mode with dev dependencies
@@ -27,7 +31,11 @@ uv pip install -e ".[dev]"
 
 # Clean build artifacts (Windows PowerShell)
 Remove-Item -Path "dist","build","*.egg-info" -Recurse -Force -ErrorAction SilentlyContinue
+```
 
+## Building the package, and uploading to pypi with twine
+
+```bash
 # Build package
 python -m build
 
