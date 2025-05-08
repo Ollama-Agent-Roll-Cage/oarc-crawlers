@@ -55,8 +55,9 @@ from oarc_crawlers.core.storage.parquet_storage import ParquetStorage
 # Try importing ingest-anything, but provide fallback if not available
 try:
     from ingest_anything.ingestion import IngestAnything 
-    from ingest_anything.code_ingestion import IngestCode
+    from ingest_anything.ingestion import IngestCode
     from ingest_anything.embeddings import ChonkieAutoEmbedding
+    from ingest_anything.add_types import CodeFiles  # Add this to verify the module exists
     HAS_INGEST_ANYTHING = True
 except (ImportError, ModuleNotFoundError) as e:
     log.warning(f"ingest-anything package not available: {str(e)}")
