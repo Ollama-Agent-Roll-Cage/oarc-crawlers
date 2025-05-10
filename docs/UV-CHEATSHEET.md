@@ -3,7 +3,7 @@
 ## Create env
 
 ```bash
-uv venv -p 3.11 oarc-crawlers
+uv venv -p 3.11 .venv
 .venv\Scripts\activate
 ```
 
@@ -11,12 +11,18 @@ uv venv -p 3.11 oarc-crawlers
 
 ```bash
 uv pip freeze > requirements.txt
-uv pip uninstall -r requirements.txt -y
+uv pip uninstall -r requirements.txt
+```
+
+## Remove .venv entirely
+```bash
+Remove-Item -Recurse -Force .venv
 ```
 
 ## Core utils to install after cleaning env
 ```bash
 # Install core utils
+uv pip install uv
 uv pip install pip
 uv pip install wheel
 uv pip install setuptools

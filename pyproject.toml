@@ -35,7 +35,6 @@ dependencies = [
     "llama-index>=0.12.34",
     "llama-index-core>=0.12.34.post1",
     "llama-index-vector-stores-chroma>=0.4.1",
-    "ingest-anything>=1.1.1",
     "moviepy>=2.1.2",
     "mypy>=1.15.0",
     "oarc-log>=0.1.0",
@@ -51,13 +50,9 @@ dependencies = [
     "twine>=6.1.0",
     "types-beautifulsoup4>=4.12.0.20250204",
     "websockets>=15.0.1",
-    "pdfitdown>=1.4.0", 
-    "markitdown>=0.1.1",
     "magika>=0.6.2",
     "onnxruntime>=1.21.1",
-    "numpy>=2.2.5",
-    "chonkie[all]>=1.0.0",
-    "PyQt6-WebEngine>=6.9.0"
+    "numpy>=2.2.5"
 ]
 
 [project.optional-dependencies]
@@ -69,7 +64,8 @@ dev = [
     "pytest-cov>=6.1.1",
     "ruff>=0.11.6",
     "PyQt6>=6.9.0",
-    "pyvis>=0.3.2"
+    "pyvis>=0.3.2",
+    "PyQt6-WebEngine>=6.9.0"
 ]
 
 # Define command-line scripts
