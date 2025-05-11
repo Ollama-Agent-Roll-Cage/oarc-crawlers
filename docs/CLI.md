@@ -462,6 +462,20 @@ oarc-crawlers yt chat --video-id dQw4w9WgXcQ
 oarc-crawlers yt chat --video-id dQw4w9WgXcQ --max-messages 500 --duration 300
 ```
 
+### YouTube Commands
+
+```bash
+# Download video with proper error handling and progress feedback
+oarc-crawlers yt download --url "https://youtube.com/watch?v=..." \
+               --format mp4 \
+               --resolution 720p \
+               --output-path ./videos
+
+# Extract captions with language support
+oarc-crawlers yt captions --url "https://youtube.com/watch?v=..." \
+               --languages "en,es,fr"
+```
+
 ## DuckDuckGo Commands
 
 ### Overview

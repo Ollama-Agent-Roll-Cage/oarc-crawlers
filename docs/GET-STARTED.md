@@ -107,6 +107,69 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# Basic Imports Guide
+
+```python
+# Import individual crawlers
+from oarc_crawlers import YTCrawler
+from oarc_crawlers import GHCrawler
+from oarc_crawlers import ArxivCrawler 
+from oarc_crawlers import DDGCrawler
+from oarc_crawlers import WebCrawler
+from oarc_crawlers import OEISCrawler
+
+# Import ParquetStorage utility
+from oarc_crawlers import ParquetStorage
+
+# Import everything at once
+from oarc_crawlers import (
+    YTCrawler,
+    GHCrawler, 
+    ArxivCrawler,
+    DDGCrawler,
+    WebCrawler,
+    OEISCrawler,
+    ParquetStorage
+)
+
+# Example using ParquetStorage
+data = {'name': 'Example', 'value': 42}
+ParquetStorage.save_to_parquet(data, 'example.parquet')
+
+# Example using OEISCrawler 
+async def oeis_example():
+    oeis = OEISCrawler()
+    sequence = await oeis.fetch_sequence('A000045')  # Fibonacci
+    print(f"Name: {sequence['name']}")
+    print(f"Values: {sequence['values'][:10]}")
+
+# Example using multiple crawlers together
+async def combined_example():
+    yt = YTCrawler()
+    gh = GHCrawler()
+    arxiv = ArxivCrawler()
+    
+    # Download a YouTube video about algorithms
+    video = await yt.download_video("https://youtube.com/...")
+    
+    # Find related GitHub repos
+    repos = await gh.search_repos("algorithm visualization")
+    
+    # Search for papers on the topic
+    papers = await arxiv.search("algorithm visualization")
+    
+    # Save all results using ParquetStorage
+    ParquetStorage.save_to_parquet({
+        'video': video,
+        'repos': repos,
+        'papers': papers
+    }, 'algorithm_research.parquet')
+
+# Run async examples
+import asyncio
+asyncio.run(oeis_example())
+asyncio.run(combined_example())
 ```
 
 # Key Features

@@ -60,17 +60,33 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [VS Code Integration](#vs-code-integration)
     - [Programmatic Usage](#programmatic-usage)
     - [MCP Server API](#mcp-server-api)
+- [8. OEIS Crawler API](#8-oeis-crawler-api)
+    - [`__init__(data_dir: Optional[str]=None)`](#__init__data_dirnone-5)
+    - [`async fetch_sequence(sequence_id: str) -> Dict`](#fetch_sequencesequence_id)
+    - [`async search_sequences(query: str, max_results: int = 10) -> Dict`](#search_sequencesquery-max_results10)
+    - [`async generate_report(sequence_id: str, output_format: str = "markdown") -> str`](#generate_reportsequence_id-output_formatmarkdown)
+- [9. CrawlerTestUI API](#9-crawlertestui-api)
+    - [`__init__(crawlers: Optional[List[BaseCrawler]] = None)`](#__init__crawlersoptionalListBaseCrawlernone)
+    - [`run() -> None`](#run)
+    - [`add_crawler(crawler: BaseCrawler) -> None`](#add_crawlercrawlerbasecrawler)
+- [10. ParquetStorage Extended Reference](#10-parquetstorage-extended-reference)
+    - [`save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`](#save_to_parquetdata-file_path-compressionsnappy)
+    - [`load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`](#load_from_parquetfile_path-columnsoptionalliststrnone)
+    - [`append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`](#append_to_parquetdata-file_path)
 
 ## 1. Parquet Storage API
 
-*Assumed Location: `oarc_crawlers.utils.parquet_storage` (or similar)*
+*Location: `oarc_crawlers.utils.parquet_storage`*
 
-### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
-Saves data to a Parquet file.
+The `ParquetStorage` utility provides standardized interfaces for saving and loading structured data in Apache Parquet format.
+
+### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`
+Saves data to a Parquet file with optional compression.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to save.
+- `data`: Data to save (dictionary, list of dictionaries, or DataFrame)
 - `file_path`: Path where the Parquet file will be saved.
+- `compression`: Compression algorithm ("snappy", "gzip", "brotli", or "none")
 
 **Returns:**
 - `bool`: True if the save operation was successful, False otherwise.
@@ -96,11 +112,12 @@ except (TypeError, IOError, PermissionError) as e:
 - Ensures parent directories for `file_path` exist, creating them if necessary.
 - Utilizes the `pyarrow` library as the backend for efficient Parquet serialization.
 
-### `load_from_parquet(file_path: str) -> Optional[pd.DataFrame]`
+### `load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`
 Loads data from a Parquet file into a Pandas DataFrame.
 
 **Parameters:**
 - `file_path`: Path to the Parquet file to load.
+- `columns`: Optional list of columns to load (loads all if None)
 
 **Returns:**
 - `Optional[pd.DataFrame]`: A Pandas DataFrame containing the loaded data, or `None` if the file doesn't exist, is corrupted, or cannot be read.
@@ -1359,4 +1376,221 @@ success_count, error_count = MCPUtils.stop_all_mcp_servers()
 
 #### `configure_vscode(server_name: str, port: int, supports_streaming: bool = True)`
 
-````
+## 8. OEIS Crawler API
+
+*Location: `oarc_crawlers.core.crawlers.oeis_crawler`*
+
+### `__init__(data_dir: Optional[str]=None)`
+Initializes the OEIS Crawler instance.
+
+**Parameters:**
+- `data_dir` (`Optional[str]`, default=`None`): Base directory for storing sequence data and metadata.
+
+**Examples:**
+```python
+# Assuming OEISCrawler is imported
+crawler = OEISCrawler(data_dir='./oeis_data')
+```
+
+### `async fetch_sequence(sequence_id: str) -> Dict`
+Fetches data for a specific OEIS sequence.
+
+**Parameters:**
+- `sequence_id` (`str`): The OEIS sequence ID (e.g., "A000045" for Fibonacci)
+
+**Returns:**
+- `Dict`: A dictionary containing sequence data and metadata:
+  ```python
+  {
+      'id': 'A000045',
+      'name': 'Fibonacci numbers',
+      'values': [0, 1, 1, 2, 3, 5, 8, ...],
+      'formula': 'a(n) = a(n-1) + a(n-2)',
+      'references': ['...'],
+      'links': ['...'],
+      'examples': ['...'],
+      'metadata': {
+          'author': '...',
+          'created': '...',
+          'keywords': ['...']
+      }
+  }
+  ```
+
+**Error Handling:**
+- Raises `ValueError` if sequence_id format is invalid.
+- Returns dictionary with error info if sequence not found.
+- Handles network errors gracefully.
+
+**Example:**
+```python
+# Assuming crawler is an initialized OEISCrawler instance
+result = await crawler.fetch_sequence("A000045")
+print(f"Sequence name: {result['name']}")
+print(f"First 10 values: {result['values'][:10]}")
+```
+
+### `async search_sequences(query: str, max_results: int = 10) -> Dict`
+Searches for OEIS sequences matching a query.
+
+**Parameters:**
+- `query` (`str`): Search query (name, formula, or values)
+- `max_results` (`int`, default=`10`): Maximum number of results to return
+
+**Returns:**
+- `Dict`: Search results containing matching sequences:
+  ```python
+  {
+      'query': 'fibonacci',
+      'total_results': 42,
+      'sequences': [{
+          'id': 'A000045',
+          'name': 'Fibonacci numbers',
+          'preview': [0, 1, 1, 2, 3, 5],
+          'url': 'https://oeis.org/A000045'
+      }, ...]
+  }
+  ```
+
+**Example:**
+```python
+result = await crawler.search_sequences("prime numbers", max_results=5)
+for seq in result['sequences']:
+    print(f"{seq['id']}: {seq['name']}")
+```
+
+### `async generate_report(sequence_id: str, output_format: str = "markdown") -> str`
+Generates a detailed report for a sequence including values, formulas, and related sequences.
+
+**Parameters:**
+- `sequence_id` (`str`): The OEIS sequence ID
+- `output_format` (`str`, default=`"markdown"`): Output format ("markdown" or "json")
+
+**Returns:**
+- `str`: Formatted report as markdown or JSON string
+
+**Example:**
+```python
+report = await crawler.generate_report("A000045")
+print(report)  # Prints detailed markdown report
+```
+
+## 9. CrawlerTestUI API
+
+*Location: `oarc_crawlers.core.crawlers.crawlerTestUI`*
+
+The CrawlerTestUI provides a graphical interface for testing and debugging crawlers.
+
+### `__init__(crawlers: Optional[List[BaseCrawler]] = None)`
+Initializes the test UI with specified crawlers.
+
+**Parameters:**
+- `crawlers` (`Optional[List[BaseCrawler]]`): List of crawler instances to test
+
+**Example:**
+```python
+from oarc_crawlers import YTCrawler, GHCrawler, CrawlerTestUI
+
+crawlers = [
+    YTCrawler(data_dir="./data"),
+    GHCrawler(data_dir="./data")
+]
+ui = CrawlerTestUI(crawlers=crawlers)
+```
+
+### `run() -> None`
+Launches the test UI window.
+
+**Example:**
+```python
+ui = CrawlerTestUI()
+ui.run()
+```
+
+### `add_crawler(crawler: BaseCrawler) -> None`
+Adds a crawler instance to the UI for testing.
+
+**Parameters:**
+- `crawler` (`BaseCrawler`): Crawler instance to add
+
+**Example:**
+```python
+ui = CrawlerTestUI()
+ui.add_crawler(YTCrawler(data_dir="./data"))
+ui.run()
+```
+
+## 10. ParquetStorage Extended Reference
+
+The ParquetStorage utility provides a standardized interface for saving and loading data in Apache Parquet format.
+
+### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`
+
+Saves data to a Parquet file.
+
+**Parameters:**
+- `data`: Data to save (dictionary, list of dictionaries, or DataFrame)
+- `file_path`: Path where the Parquet file will be saved
+- `compression`: Compression algorithm ("snappy", "gzip", "brotli", or "none")
+
+**Returns:**
+- `bool`: True if save was successful
+
+**Examples:**
+```python
+from oarc_crawlers import ParquetStorage
+
+# Save a single dictionary
+data = {'id': 1, 'name': 'Example', 'values': [1, 2, 3]}
+ParquetStorage.save_to_parquet(data, 'example.parquet')
+
+# Save a list of dictionaries
+data_list = [
+    {'id': 1, 'value': 10},
+    {'id': 2, 'value': 20}
+]
+ParquetStorage.save_to_parquet(data_list, 'examples.parquet')
+
+# Save with specific compression
+import pandas as pd
+df = pd.DataFrame({'col1': range(1000)})
+ParquetStorage.save_to_parquet(df, 'large_file.parquet', compression='gzip')
+```
+
+### `load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`
+
+Loads data from a Parquet file.
+
+**Parameters:**
+- `file_path`: Path to the Parquet file
+- `columns`: Optional list of columns to load (loads all if None)
+
+**Returns:**
+- `Optional[pd.DataFrame]`: Loaded data as DataFrame, or None if error
+
+**Examples:**
+```python
+# Load entire file
+df = ParquetStorage.load_from_parquet('example.parquet')
+
+# Load specific columns
+df = ParquetStorage.load_from_parquet('example.parquet', columns=['id', 'name'])
+```
+
+### `append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
+
+Appends data to an existing Parquet file.
+
+**Parameters:**
+- `data`: Data to append
+- `file_path`: Path to the Parquet file
+
+**Returns:**
+- `bool`: True if append was successful
+
+**Example:**
+```python
+# Append new data
+new_data = {'id': 3, 'value': 30}
+ParquetStorage.append_to_parquet(new_data, 'examples.parquet')
+```
