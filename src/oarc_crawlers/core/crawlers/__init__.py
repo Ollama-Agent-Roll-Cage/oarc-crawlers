@@ -8,6 +8,7 @@ from .ddg_crawler import DDGCrawler
 from .gh_crawler import GHCrawler
 from .web_crawler import WebCrawler
 from .yt_crawler import YTCrawler
+from .oeis_crawler import OEISCrawler
 
 __all__ = [
     "ArxivCrawler",
@@ -15,4 +16,5 @@ __all__ = [
     "GHCrawler",
     "WebCrawler",
     "YTCrawler",
+    "OEISCrawler",
 ]

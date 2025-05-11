@@ -26,9 +26,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip uv appdirs setuptools wheel build
+        python -m pip install --upgrade pip uv appdirs setuptools build wheel
         uv venv --python ${{ matrix.python-version }}
-        source .venv/Scripts/activate
+        source .venv/bin/activate
         pip install -e .[dev]
     - name: Test with pytest
       run: |

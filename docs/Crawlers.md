@@ -43,7 +43,23 @@ This document provides in-depth explanations of the various crawlers and compone
 
 *Component providing unified data persistence.*
 
-The `ParquetStorage` component serves as the standardized interface for saving, loading, and appending structured data across all OARC-Crawlers modules. It ensures data is stored efficiently in the Apache Parquet format, ready for analysis.
+The `ParquetStorage` component uses `pyarrow` for working with Parquet files and serves as a standardized interface for saving, loading, and appending structured data across all OARC-Crawlers modules.
+
+```python
+from oarc_crawlers import ParquetStorage
+
+# Example usage
+data = {'id': 1, 'value': 100}
+ParquetStorage.save_to_parquet(data, 'data.parquet')
+df = ParquetStorage.load_from_parquet('data.parquet')
+```
+
+Key features:
+- Handles dictionary, list, and DataFrame inputs 
+- Safe error handling with fallbacks
+- Schema evolution support
+- Built-in compression options
+- Directory creation as needed
 
 ### 1.1 Architecture
 

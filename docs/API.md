@@ -60,17 +60,33 @@ This document provides detailed API reference for all components in the OARC-Cra
     - [VS Code Integration](#vs-code-integration)
     - [Programmatic Usage](#programmatic-usage)
     - [MCP Server API](#mcp-server-api)
+- [8. OEIS Crawler API](#8-oeis-crawler-api)
+    - [`__init__(data_dir: Optional[str]=None)`](#__init__data_dirnone-5)
+    - [`async fetch_sequence(sequence_id: str) -> Dict`](#fetch_sequencesequence_id)
+    - [`async search_sequences(query: str, max_results: int = 10) -> Dict`](#search_sequencesquery-max_results10)
+    - [`async generate_report(sequence_id: str, output_format: str = "markdown") -> str`](#generate_reportsequence_id-output_formatmarkdown)
+- [9. CrawlerTestUI API](#9-crawlertestui-api)
+    - [`__init__(crawlers: Optional[List[BaseCrawler]] = None)`](#__init__crawlersoptionalListBaseCrawlernone)
+    - [`run() -> None`](#run)
+    - [`add_crawler(crawler: BaseCrawler) -> None`](#add_crawlercrawlerbasecrawler)
+- [10. ParquetStorage Extended Reference](#10-parquetstorage-extended-reference)
+    - [`save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`](#save_to_parquetdata-file_path-compressionsnappy)
+    - [`load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`](#load_from_parquetfile_path-columnsoptionalliststrnone)
+    - [`append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`](#append_to_parquetdata-file_path)
 
 ## 1. Parquet Storage API
 
-*Assumed Location: `oarc_crawlers.utils.parquet_storage` (or similar)*
+*Location: `oarc_crawlers.utils.parquet_storage`*
 
-### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
-Saves data to a Parquet file.
+The `ParquetStorage` utility provides standardized interfaces for saving and loading structured data in Apache Parquet format.
+
+### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`
+Saves data to a Parquet file with optional compression.
 
 **Parameters:**
-- `data`: Dictionary, list of dictionaries, or Pandas DataFrame to save.
+- `data`: Data to save (dictionary, list of dictionaries, or DataFrame)
 - `file_path`: Path where the Parquet file will be saved.
+- `compression`: Compression algorithm ("snappy", "gzip", "brotli", or "none")
 
 **Returns:**
 - `bool`: True if the save operation was successful, False otherwise.
@@ -81,7 +97,8 @@ Saves data to a Parquet file.
 
 **Example:**
 ```python
-# Assuming ParquetStorage is imported
+from oarc_crawlers import ParquetStorage
+
 data = {'name': 'Model XYZ', 'accuracy': 0.95, 'parameters': 10000000}
 try:
     success = ParquetStorage.save_to_parquet(data, 'model_metrics.parquet')
@@ -96,11 +113,12 @@ except (TypeError, IOError, PermissionError) as e:
 - Ensures parent directories for `file_path` exist, creating them if necessary.
 - Utilizes the `pyarrow` library as the backend for efficient Parquet serialization.
 
-### `load_from_parquet(file_path: str) -> Optional[pd.DataFrame]`
+### `load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`
 Loads data from a Parquet file into a Pandas DataFrame.
 
 **Parameters:**
 - `file_path`: Path to the Parquet file to load.
+- `columns`: Optional list of columns to load (loads all if None)
 
 **Returns:**
 - `Optional[pd.DataFrame]`: A Pandas DataFrame containing the loaded data, or `None` if the file doesn't exist, is corrupted, or cannot be read.
@@ -110,7 +128,8 @@ Loads data from a Parquet file into a Pandas DataFrame.
 
 **Example:**
 ```python
-# Assuming ParquetStorage is imported
+from oarc_crawlers import ParquetStorage
+
 df = ParquetStorage.load_from_parquet('model_metrics.parquet')
 if df is not None:
     print(f"Loaded {len(df)} records.")
@@ -136,7 +155,8 @@ Appends data to an existing Parquet file. If the file does not exist, it creates
 
 **Example:**
 ```python
-# Assuming ParquetStorage is imported
+from oarc_crawlers import ParquetStorage
+
 new_data = {'name': 'Model ABC', 'accuracy': 0.97, 'parameters': 15000000}
 try:
     success = ParquetStorage.append_to_parquet(new_data, 'model_metrics.parquet')
@@ -166,7 +186,8 @@ Initializes the YouTube Downloader instance.
 
 **Example:**
 ```python
-# Assuming YouTubeDownloader is imported
+from oarc_crawlers import YouTubeDownloader
+# initialize the the YouTubeDownloader instance
 downloader = YouTubeDownloader(data_dir='./youtube_output')
 ```
 
@@ -195,6 +216,8 @@ Downloads a single YouTube video based on the provided URL and options.
 
 **Example:**
 ```python
+from oarc_crawlers import YouTubeDownloader
+
 # Assuming downloader is an initialized YouTubeDownloader instance
 async def download_hd_video():
     result = await downloader.download_video(
@@ -242,6 +265,8 @@ Downloads multiple videos from a YouTube playlist.
 
 **Example:**
 ```python
+from oarc_crawlers import YouTubeDownloader
+
 # Assuming downloader is an initialized YouTubeDownloader instance
 async def download_playlist_example():
     result = await downloader.download_playlist(
@@ -285,6 +310,8 @@ Extracts available captions (subtitles) for a given YouTube video.
 
 **Example:**
 ```python
+from oarc_crawlers import YouTubeDownloader
+
 # Assuming downloader is an initialized YouTubeDownloader instance
 async def get_multilingual_captions():
     result = await downloader.extract_captions(
@@ -327,6 +354,8 @@ Performs a search on YouTube using the provided query string.
 
 **Example:**
 ```python
+from oarc_crawlers import YouTubeDownloader
+
 # Assuming downloader is an initialized YouTubeDownloader instance
 async def search_educational_videos():
     results_data = await downloader.search_videos(
@@ -360,6 +389,8 @@ Initializes the GitHub Crawler.
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+# initialize the the GHCrawler instance
 crawler = GHCrawler(data_dir='./github_data')
 ```
 
@@ -400,6 +431,8 @@ Clones a GitHub repository.
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def clone_example():
     repo_path = await crawler.clone_repo(
         repo_url="https://github.com/pytorch/pytorch",
@@ -431,6 +464,8 @@ Processes repository files and converts to DataFrame.
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def process_repo_example():
     repo_path = await crawler.clone_repo("https://github.com/pytorch/pytorch")
     df = await crawler.process_repo_to_dataframe(
@@ -462,6 +497,8 @@ Clones a GitHub repository (using Git if available, else API) and stores its dat
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def store_repo_example():
     result = await crawler.clone_and_store_repo("https://github.com/pytorch/pytorch")
     print(f"Repository data stored at {result['data_path']}")
@@ -481,6 +518,8 @@ Gets a summary of the repository (Markdown).
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def summary_example():
     summary = await crawler.get_repo_summary("https://github.com/pytorch/pytorch")
     print(summary)
@@ -502,6 +541,8 @@ Finds similar code in the repository.
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def find_similar_code_example():
     code = "def calculate_mean(values):\n    return sum(values) / len(values)"
     similar = await crawler.find_similar_code(
@@ -529,6 +570,8 @@ Queries repository content using natural language.
 
 **Example:**
 ```python
+from oarc_crawlers import GHCrawler
+
 async def query_repo_example():
     result = await crawler.query_repo_content(
         repo_url="https://github.com/pytorch/pytorch",
@@ -554,6 +597,8 @@ Initializes the DuckDuckGo Searcher.
 
 **Example:**
 ```python
+from oarc_crawlers import DDGCrawler
+# initialize the the DDGCrawler instance
 searcher = DDGCrawler(data_dir='./search_data')
 ```
 
@@ -573,6 +618,8 @@ Performs a text search using DuckDuckGo.
 
 **Example:**
 ```python
+from oarc_crawlers import DDGCrawler
+
 async def text_search_example():
     try:
         results = await searcher.text_search(
@@ -602,6 +649,8 @@ Performs an image search using DuckDuckGo.
 
 **Example:**
 ```python
+from oarc_crawlers import DDGCrawler
+
 async def image_search_example():
     try:
         results = await searcher.image_search(
@@ -628,6 +677,8 @@ Performs a news search using DuckDuckGo.
 
 **Example:**
 ```python
+from oarc_crawlers import DDGCrawler
+
 async def news_search_example():
     try:
         results = await searcher.news_search(
@@ -653,6 +704,8 @@ Initializes the Web Crawler.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+# initialize the BSWebCrawler instance
 crawler = BSWebCrawler(data_dir='./web_data')
 ```
 
@@ -672,6 +725,8 @@ Fetches content from a URL.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def fetch_example():
     html = await crawler.fetch_url_content(
         "https://www.python.org/about/"
@@ -704,6 +759,8 @@ Extracts main text content from HTML using BeautifulSoup.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def extract_text_example():
     html = await BSWebCrawler.fetch_url_content("https://www.python.org/about/")
     text = BSWebCrawler.extract_text_from_html(html)
@@ -733,6 +790,8 @@ Specifically extracts PyPI package documentation from HTML.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def extract_pypi_example():
     html = await BSWebCrawler.fetch_url_content("https://pypi.org/project/requests/")
     package_data = BSWebCrawler.extract_pypi_content(html, "requests")
@@ -764,6 +823,8 @@ Extracts content from documentation websites.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def extract_docs_example():
     html = await BSWebCrawler.fetch_url_content("https://docs.python.org/3/library/asyncio.html")
     doc_data = BSWebCrawler.extract_documentation_content(html, "https://docs.python.org/3/library/asyncio.html")
@@ -794,6 +855,8 @@ Formats PyPI package data into a readable markdown format.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def format_pypi_example():
     html = await BSWebCrawler.fetch_url_content("https://pypi.org/project/requests/")
     package_data = BSWebCrawler.extract_pypi_content(html, "requests")
@@ -823,6 +886,8 @@ Formats extracted documentation content into readable markdown.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def format_docs_example():
     html = await BSWebCrawler.fetch_url_content("https://docs.python.org/3/library/asyncio.html")
     doc_data = BSWebCrawler.extract_documentation_content(html, "https://docs.python.org/3/library/asyncio.html")
@@ -852,6 +917,8 @@ Crawls a documentation website and extracts formatted content.
 
 **Example:**
 ```python
+from oarc_crawlers import BSWebCrawler
+
 async def crawl_docs_example():
     formatted_content = await crawler.crawl_documentation_site(
         "https://docs.python.org/3/library/asyncio.html"
@@ -882,6 +949,8 @@ Initializes the ArXivCrawler instance.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+# initilize the ArxivCrawler instance
 crawler = ArxivCrawler(data_dir='./arxiv_data')
 ```
 
@@ -901,6 +970,8 @@ Extracts a normalized arXiv ID from a URL or direct ID string.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 arxiv_id = ArxivCrawler.extract_arxiv_id("https://arxiv.org/abs/2103.13630")
 # arxiv_id == "2103.13630"
 ```
@@ -926,6 +997,8 @@ Fetches paper metadata from the arXiv API and stores it as Parquet.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 info = await crawler.fetch_paper_info("2103.13630")
 print(info['title'])
 ```
@@ -950,6 +1023,8 @@ Downloads and extracts the LaTeX source files for a paper.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 source = await crawler.download_source("2103.13630")
 print(source['latex_content'][:200])
 ```
@@ -976,6 +1051,8 @@ Fetches both paper metadata and LaTeX source, combining them.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 combined = await crawler.fetch_paper_with_latex("2103.13630")
 print(combined['title'], len(combined['latex_content']))
 ```
@@ -999,6 +1076,8 @@ Formats paper metadata as a markdown summary for learning.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 summary = await ArxivCrawler.format_paper_for_learning(info)
 print(summary)
 ```
@@ -1021,6 +1100,8 @@ Fetches multiple papers in batch, optionally extracting keywords and references.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 results = await crawler.batch_fetch_papers(["2103.13630", "2201.00001"], extract_keywords=True)
 ```
 
@@ -1041,6 +1122,8 @@ Searches arXiv for papers matching a query.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 results = await crawler.search("transformer language model", limit=3)
 ```
 
@@ -1060,6 +1143,8 @@ Extracts bibliography references from a paper's LaTeX source.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 refs = await crawler.extract_references("2103.13630")
 ```
 
@@ -1083,6 +1168,8 @@ Extracts keywords from the abstract and title using NLP.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 keywords = await crawler.extract_keywords("2103.13630")
 ```
 
@@ -1108,6 +1195,8 @@ Fetches papers from a specific arXiv category.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 cat_papers = await crawler.fetch_category_papers("cs.CL", max_results=10)
 ```
 
@@ -1127,6 +1216,8 @@ Extracts mathematical equations from LaTeX source.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 eqs = await crawler.extract_math_equations("2103.13630")
 ```
 
@@ -1147,6 +1238,8 @@ Generates a citation network from seed papers.
 
 **Example:**
 ```python
+from oarc_crawlers import ArxivCrawler
+
 network = await crawler.generate_citation_network(["2103.13630"], max_depth=2)
 ```
 
@@ -1359,4 +1452,222 @@ success_count, error_count = MCPUtils.stop_all_mcp_servers()
 
 #### `configure_vscode(server_name: str, port: int, supports_streaming: bool = True)`
 
-````
+## 8. OEIS Crawler API
+
+*Location: `oarc_crawlers.core.crawlers.oeis_crawler`*
+
+### `__init__(data_dir: Optional[str]=None)`
+Initializes the OEIS Crawler instance.
+
+**Parameters:**
+- `data_dir` (`Optional[str]`, default=`None`): Base directory for storing sequence data and metadata.
+
+**Examples:**
+```python
+from oarc_crawlers import OEISCrawler
+# Assuming OEISCrawler is imported
+crawler = OEISCrawler(data_dir='./oeis_data')
+```
+
+### `async fetch_sequence(sequence_id: str) -> Dict`
+Fetches data for a specific OEIS sequence.
+
+**Parameters:**
+- `sequence_id` (`str`): The OEIS sequence ID (e.g., "A000045" for Fibonacci)
+
+**Returns:**
+- `Dict`: A dictionary containing sequence data and metadata:
+  ```python
+  {
+      'id': 'A000045',
+      'name': 'Fibonacci numbers',
+      'values': [0, 1, 1, 2, 3, 5, 8, ...],
+      'formula': 'a(n) = a(n-1) + a(n-2)',
+      'references': ['...'],
+      'links': ['...'],
+      'examples': ['...'],
+      'metadata': {
+          'author': '...',
+          'created': '...',
+          'keywords': ['...']
+      }
+  }
+  ```
+
+**Error Handling:**
+- Raises `ValueError` if sequence_id format is invalid.
+- Returns dictionary with error info if sequence not found.
+- Handles network errors gracefully.
+
+**Example:**
+```python
+# Assuming crawler is an initialized OEISCrawler instance
+result = await crawler.fetch_sequence("A000045")
+print(f"Sequence name: {result['name']}")
+print(f"First 10 values: {result['values'][:10]}")
+```
+
+### `async search_sequences(query: str, max_results: int = 10) -> Dict`
+Searches for OEIS sequences matching a query.
+
+**Parameters:**
+- `query` (`str`): Search query (name, formula, or values)
+- `max_results` (`int`, default=`10`): Maximum number of results to return
+
+**Returns:**
+- `Dict`: Search results containing matching sequences:
+  ```python
+  {
+      'query': 'fibonacci',
+      'total_results': 42,
+      'sequences': [{
+          'id': 'A000045',
+          'name': 'Fibonacci numbers',
+          'preview': [0, 1, 1, 2, 3, 5],
+          'url': 'https://oeis.org/A000045'
+      }, ...]
+  }
+  ```
+
+**Example:**
+```python
+result = await crawler.search_sequences("prime numbers", max_results=5)
+for seq in result['sequences']:
+    print(f"{seq['id']}: {seq['name']}")
+```
+
+### `async generate_report(sequence_id: str, output_format: str = "markdown") -> str`
+Generates a detailed report for a sequence including values, formulas, and related sequences.
+
+**Parameters:**
+- `sequence_id` (`str`): The OEIS sequence ID
+- `output_format` (`str`, default=`"markdown"`): Output format ("markdown" or "json")
+
+**Returns:**
+- `str`: Formatted report as markdown or JSON string
+
+**Example:**
+```python
+report = await crawler.generate_report("A000045")
+print(report)  # Prints detailed markdown report
+```
+
+## 9. CrawlerTestUI API
+
+*Location: `oarc_crawlers.core.crawlers.crawlerTestUI`*
+
+The CrawlerTestUI provides a graphical interface for testing and debugging crawlers.
+
+### `__init__(crawlers: Optional[List[BaseCrawler]] = None)`
+Initializes the test UI with specified crawlers.
+
+**Parameters:**
+- `crawlers` (`Optional[List[BaseCrawler]]`): List of crawler instances to test
+
+**Example:**
+```python
+from oarc_crawlers import YTCrawler, GHCrawler, CrawlerTestUI
+
+crawlers = [
+    YTCrawler(data_dir="./data"),
+    GHCrawler(data_dir="./data")
+]
+ui = CrawlerTestUI(crawlers=crawlers)
+```
+
+### `run() -> None`
+Launches the test UI window.
+
+**Example:**
+```python
+ui = CrawlerTestUI()
+ui.run()
+```
+
+### `add_crawler(crawler: BaseCrawler) -> None`
+Adds a crawler instance to the UI for testing.
+
+**Parameters:**
+- `crawler` (`BaseCrawler`): Crawler instance to add
+
+**Example:**
+```python
+ui = CrawlerTestUI()
+ui.add_crawler(YTCrawler(data_dir="./data"))
+ui.run()
+```
+
+## 10. ParquetStorage Extended Reference
+
+The ParquetStorage utility provides a standardized interface for saving and loading data in Apache Parquet format.
+
+### `save_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str, compression: str = "snappy") -> bool`
+
+Saves data to a Parquet file.
+
+**Parameters:**
+- `data`: Data to save (dictionary, list of dictionaries, or DataFrame)
+- `file_path`: Path where the Parquet file will be saved
+- `compression`: Compression algorithm ("snappy", "gzip", "brotli", or "none")
+
+**Returns:**
+- `bool`: True if save was successful
+
+**Examples:**
+```python
+from oarc_crawlers import ParquetStorage
+
+# Save a single dictionary
+data = {'id': 1, 'name': 'Example', 'values': [1, 2, 3]}
+ParquetStorage.save_to_parquet(data, 'example.parquet')
+
+# Save a list of dictionaries
+data_list = [
+    {'id': 1, 'value': 10},
+    {'id': 2, 'value': 20}
+]
+ParquetStorage.save_to_parquet(data_list, 'examples.parquet')
+
+# Save with specific compression
+import pandas as pd
+df = pd.DataFrame({'col1': range(1000)})
+ParquetStorage.save_to_parquet(df, 'large_file.parquet', compression='gzip')
+```
+
+### `load_from_parquet(file_path: str, columns: Optional[List[str]] = None) -> Optional[pd.DataFrame]`
+
+Loads data from a Parquet file.
+
+**Parameters:**
+- `file_path`: Path to the Parquet file
+- `columns`: Optional list of columns to load (loads all if None)
+
+**Returns:**
+- `Optional[pd.DataFrame]`: Loaded data as DataFrame, or None if error
+
+**Examples:**
+```python
+# Load entire file
+df = ParquetStorage.load_from_parquet('example.parquet')
+
+# Load specific columns
+df = ParquetStorage.load_from_parquet('example.parquet', columns=['id', 'name'])
+```
+
+### `append_to_parquet(data: Union[Dict, List[Dict], pd.DataFrame], file_path: str) -> bool`
+
+Appends data to an existing Parquet file.
+
+**Parameters:**
+- `data`: Data to append
+- `file_path`: Path to the Parquet file
+
+**Returns:**
+- `bool`: True if append was successful
+
+**Example:**
+```python
+# Append new data
+new_data = {'id': 3, 'value': 30}
+ParquetStorage.append_to_parquet(new_data, 'examples.parquet')
+```
