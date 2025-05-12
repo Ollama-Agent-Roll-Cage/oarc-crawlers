@@ -22,11 +22,7 @@ Remove-Item -Recurse -Force .venv
 ## Core utils to install after cleaning env
 ```bash
 # Install core utils
-uv pip install uv
-uv pip install pip
-uv pip install wheel
-uv pip install setuptools
-uv pip install build twine
+uv pip install uv pip wheel setuptools build twine
 ```
 
 ## Install oarc-crawlers in development mode
