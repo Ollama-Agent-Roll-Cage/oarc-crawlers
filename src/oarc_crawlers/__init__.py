@@ -1,6 +1,6 @@
 """OARC Crawlers - A collection of web crawlers and data extraction tools."""
 
-__version__ = "0.1.12"
+__version__ = "0.1.13"
 __author__ = "OARC Team"
 
 from oarc_crawlers.core.crawlers.yt_crawler import YTCrawler
