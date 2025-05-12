@@ -419,13 +419,14 @@ if __name__ == "__main__":
             # Try to get port information
             port_info = ""
             try:
+                # Revert to original port finding logic within stop_all
                 for conn in proc.connections(kind='inet'):
                     if hasattr(conn, 'laddr') and hasattr(conn.laddr, 'port'):
                         port_info = f" on port {conn.laddr.port}"
                         break
-            except:
-                pass
-            
+            except Exception as e: # Use generic Exception
+                log.debug(f"Could not determine port for PID {proc.info.get('pid', 'unknown')}: {e}")
+
             log.info(f"Stopping MCP server (PID: {proc.info['pid']}){port_info}...")
             if MCPUtils.terminate_process(proc.info['pid'], force):
                 success_count += 1
@@ -436,8 +437,7 @@ if __name__ == "__main__":
         if error_count > 0:
             log.warning(f"Failed to stop {error_count} MCP server(s)")
         
-        # Ensure all connections and resources are cleaned up
-        # Force garbage collection to close any lingering sockets
+        # Restore garbage collection call
         import gc
         gc.collect()
             
@@ -456,60 +456,73 @@ if __name__ == "__main__":
         
         for proc in mcp_processes:
             try:
+                proc_info = proc.info # Get info once to potentially reduce calls
+                pid = proc_info.get('pid')
+                cmdline = proc_info.get('cmdline', [])
+
                 # Basic process info
                 server_info = {
-                    'pid': proc.info['pid'],
-                    'port': None,
-                    'status': 'running',
+                    'pid': pid,
+                    'port': None, # Determined below
+                    'status': 'running', # Assume running if found
                     'uptime_sec': time.time() - proc.create_time(),
-                    'cmdline': proc.info.get('cmdline', []),
-                    'memory_mb': round(proc.memory_info().rss / (1024 * 1024), 2),  # Convert to MB
-                    'cpu_percent': None,
-                    'tool_count': None,
-                    'connections': 0
+                    'cmdline': cmdline,
+                    'memory_mb': None, # Determined below
+                    'cpu_percent': None, # Determined below
+                    'connections': 0 # Default
                 }
+
+                # Get Memory Info
+                try:
+                     server_info['memory_mb'] = round(proc.memory_info().rss / (1024 * 1024), 2) # Convert to MB
+                except Exception as e:
+                     log.debug(f"Error getting memory info for PID {pid}: {e}")
                 
                 # Try to get port information and count connections
                 try:
                     connections = proc.connections(kind='inet')
                     server_info['connections'] = len(connections)
                     for conn in connections:
-                        if hasattr(conn, 'laddr') and hasattr(conn.laddr, 'port'):
+                        # Check for listening port
+                        if conn.status == psutil.CONN_LISTEN and hasattr(conn, 'laddr') and hasattr(conn.laddr, 'port'):
                             server_info['port'] = conn.laddr.port
-                            break
+                            break # Found listening port
                 except Exception as e:
-                    log.debug(f"Error getting connection info for PID {proc.info['pid']}: {e}")
+                    log.debug(f"Error getting connection info for PID {pid}: {e}")
                     
-                # Try to get CPU usage
-                try:
-                    server_info['cpu_percent'] = round(proc.cpu_percent(interval=0.1), 1)
-                except Exception as e:
-                    log.debug(f"Error getting CPU info for PID {proc.info['pid']}: {e}")
-                    
-                # Get command line info - extract port number from command line if not found
-                if server_info['port'] is None and server_info['cmdline']:
-                    cmdline = ' '.join(server_info['cmdline'])
-                    port_index = cmdline.find('--port')
+                # Fallback: Get port from command line if not found via connections
+                if server_info['port'] is None and cmdline:
+                    cmd_str = ' '.join(cmdline)
+                    port_index = cmd_str.find('--port')
                     if port_index >= 0:
-                        port_parts = cmdline[port_index:].split()
+                        port_parts = cmd_str[port_index:].split()
                         if len(port_parts) >= 2:
                             try:
                                 server_info['port'] = int(port_parts[1])
                             except (ValueError, IndexError):
-                                # Failed to parse port, fall back to default
-                                if 'oarc-crawlers mcp run' in cmdline:
-                                    server_info['port'] = 3000  # Default port
-                    else:
+                                # Failed to parse port, check for default
+                                if 'oarc-crawlers mcp run' in cmd_str:
+                                    server_info['port'] = 3000
+                        elif 'oarc-crawlers mcp run' in cmd_str: # Handle case like "--port " at end
+                             server_info['port'] = 3000
+                    elif 'oarc-crawlers mcp run' in cmd_str:
                         # No explicit port in command, assume default
-                        if 'oarc-crawlers mcp run' in cmdline:
-                            server_info['port'] = 3000  # Default port
+                        server_info['port'] = 3000
                 
+                # Try to get CPU usage
+                try:
+                    # Revert interval to 0.1 as 0.01 might be too aggressive/inaccurate
+                    server_info['cpu_percent'] = round(proc.cpu_percent(interval=0.1), 1) 
+                except Exception as e:
+                    log.debug(f"Error getting CPU info for PID {pid}: {e}")
+                    
                 found_servers.append(server_info)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 # Process disappeared or can't be accessed
+                log.debug(f"Process {proc.pid if hasattr(proc, 'pid') else 'unknown'} disappeared or access denied.")
                 continue
             except Exception as e:
-                log.debug(f"Unexpected error processing PID {proc.info.get('pid', 'unknown')}: {e}")
+                log.warning(f"Unexpected error processing PID {proc.pid if hasattr(proc, 'pid') else 'unknown'}: {e}")
                 
         return found_servers
 

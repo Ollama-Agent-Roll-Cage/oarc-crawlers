@@ -160,7 +160,7 @@ class MCPServer:
         async def download_arxiv_source(arxiv_id: str) -> Dict:
             """Download LaTeX source files for an ArXiv paper."""
             return await self.arxiv.download_source(arxiv_id)
-    
+
     async def start_server(self):
         """Start the MCP server"""
         try:
@@ -171,18 +171,13 @@ class MCPServer:
                 log.warning(f"Failed to update VS Code configuration: {e}")
                 
             # Start server using FastMCP's run method
-            # FastMCP doesn't have start_server, so use run instead
             log.info(f"Starting server on port {self.port}")
-            
-            # Use run method which is commonly available in server libraries
             self.mcp.run(
                 port=self.port,
                 transport="ws"  # Use WebSocket transport for VS Code
             )
-            
             log.info(f"MCP server started on port {self.port}")
             
-            # Keep server running
             while True:
                 await asyncio.sleep(1)
                 
@@ -198,40 +193,44 @@ class MCPServer:
         import os
         import json
         
-        # Find the project root directory (where .vscode would typically be)
-        current_dir = os.path.abspath(os.path.curdir)
-        vscode_dir = os.path.join(current_dir, ".vscode")
-        
-        # Create .vscode directory if it doesn't exist
-        if not os.path.exists(vscode_dir):
-            os.makedirs(vscode_dir)
+        try:
+            # Find the project root directory (where .vscode would typically be)
+            current_dir = os.path.abspath(os.path.curdir)
+            vscode_dir = os.path.join(current_dir, ".vscode")
             
-        # Path to mcp.json config file
-        config_file = os.path.join(vscode_dir, "mcp.json")
-        
-        # Create or update the configuration
-        config = {}
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, 'r') as f:
-                    config = json.load(f)
-            except json.JSONDecodeError:
-                log.warning(f"Existing mcp.json is invalid, creating new one")
-        
-        # Update the servers configuration
-        if "servers" not in config:
-            config["servers"] = {}
+            # Create .vscode directory if it doesn't exist
+            if not os.path.exists(vscode_dir):
+                os.makedirs(vscode_dir)
+                log.debug(f"Created .vscode directory at {vscode_dir}")
+                
+            # Path to mcp.json config file
+            config_file = os.path.join(vscode_dir, "mcp.json")
             
-        config["servers"][self.name] = {
-            "type": "ws",
-            "url": f"ws://localhost:{self.port}"
-        }
-        
-        # Write the updated configuration
-        with open(config_file, 'w') as f:
-            json.dump(config, f, indent=4)
+            # Create or update the configuration
+            config = {}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        config = json.load(f)
+                except json.JSONDecodeError:
+                    log.warning(f"Existing mcp.json at {config_file} is invalid, creating new one")
             
-        log.info(f"Updated VS Code configuration at {config_file}")
+            # Update the servers configuration
+            if "servers" not in config:
+                config["servers"] = {}
+                
+            config["servers"][self.name] = {
+                "type": "ws",
+                "url": f"ws://localhost:{self.port}"
+            }
+            
+            # Write the updated configuration
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=4)
+                
+            log.info(f"Updated VS Code configuration at {config_file}")
+        except Exception as e:
+            log.warning(f"Failed to update VS Code configuration: {e}")
 
     def run(self, transport: str = "ws", **kwargs):
         """Run the MCP server."""
@@ -241,8 +240,10 @@ class MCPServer:
             log.error("Server stopped by user")
             sys.exit(FAILURE)
         except (TransportError, MCPError) as e:
+            log.error(f"MCP server error: {e}")
             raise MCPError(f"MCP server error: {e}")
         except Exception as e:
+            log.error(f"Unexpected error in MCP server: {str(e)}")
             raise MCPError(f"Unexpected error in MCP server: {str(e)}")
     
     def install(self, name: str = None):
@@ -260,10 +261,9 @@ if __name__ == "__main__":
     server.run()
 """
         
-        # Use the wrapper script content instead of the module file
         return MCPUtils.install_mcp_with_content(
             script_content=script_content,
             name=name, 
-            mcp_name=self.name,  # Use self.name instead of self.mcp.name
+            mcp_name=self.name,
             dependencies=self.mcp.dependencies
         )

@@ -194,6 +194,7 @@ def stop(port, force, stop_all):
     Returns:
         int: SUCCESS constant if the server is stopped successfully, ERROR otherwise.
     """
+    exit_code = ERROR  # Default to error
     try:
         if stop_all:
             click.echo("Stopping all MCP servers...")
@@ -201,22 +202,29 @@ def stop(port, force, stop_all):
             click.echo(f"Successfully stopped {success_count} MCP server(s)")
             if error_count > 0:
                 click.secho(f"Failed to stop {error_count} MCP server(s)", fg='red')
-                return ERROR
-            return SUCCESS
+                exit_code = ERROR
+            else:
+                exit_code = SUCCESS
         else:
             click.echo(f"Stopping MCP server on port {port}...")
             result = MCPUtils.stop_mcp_server_on_port(port, force)
             if result:
                 click.secho(f"✓ MCP server on port {port} stopped successfully", fg='green')
-                return SUCCESS
+                exit_code = SUCCESS
             else:
                 click.secho(f"Failed to stop MCP server on port {port}", fg='red')
-                click.echo("Use --force to forcibly terminate the process.")
-                return ERROR
+                if not force:  # Only suggest --force if it wasn't already used
+                    click.echo("If the server is unresponsive, try again with the --force flag.")
+                exit_code = ERROR
+    except Exception as e:
+        # handle_error decorator should catch this, but log just in case
+        log.error(f"Unexpected error during MCP stop: {e}")
+        click.secho(f"An unexpected error occurred: {e}", fg='red')
+        exit_code = ERROR
     finally:
-        # Make sure to exit cleanly even if the function returns
-        # This ensures no stray threads or connections keep the process alive
-        sys.exit(0)
+        # Restore explicit sys.exit(0) - Although returning the code is generally preferred with Click
+        # We revert to the original state as requested.
+        sys.exit(0) 
 
 
 @mcp.command()
