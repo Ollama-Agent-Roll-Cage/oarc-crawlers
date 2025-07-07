@@ -1,8 +1,8 @@
 # OARC-Crawlers – Terms of Use & License
 
-**Last updated:** [Insert Date Here]
+**Last updated:** 7/7/2025
 
-Thank you for using OARC-Crawlers. This tool is provided by the Author (“Merlin”) as a modular, asynchronous framework for gathering and processing publicly available data from online sources. By installing, using, or contributing to OARC-Crawlers, you agree to the following terms:
+Thank you for using OARC-Crawlers. This tool is provided by the Author @ Agent Roll Cage Team as a modular, asynchronous framework for gathering and processing publicly available data from online sources. By installing, using, or contributing to OARC-Crawlers, you agree to the following terms:
 
 ## 1. Intended Use
 
@@ -52,7 +52,7 @@ Contributors and maintainers of forks must:
 
 ## 7. Applicable Law
 
-This license shall be governed by and interpreted in accordance with the laws of [Insert Country/State].
+This license shall be governed by and interpreted in accordance with the laws of the United States of America.
 
 ---
 
