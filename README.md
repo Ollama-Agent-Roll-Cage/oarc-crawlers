@@ -4,10 +4,10 @@
 
 <p align="center">
   <a href="https://discord.gg/mNeQZzBHuW">
-    <img src="assets/Discord Button Ollama v4.png" width="135"/>
+    <img src="assets/Discord Button Ollama v4.png" width="235"/>
   </a>
   <a href="https://ko-fi.com/theborch">
-    <img src="assets/buy me a coffee button.png" width="135"/>
+    <img src="assets/buy me a coffee button.png" width="235"/>
   </a>
 </p>
 
