@@ -2,8 +2,8 @@
   <img src="assets/oarcCrawlerLlamaEmoji.png" alt="OARC LOGO" width="250"/>
 </p>
 <p align="center">
-  <a href="https://discord.gg/mNeQZzBHuW"><img src="assets/Discord Button Ollama v4.png" height="18"></a>
-  <a href="https://ko-fi.com/theborch"><img src="assets/buy me a coffee button.png" height="18"></a>
+  <a href="https://discord.gg/mNeQZzBHuW"><img src="assets/Discord Button Ollama v4.png" height="48"></a>
+  <a href="https://ko-fi.com/theborch"><img src="assets/buy me a coffee button.png" height="48"></a>
 </p>
 
 # ⛏️ OARC-Crawlers ⛏️
